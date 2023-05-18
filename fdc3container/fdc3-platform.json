@@ -1,0 +1,80 @@
+{
+    "licenseKey": "47799529-858f-429c-8b12-e106f441f985",
+    "runtime": {
+        "arguments": "--security-realm=fdc3-poc  --enable-mesh",
+        "version": "22.94.66.4"
+    },
+    "platform": {
+        "uuid": "fdc3-platform",
+        "defaultWindowOptions": {
+            "fdc3InteropApi": "1.2"
+        },
+        "defaultViewOptions": {
+            "fdc3InteropApi": "1.2"
+        }
+    },
+    "shortcut": {
+        "name": "FDC3 Demo",
+        "company": "WMC",
+        "description": "Demo of FDC3 Java API Functionality for Hackathon team WellConnect",
+        "icon": "https://fdc3.finos.org/img/favicon/favicon.ico",
+        "target": ["desktop"]
+    },
+    "snapshot": {
+        "windows": [
+            {
+                "defaultWidth": 800,
+                "defaultHeight": 600,
+                "defaultTop": 440,
+                "defaultLeft": 0,
+                "layout": {
+                    "content": [
+                        {
+                            "type": "component",
+                            "componentName": "view",
+                            "componentState": {
+                                "name": "FDC3 Workbench",
+                                "url": "https://fdc3.finos.org/toolbox/fdc3-workbench/"
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "defaultWidth": 1120,
+                "defaultHeight": 600,
+                "defaultTop": 440,
+                "defaultLeft": 800,
+                "layout": {
+                    "content": [
+                        {
+                            "type": "component",
+                            "componentName": "view",
+                            "componentState": {
+                                "name": "Receiver",
+                                "url": "http://localhost:3000/"
+                            }
+                        }
+                    ]
+                }
+            },{
+                "defaultWidth": 1120,
+                "defaultHeight": 600,
+                "defaultTop": 440,
+                "defaultLeft": 800,
+                "layout": {
+                    "content": [
+                        {
+                            "type": "component",
+                            "componentName": "view",
+                            "componentState": {
+                                "name": "Receiver HTML Version",
+                                "url": "http://localhost:8080/receiver.html"
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "fdc3-demo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev:server": "node server.js",
+    "dev:sender": "openfin -l -c sender.json",
+    "dev:receiver": "openfin -l -c receiver.json",
+    "dev:platform": "openfin -l -c fdc3-platform.json",
+    "start": "run-p dev:server dev:platform"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/finos-labs/fdc3-java-api/fdc3container"
+  },
+  "author": "",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "+https://github.com/finos-labs/fdc3-java-api/fdc3container"
+  },
+  "homepage": "+https://github.com/finos-labs/fdc3-java-api#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "npm-run-all": "^4.1.5",
+    "openfin-cli": "^3.0.2"
+  }
+}

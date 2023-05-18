@@ -1,0 +1,33 @@
+{
+    "devtools_port": 9090,
+    "runtime": {
+        "arguments": "--security-realm=platform_sender --enable-mesh",
+        "version": "19.89.61.6"
+    },
+    "platform": {
+        "uuid": "fdc3-demo-platform",
+        "autoShow": false,
+        "defaultWindowOptions": {
+            "fdc3InteropApi": "1.2",
+            "contextMenu": true
+        },
+        "defaultViewOptions": {
+            "fdc3InteropApi": "1.2",
+            "contextMenu": true
+        }
+    },
+    "snapshot": {
+        "windows": [{
+            "layout": {
+                "content": [{
+                    "type": "component",
+                    "componentName": "view",
+                    "componentState": {
+                        "name": "sender",
+                        "url": "http://localhost:8080/sender.html"
+                    }
+                }]
+            }
+        }]
+    }
+}
