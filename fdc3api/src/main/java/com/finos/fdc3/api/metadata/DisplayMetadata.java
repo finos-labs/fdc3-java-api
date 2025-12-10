@@ -18,6 +18,8 @@ package com.finos.fdc3.api.metadata;
 
 import java.util.Optional;
 
+import java.util.Map;
+
 /**
  * A system channel will be global enough to have a presence across many apps. This gives us some hints
  * to render them in a standard way. It is assumed it may have other properties too, but if it has these,
@@ -38,4 +40,32 @@ public interface DisplayMetadata {
    * A URL of an image that can be used to display this channel
    */
   public Optional<String> getGlyph();
+
+  /**
+   * Create a DisplayMetadata from a Map.
+   */
+  public static DisplayMetadata fromMap(Map<String, Object> map) {
+    if (map == null) {
+      return null;
+    }
+    String name = (String) map.get("name");
+    String color = (String) map.get("color");
+    String glyph = (String) map.get("glyph");
+    return new DisplayMetadata() {
+      @Override
+      public Optional<String> getName() {
+        return Optional.ofNullable(name);
+      }
+
+      @Override
+      public Optional<String> getColor() {
+        return Optional.ofNullable(color);
+      }
+
+      @Override
+      public Optional<String> getGlyph() {
+        return Optional.ofNullable(glyph);
+      }
+    };
+  }
 }

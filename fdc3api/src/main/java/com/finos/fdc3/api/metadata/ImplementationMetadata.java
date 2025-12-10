@@ -25,28 +25,36 @@ public interface ImplementationMetadata {
   /** The version number of the FDC3 specification that the implementation provides.
    *  The string must be a numeric semver version, e.g. 1.2 or 1.2.1.
    */
-  public String getfdc3Version();
+  String getFdc3Version();
 
   /** The name of the provider of the Desktop Agent implementation (e.g. Finsemble, Glue42, OpenFin etc.). */
-  public String getProvider();
+  String getProvider();
 
   /** The version of the provider of the Desktop Agent implementation (e.g. 5.3.0). */
-  public Optional<String> getProviderVersion();
+  String getProviderVersion();
+
+  /** The calling application instance's own metadata, according to the Desktop Agent (MUST include at least the `appId` and `instanceId`). */
+  AppMetadata getAppMetadata();
 
   /** Metadata indicating whether the Desktop Agent implements optional features of
    *  the Desktop Agent API.
    */
-  public interface optionalFeatures {
-    /** Used to indicate whether the exposure of 'origninating app metadata' for
+  OptionalFeatures getOptionalFeatures();
+
+  /** Metadata indicating whether the Desktop Agent implements optional features of
+   *  the Desktop Agent API.
+   */
+  interface OptionalFeatures {
+    /** Used to indicate whether the exposure of 'originating app metadata' for
      *  context and intent messages is supported by the Desktop Agent.*/
-    public boolean OriginatingAppMetadata();
+    boolean isOriginatingAppMetadata();
 
     /** Used to indicate whether the optional `fdc3.joinUserChannel`,
      *  `fdc3.getCurrentChannel` and `fdc3.leaveCurrentChannel` are implemented by
      *  the Desktop Agent.*/
-    public boolean UserChannelMembershipAPIs();
-  }
+    boolean isUserChannelMembershipAPIs();
 
-  /** The calling application instance's own metadata, according to the Desktop Agent (MUST include at least the `appId` and `instanceId`). */
-  public AppMetadata getAppMetaData();
+    /** Used to indicate whether Desktop Agent bridging is supported by the Desktop Agent. */
+    boolean isDesktopAgentBridging();
+  }
 }

@@ -29,5 +29,17 @@ public interface ContextMetadata {
    *
    *  @experimental
    */
-  public AppIdentifier getSource();
+  AppIdentifier getSource();
+
+  /** Get the source app ID. Convenience method. */
+  default String getSourceAppId() {
+    AppIdentifier source = getSource();
+    return source != null ? source.getAppId() : null;
+  }
+
+  /** Get the source instance ID. Convenience method. */
+  default String getSourceInstanceId() {
+    AppIdentifier source = getSource();
+    return source != null ? source.getInstanceId() : null;
+  }
 }

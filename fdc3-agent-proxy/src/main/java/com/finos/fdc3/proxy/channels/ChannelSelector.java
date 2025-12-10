@@ -13,23 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.finos.fdc3.api.types;
+
+package com.finos.fdc3.proxy.channels;
+
+import java.util.List;
+import java.util.function.Consumer;
 
 import com.finos.fdc3.api.channel.Channel;
-import com.finos.fdc3.api.context.Context;
-import com.finos.fdc3.api.metadata.IntentResolution;
 
 /**
- * Describes results that an {@link IntentHandler} may optionally return that should be communicated back to the app that raised the
- * intent, via the {@link IntentResolution}. Represented as a union type in TypeScript, however in Java it is a marker interface
- * implemented by {@link Context} and {@link Channel}
+ * Interface for channel selection UI components.
  */
-public interface IntentResult {
+public interface ChannelSelector {
+
     /**
-     * Get the underlying value of this result.
-     * This may be a Context, Channel, or null.
+     * Set the callback to be invoked when the user selects a different channel.
+     *
+     * @param callback the callback, receiving the channel ID or null if leaving
      */
-    default Object getValue() {
-        return this;
-    }
+    void setChannelChangeCallback(Consumer<String> callback);
+
+    /**
+     * Update the current channel and available channels.
+     *
+     * @param channelId the current channel ID, or null if none
+     * @param channels  the available channels
+     */
+    void updateChannel(String channelId, List<Channel> channels);
 }
+

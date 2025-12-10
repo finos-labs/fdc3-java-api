@@ -27,6 +27,7 @@
     <modules>
         <module>fdc3api</module>
         <module>fdc3-testing</module>
+        <module>fdc3-agent-proxy</module>
     </modules>
     <properties>
         <maven.compiler.source>11</maven.compiler.source>

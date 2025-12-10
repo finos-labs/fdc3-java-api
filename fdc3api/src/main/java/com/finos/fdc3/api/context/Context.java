@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.finos.fdc3.api.utils.StringUtilities;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @JsonPropertyOrder({
@@ -27,8 +28,7 @@ import java.util.Map;
         "name",
         "id"
 })
-public class Context
-{
+public class Context {
     @JsonProperty("type")
     private String type;
 
@@ -38,7 +38,9 @@ public class Context
     @JsonProperty("id")
     private Map<Object, Object> id;
 
-    public Context() {}
+    public Context() {
+    }
+
     public Context(String type) {
         this.type = type;
         this.name = null;
@@ -63,45 +65,69 @@ public class Context
         this.setId(id);
     }
 
-    public String getType()
-    {
+    public String getType() {
         return type;
     }
 
-    public Map<Object, Object>  getId()
-    {
+    public Map<Object, Object> getId() {
         return id;
     }
 
-    public void setId(Map<Object, Object>  id)
-    {
+    public void setId(Map<Object, Object> id) {
         /*
-        Map<String, Boolean> keyMap = ContextContants.CONTEXT_ID_KEYS_MAPPING.getOrDefault(type, null);
-        if(!ContextHelper.hasValidKeys(id, keyMap)) {
-            throw new IllegalArgumentException("Invalid ID(s) present!");
-        }
-        if(!ContextHelper.hasMandatoryKeys(id, keyMap)) {
-            throw new IllegalArgumentException("Mandatory ID(s) missing!");
-        }
-        */
+         * Map<String, Boolean> keyMap =
+         * ContextContants.CONTEXT_ID_KEYS_MAPPING.getOrDefault(type, null);
+         * if(!ContextHelper.hasValidKeys(id, keyMap)) {
+         * throw new IllegalArgumentException("Invalid ID(s) present!");
+         * }
+         * if(!ContextHelper.hasMandatoryKeys(id, keyMap)) {
+         * throw new IllegalArgumentException("Mandatory ID(s) missing!");
+         * }
+         */
 
         this.id = id;
     }
 
-    public String getName()
-    {
+    public String getName() {
         return name;
     }
 
-    public void setName(String name)
-    {
+    public void setName(String name) {
         this.name = name;
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return StringUtilities.valueAsString(this);
+    }
+
+    /**
+     * Convert this Context to a Map for JSON serialization.
+     */
+    public Map<String, Object> toMap() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("type", type);
+        if (name != null) {
+            map.put("name", name);
+        }
+        if (id != null) {
+            map.put("id", id);
+        }
+        return map;
+    }
+
+    /**
+     * Create a Context from a Map.
+     */
+    @SuppressWarnings("unchecked")
+    public static Context fromMap(Map<String, Object> map) {
+        if (map == null) {
+            return null;
+        }
+        String type = (String) map.get("type");
+        String name = (String) map.get("name");
+        Map<Object, Object> id = (Map<Object, Object>) map.get("id");
+        return new Context(type, name, id);
     }
 
 }

@@ -13,23 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.finos.fdc3.api.types;
 
-import com.finos.fdc3.api.channel.Channel;
+package com.finos.fdc3.proxy.intents;
+
+import java.util.List;
+import java.util.concurrent.CompletionStage;
+
 import com.finos.fdc3.api.context.Context;
-import com.finos.fdc3.api.metadata.IntentResolution;
+import com.finos.fdc3.api.metadata.AppIntent;
 
 /**
- * Describes results that an {@link IntentHandler} may optionally return that should be communicated back to the app that raised the
- * intent, via the {@link IntentResolution}. Represented as a union type in TypeScript, however in Java it is a marker interface
- * implemented by {@link Context} and {@link Channel}
+ * Interface for intent resolution UI components.
  */
-public interface IntentResult {
+public interface IntentResolver {
+
     /**
-     * Get the underlying value of this result.
-     * This may be a Context, Channel, or null.
+     * Display a UI to let the user choose an intent and app.
+     *
+     * @param appIntents the available intents and apps
+     * @param context    the context being passed
+     * @return a CompletionStage containing the user's choice, or null if cancelled
      */
-    default Object getValue() {
-        return this;
-    }
+    CompletionStage<IntentResolutionChoice> chooseIntent(List<AppIntent> appIntents, Context context);
 }
+
