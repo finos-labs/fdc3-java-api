@@ -17,7 +17,8 @@
 package com.finos.fdc3.api.types;
 
 /**
- * Describes a callback that handles non-context and non-intent events from the Desktop Agent.
+ * Describes a callback that handles non-context and non-intent events from the
+ * Desktop Agent.
  * Used when attaching listeners via {@code addEventListener}.
  */
 @FunctionalInterface
@@ -31,4 +32,3 @@ public interface EventHandler {
     void handleEvent(FDC3Event<?> event);
 
 }
-

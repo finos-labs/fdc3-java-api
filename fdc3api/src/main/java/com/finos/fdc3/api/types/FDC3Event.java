@@ -53,4 +53,3 @@ public class FDC3Event<T> {
         return details;
     }
 }
-
