@@ -47,6 +47,11 @@
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
         </dependency>
@@ -62,6 +67,12 @@
         <dependency>
             <groupId>io.cucumber</groupId>
             <artifactId>cucumber-java</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-picocontainer</artifactId>
             <version>${cucumber.version}</version>
             <scope>test</scope>
         </dependency>
@@ -118,7 +129,7 @@
                         <configurationParameters>
                             cucumber.junit-platform.naming-strategy=long
                             cucumber.plugin=pretty,html:target/cucumber-reports/cucumber.html
-                            cucumber.glue=com.finos.fdc3.proxy.steps
+                            cucumber.glue=com.finos.fdc3.proxy.steps,com.finos.fdc3.proxy.world,com.finos.fdc3.testing.steps
                             cucumber.features=src/test/resources/features
                         </configurationParameters>
                     </properties>

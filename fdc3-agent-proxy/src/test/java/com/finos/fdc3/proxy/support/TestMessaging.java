@@ -61,7 +61,7 @@ public class TestMessaging {
     }
 
     public void post(Map<String, Object> message) {
-        allPosts.push(message);
+        allPosts.add(message);
     }
 
     public void addAppIntentDetail(IntentDetail detail) {

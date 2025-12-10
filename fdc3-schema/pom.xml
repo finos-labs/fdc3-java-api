@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.finos.fdc3.api</groupId>
+        <artifactId>finos-bmo-hackathon</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>fdc3-schema</artifactId>
+    <name>FDC3 Schema Types</name>
+    <description>Generated Java classes for FDC3 API types from JSON Schema</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <jdk.source.version>11</jdk.source.version>
+        <jdk.target.version>11</jdk.target.version>
+        <node.version>v20.11.0</node.version>
+        <npm.version>10.2.4</npm.version>
+        <fdc3.schema.version>2.2.0</fdc3.schema.version>
+    </properties>
+
+    <dependencies>
+        <!-- Jackson for JSON processing -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>2.16.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.16.1</version>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.1</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${jdk.source.version}</source>
+                    <target>${jdk.target.version}</target>
+                </configuration>
+            </plugin>
+
+            <!-- Create directories before npm runs -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>create-directories</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <mkdir dir="${project.build.directory}/npm-work"/>
+                                <mkdir dir="${project.build.directory}/generated-sources/fdc3/com/finos/fdc3/schema/api"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Frontend plugin for npm/node -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.15.0</version>
+                <configuration>
+                    <nodeVersion>${node.version}</nodeVersion>
+                    <npmVersion>${npm.version}</npmVersion>
+                    <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
+                    <installDirectory>${project.build.directory}/node-installation</installDirectory>
+                </configuration>
+                <executions>
+                    <!-- Install Node and NPM -->
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                    </execution>
+                    <!-- Initialize npm project -->
+                    <execution>
+                        <id>npm-init</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>init -y</arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Install @finos/fdc3-schema and quicktype -->
+                    <execution>
+                        <id>npm-install-packages</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>install @finos/fdc3-schema@${fdc3.schema.version} quicktype --save</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Execute quicktype to generate Java -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.1</version>
+                <executions>
+                    <!-- Generate API types -->
+                    <execution>
+                        <id>quicktype-api</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${project.build.directory}/node-installation/node/node</executable>
+                            <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
+                            <arguments>
+                                <argument>node_modules/.bin/quicktype</argument>
+                                <argument>--src-lang</argument>
+                                <argument>schema</argument>
+                                <argument>--lang</argument>
+                                <argument>java</argument>
+                                <argument>--package</argument>
+                                <argument>com.finos.fdc3.schema.api</argument>
+                                <argument>--out</argument>
+                                <argument>${project.build.directory}/generated-sources/fdc3/com/finos/fdc3/schema/api/ApiTypes.java</argument>
+                                <argument>node_modules/@finos/fdc3-schema/dist/schemas/api</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Add generated sources to compilation -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>add-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/fdc3</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

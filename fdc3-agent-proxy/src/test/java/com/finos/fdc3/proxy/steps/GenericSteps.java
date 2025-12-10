@@ -72,10 +72,5 @@ public class GenericSteps {
         world.getMessaging().receive(message, null);
     }
 
-    @Given("schemas loaded")
-    public void schemasLoaded() {
-        // Schema loading would be configured externally
-        world.log("Schemas should be loaded by test configuration");
-    }
 }
 
