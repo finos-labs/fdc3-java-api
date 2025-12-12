@@ -16,7 +16,6 @@
 
 package org.finos.fdc3.proxy.heartbeat;
 
-import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -24,7 +23,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 
-import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.RegisterableListener;
 import org.finos.fdc3.proxy.util.Logger;
@@ -103,7 +101,7 @@ public class DefaultHeartbeatSupport implements HeartbeatSupport {
             HeartbeatAcknowledgementRequest request = new HeartbeatAcknowledgementRequest();
             request.setType(HeartbeatAcknowledgementRequestType.HEARTBEAT_ACKNOWLEDGEMENT_REQUEST);
             
-            AddContextListenerRequestMeta requestMeta = createMeta();
+            AddContextListenerRequestMeta requestMeta = messaging.createMeta();
             // Set the requestUuid to match the eventUuid for correlation
             if (eventUuid != null) {
                 requestMeta.setRequestUUID(eventUuid);
@@ -132,20 +130,5 @@ public class DefaultHeartbeatSupport implements HeartbeatSupport {
         }
         scheduler.shutdown();
         return CompletableFuture.completedFuture(null);
-    }
-
-    private AddContextListenerRequestMeta createMeta() {
-        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
-        meta.setRequestUUID(messaging.createUUID());
-        meta.setTimestamp(OffsetDateTime.now());
-
-        AppIdentifier appId = messaging.getAppIdentifier();
-        if (appId != null) {
-            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
-            source.setAppID(appId.getAppId());
-            appId.getInstanceId().ifPresent(source::setInstanceID);
-            meta.setSource(source);
-        }
-        return meta;
     }
 }

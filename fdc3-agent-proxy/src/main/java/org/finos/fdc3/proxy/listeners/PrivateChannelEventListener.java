@@ -16,11 +16,9 @@
 
 package org.finos.fdc3.proxy.listeners;
 
-import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
-import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.api.types.Listener;
@@ -103,7 +101,7 @@ public class PrivateChannelEventListener implements RegisterableListener, Listen
     public CompletionStage<Void> register() {
         PrivateChannelAddEventListenerRequest request = new PrivateChannelAddEventListenerRequest();
         request.setType(PrivateChannelAddEventListenerRequestType.PRIVATE_CHANNEL_ADD_EVENT_LISTENER_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
 
         PrivateChannelAddEventListenerRequestPayload payload = new PrivateChannelAddEventListenerRequestPayload();
         payload.setPrivateChannelID(channelId);
@@ -132,21 +130,6 @@ public class PrivateChannelEventListener implements RegisterableListener, Listen
         } catch (Exception e) {
             throw new RuntimeException("Failed to register listener", e);
         }
-    }
-
-    private AddContextListenerRequestMeta createMeta() {
-        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
-        meta.setRequestUUID(messaging.createUUID());
-        meta.setTimestamp(OffsetDateTime.now());
-
-        AppIdentifier appId = messaging.getAppIdentifier();
-        if (appId != null) {
-            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
-            source.setAppID(appId.getAppId());
-            appId.getInstanceId().ifPresent(source::setInstanceID);
-            meta.setSource(source);
-        }
-        return meta;
     }
 
     private PrivateChannelEventType toPrivateChannelEventType(String eventType) {

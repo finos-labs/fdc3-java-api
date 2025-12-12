@@ -16,7 +16,6 @@
 
 package org.finos.fdc3.proxy.channels;
 
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,7 +28,6 @@ import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.channel.PrivateChannel;
 import org.finos.fdc3.api.errors.ChannelError;
 import org.finos.fdc3.api.metadata.DisplayMetadata;
-import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.Listener;
@@ -112,7 +110,7 @@ public class DefaultChannelSupport implements ChannelSupport {
     public CompletionStage<Channel> getUserChannel() {
         GetCurrentChannelRequest request = new GetCurrentChannelRequest();
         request.setType(GetCurrentChannelRequestType.GET_CURRENT_CHANNEL_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
         request.setPayload(new GetCurrentChannelRequestPayload());
 
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
@@ -146,7 +144,7 @@ public class DefaultChannelSupport implements ChannelSupport {
     public CompletionStage<List<Channel>> getUserChannels() {
         GetUserChannelsRequest request = new GetUserChannelsRequest();
         request.setType(GetUserChannelsRequestType.GET_USER_CHANNELS_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
         request.setPayload(new GetUserChannelsRequestPayload());
 
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
@@ -178,7 +176,7 @@ public class DefaultChannelSupport implements ChannelSupport {
     public CompletionStage<Channel> getOrCreate(String id) {
         GetOrCreateChannelRequest request = new GetOrCreateChannelRequest();
         request.setType(GetOrCreateChannelRequestType.GET_OR_CREATE_CHANNEL_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
 
         GetOrCreateChannelRequestPayload payload = new GetOrCreateChannelRequestPayload();
         payload.setChannelID(id);
@@ -207,7 +205,7 @@ public class DefaultChannelSupport implements ChannelSupport {
     public CompletionStage<PrivateChannel> createPrivateChannel() {
         CreatePrivateChannelRequest request = new CreatePrivateChannelRequest();
         request.setType(CreatePrivateChannelRequestType.CREATE_PRIVATE_CHANNEL_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
         request.setPayload(new CreatePrivateChannelRequestPayload());
 
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
@@ -231,7 +229,7 @@ public class DefaultChannelSupport implements ChannelSupport {
     public CompletionStage<Void> leaveUserChannel() {
         LeaveCurrentChannelRequest request = new LeaveCurrentChannelRequest();
         request.setType(LeaveCurrentChannelRequestType.LEAVE_CURRENT_CHANNEL_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
         request.setPayload(new LeaveCurrentChannelRequestPayload());
 
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
@@ -249,7 +247,7 @@ public class DefaultChannelSupport implements ChannelSupport {
     public CompletionStage<Void> joinUserChannel(String id) {
         JoinUserChannelRequest request = new JoinUserChannelRequest();
         request.setType(JoinUserChannelRequestType.JOIN_USER_CHANNEL_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
 
         JoinUserChannelRequestPayload payload = new JoinUserChannelRequestPayload();
         payload.setChannelID(id);
@@ -285,21 +283,6 @@ public class DefaultChannelSupport implements ChannelSupport {
     }
 
     // ============ Helper methods ============
-
-    private AddContextListenerRequestMeta createMeta() {
-        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
-        meta.setRequestUUID(messaging.createUUID());
-        meta.setTimestamp(OffsetDateTime.now());
-
-        AppIdentifier appId = messaging.getAppIdentifier();
-        if (appId != null) {
-            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
-            source.setAppID(appId.getAppId());
-            appId.getInstanceId().ifPresent(source::setInstanceID);
-            meta.setSource(source);
-        }
-        return meta;
-    }
 
     private DisplayMetadata toApiDisplayMetadata(org.finos.fdc3.schema.DisplayMetadata schemaDisplayMetadata) {
         if (schemaDisplayMetadata == null) {

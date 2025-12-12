@@ -22,6 +22,7 @@ import java.util.function.Predicate;
 
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.listeners.RegisterableListener;
+import org.finos.fdc3.schema.AddContextListenerRequestMeta;
 import org.finos.fdc3.schema.SchemaConverter;
 
 /**
@@ -61,9 +62,9 @@ public interface Messaging {
     /**
      * Create a metadata element to attach to outgoing messages.
      *
-     * @return the metadata map
+     * @return the metadata object
      */
-    Map<String, Object> createMeta();
+    AddContextListenerRequestMeta createMeta();
 
     /**
      * Waits for a specific matching message.

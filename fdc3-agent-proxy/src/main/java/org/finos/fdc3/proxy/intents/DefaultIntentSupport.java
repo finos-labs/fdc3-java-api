@@ -16,7 +16,6 @@
 
 package org.finos.fdc3.proxy.intents;
 
-import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -65,7 +64,7 @@ public class DefaultIntentSupport implements IntentSupport {
     public CompletionStage<AppIntent> findIntent(String intent, Context context, String resultType) {
         FindIntentRequest request = new FindIntentRequest();
         request.setType(FindIntentRequestType.FIND_INTENT_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
 
         FindIntentRequestPayload payload = new FindIntentRequestPayload();
         payload.setIntent(intent);
@@ -102,7 +101,7 @@ public class DefaultIntentSupport implements IntentSupport {
     public CompletionStage<List<AppIntent>> findIntentsByContext(Context context) {
         FindIntentsByContextRequest request = new FindIntentsByContextRequest();
         request.setType(FindIntentsByContextRequestType.FIND_INTENTS_BY_CONTEXT_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
 
         FindIntentsByContextRequestPayload payload = new FindIntentsByContextRequestPayload();
         payload.setContext(context);
@@ -129,7 +128,7 @@ public class DefaultIntentSupport implements IntentSupport {
 
     @Override
     public CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app) {
-        AddContextListenerRequestMeta meta = createMeta();
+        AddContextListenerRequestMeta meta = messaging.createMeta();
         String requestUuid = meta.getRequestUUID();
 
         RaiseIntentRequest request = new RaiseIntentRequest();
@@ -185,7 +184,7 @@ public class DefaultIntentSupport implements IntentSupport {
 
     @Override
     public CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app) {
-        AddContextListenerRequestMeta meta = createMeta();
+        AddContextListenerRequestMeta meta = messaging.createMeta();
         String requestUuid = meta.getRequestUUID();
 
         RaiseIntentForContextRequest request = new RaiseIntentForContextRequest();
@@ -248,21 +247,6 @@ public class DefaultIntentSupport implements IntentSupport {
     }
 
     // ============ Helper methods ============
-
-    private AddContextListenerRequestMeta createMeta() {
-        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
-        meta.setRequestUUID(messaging.createUUID());
-        meta.setTimestamp(OffsetDateTime.now());
-
-        AppIdentifier appId = messaging.getAppIdentifier();
-        if (appId != null) {
-            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
-            source.setAppID(appId.getAppId());
-            appId.getInstanceId().ifPresent(source::setInstanceID);
-            meta.setSource(source);
-        }
-        return meta;
-    }
 
     private org.finos.fdc3.schema.AppIdentifier toSchemaAppIdentifier(AppIdentifier app) {
         org.finos.fdc3.schema.AppIdentifier schemaApp = new org.finos.fdc3.schema.AppIdentifier();

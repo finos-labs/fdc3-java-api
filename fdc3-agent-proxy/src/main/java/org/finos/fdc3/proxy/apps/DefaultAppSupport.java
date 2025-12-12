@@ -16,7 +16,6 @@
 
 package org.finos.fdc3.proxy.apps;
 
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -58,7 +57,7 @@ public class DefaultAppSupport implements AppSupport {
         // Build typed request
         FindInstancesRequest request = new FindInstancesRequest();
         request.setType(FindInstancesRequestType.FIND_INSTANCES_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
         
         FindInstancesRequestPayload payload = new FindInstancesRequestPayload();
         payload.setApp(toSchemaAppIdentifier(app));
@@ -88,7 +87,7 @@ public class DefaultAppSupport implements AppSupport {
         // Build typed request
         GetAppMetadataRequest request = new GetAppMetadataRequest();
         request.setType(GetAppMetadataRequestType.GET_APP_METADATA_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
         
         GetAppMetadataRequestPayload payload = new GetAppMetadataRequestPayload();
         payload.setApp(toSchemaAppIdentifier(app));
@@ -116,7 +115,7 @@ public class DefaultAppSupport implements AppSupport {
         // Build typed request
         OpenRequest request = new OpenRequest();
         request.setType(OpenRequestType.OPEN_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
         
         OpenRequestPayload payload = new OpenRequestPayload();
         payload.setApp(toSchemaAppIdentifier(app));
@@ -147,7 +146,7 @@ public class DefaultAppSupport implements AppSupport {
         // Build typed request
         GetInfoRequest request = new GetInfoRequest();
         request.setType(GetInfoRequestType.GET_INFO_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
         request.setPayload(new GetInfoRequestPayload());
 
         // Convert to Map for messaging
@@ -169,22 +168,6 @@ public class DefaultAppSupport implements AppSupport {
     }
 
     // ============ Conversion helpers ============
-
-    private AddContextListenerRequestMeta createMeta() {
-        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
-        meta.setRequestUUID(messaging.createUUID());
-        meta.setTimestamp(OffsetDateTime.now());
-        
-        // Set source from messaging's app identifier
-        AppIdentifier appId = messaging.getAppIdentifier();
-        if (appId != null) {
-            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
-            source.setAppID(appId.getAppId());
-            appId.getInstanceId().ifPresent(source::setInstanceID);
-            meta.setSource(source);
-        }
-        return meta;
-    }
 
     private org.finos.fdc3.schema.AppIdentifier toSchemaAppIdentifier(AppIdentifier app) {
         org.finos.fdc3.schema.AppIdentifier schemaApp = new org.finos.fdc3.schema.AppIdentifier();

@@ -16,6 +16,7 @@
 
 package org.finos.fdc3.proxy.messaging;
 
+import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -29,6 +30,7 @@ import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.RegisterableListener;
 import org.finos.fdc3.proxy.util.Logger;
+import org.finos.fdc3.schema.AddContextListenerRequestMeta;
 import org.finos.fdc3.schema.SchemaConverter;
 
 /**
@@ -60,7 +62,19 @@ public abstract class AbstractMessaging implements Messaging {
     public abstract void unregister(String id);
 
     @Override
-    public abstract Map<String, Object> createMeta();
+    public AddContextListenerRequestMeta createMeta() {
+        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
+        meta.setRequestUUID(createUUID());
+        meta.setTimestamp(OffsetDateTime.now());
+
+        if (appIdentifier != null) {
+            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
+            source.setAppID(appIdentifier.getAppId());
+            appIdentifier.getInstanceId().ifPresent(source::setInstanceID);
+            meta.setSource(source);
+        }
+        return meta;
+    }
 
     @Override
     @SuppressWarnings("unchecked")

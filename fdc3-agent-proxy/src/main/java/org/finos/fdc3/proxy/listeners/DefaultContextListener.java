@@ -16,13 +16,11 @@
 
 package org.finos.fdc3.proxy.listeners;
 
-import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import org.finos.fdc3.api.context.Context;
-import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
@@ -111,7 +109,7 @@ public class DefaultContextListener implements RegisterableListener, Listener {
     public CompletionStage<Void> register() {
         AddContextListenerRequest request = new AddContextListenerRequest();
         request.setType(AddContextListenerRequestType.ADD_CONTEXT_LISTENER_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
 
         AddContextListenerRequestPayload payload = new AddContextListenerRequestPayload();
         payload.setChannelID(channelId);
@@ -134,20 +132,5 @@ public class DefaultContextListener implements RegisterableListener, Listener {
     public CompletionStage<Void> unsubscribeAsync() {
         messaging.unregister(id);
         return CompletableFuture.completedFuture(null);
-    }
-
-    private AddContextListenerRequestMeta createMeta() {
-        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
-        meta.setRequestUUID(messaging.createUUID());
-        meta.setTimestamp(OffsetDateTime.now());
-
-        AppIdentifier appId = messaging.getAppIdentifier();
-        if (appId != null) {
-            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
-            source.setAppID(appId.getAppId());
-            appId.getInstanceId().ifPresent(source::setInstanceID);
-            meta.setSource(source);
-        }
-        return meta;
     }
 }

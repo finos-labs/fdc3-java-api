@@ -16,7 +16,6 @@
 
 package org.finos.fdc3.proxy.channels;
 
-import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
@@ -24,7 +23,6 @@ import java.util.concurrent.CompletionStage;
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.DisplayMetadata;
-import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
@@ -74,7 +72,7 @@ public class DefaultChannel implements Channel {
     public CompletionStage<Void> broadcast(Context context) {
         BroadcastRequest request = new BroadcastRequest();
         request.setType(BroadcastRequestType.BROADCAST_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
 
         BroadcastRequestPayload payload = new BroadcastRequestPayload();
         payload.setChannelID(id);
@@ -96,7 +94,7 @@ public class DefaultChannel implements Channel {
     public CompletionStage<Optional<Context>> getCurrentContext(String contextType) {
         GetCurrentContextRequest request = new GetCurrentContextRequest();
         request.setType(GetCurrentContextRequestType.GET_CURRENT_CONTEXT_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
 
         GetCurrentContextRequestPayload payload = new GetCurrentContextRequestPayload();
         payload.setChannelID(id);
@@ -132,20 +130,5 @@ public class DefaultChannel implements Channel {
                 handler
         );
         return listener.register().thenApply(v -> listener);
-    }
-
-    private AddContextListenerRequestMeta createMeta() {
-        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
-        meta.setRequestUUID(messaging.createUUID());
-        meta.setTimestamp(OffsetDateTime.now());
-
-        AppIdentifier appId = messaging.getAppIdentifier();
-        if (appId != null) {
-            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
-            source.setAppID(appId.getAppId());
-            appId.getInstanceId().ifPresent(source::setInstanceID);
-            meta.setSource(source);
-        }
-        return meta;
     }
 }

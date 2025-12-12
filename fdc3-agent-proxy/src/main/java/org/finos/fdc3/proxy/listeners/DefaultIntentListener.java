@@ -16,7 +16,6 @@
 
 package org.finos.fdc3.proxy.listeners;
 
-import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
@@ -113,7 +112,7 @@ public class DefaultIntentListener implements RegisterableListener, Listener {
     public CompletionStage<Void> register() {
         AddIntentListenerRequest request = new AddIntentListenerRequest();
         request.setType(AddIntentListenerRequestType.ADD_INTENT_LISTENER_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
 
         AddIntentListenerRequestPayload payload = new AddIntentListenerRequestPayload();
         payload.setIntent(intent);
@@ -130,20 +129,5 @@ public class DefaultIntentListener implements RegisterableListener, Listener {
     @Override
     public void unsubscribe() {
         messaging.unregister(id);
-    }
-
-    private AddContextListenerRequestMeta createMeta() {
-        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
-        meta.setRequestUUID(messaging.createUUID());
-        meta.setTimestamp(OffsetDateTime.now());
-
-        AppIdentifier appId = messaging.getAppIdentifier();
-        if (appId != null) {
-            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
-            source.setAppID(appId.getAppId());
-            appId.getInstanceId().ifPresent(source::setInstanceID);
-            meta.setSource(source);
-        }
-        return meta;
     }
 }

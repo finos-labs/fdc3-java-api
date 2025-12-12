@@ -16,7 +16,6 @@
 
 package org.finos.fdc3.proxy.channels;
 
-import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
@@ -24,7 +23,6 @@ import java.util.function.Consumer;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.channel.PrivateChannel;
-import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
@@ -72,7 +70,7 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
     public void disconnect() {
         PrivateChannelDisconnectRequest request = new PrivateChannelDisconnectRequest();
         request.setType(PrivateChannelDisconnectRequestType.PRIVATE_CHANNEL_DISCONNECT_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
 
         PrivateChannelDisconnectRequestPayload payload = new PrivateChannelDisconnectRequestPayload();
         payload.setChannelID(getId());
@@ -98,20 +96,5 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
                 handler
         );
         return listener.register().thenApply(v -> listener);
-    }
-
-    private AddContextListenerRequestMeta createMeta() {
-        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
-        meta.setRequestUUID(messaging.createUUID());
-        meta.setTimestamp(OffsetDateTime.now());
-
-        AppIdentifier appId = messaging.getAppIdentifier();
-        if (appId != null) {
-            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
-            source.setAppID(appId.getAppId());
-            appId.getInstanceId().ifPresent(source::setInstanceID);
-            meta.setSource(source);
-        }
-        return meta;
     }
 }

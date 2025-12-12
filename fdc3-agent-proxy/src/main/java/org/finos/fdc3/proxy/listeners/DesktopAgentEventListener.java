@@ -16,11 +16,9 @@
 
 package org.finos.fdc3.proxy.listeners;
 
-import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
-import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.api.types.Listener;
@@ -81,7 +79,7 @@ public class DesktopAgentEventListener implements RegisterableListener, Listener
     public CompletionStage<Void> register() {
         AddEventListenerRequest request = new AddEventListenerRequest();
         request.setType(AddEventListenerRequestType.ADD_EVENT_LISTENER_REQUEST);
-        request.setMeta(createMeta());
+        request.setMeta(messaging.createMeta());
 
         AddEventListenerRequestPayload payload = new AddEventListenerRequestPayload();
         payload.setType(toFDC3EventType(eventType));
@@ -98,21 +96,6 @@ public class DesktopAgentEventListener implements RegisterableListener, Listener
     @Override
     public void unsubscribe() {
         messaging.unregister(id);
-    }
-
-    private AddContextListenerRequestMeta createMeta() {
-        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
-        meta.setRequestUUID(messaging.createUUID());
-        meta.setTimestamp(OffsetDateTime.now());
-
-        AppIdentifier appId = messaging.getAppIdentifier();
-        if (appId != null) {
-            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
-            source.setAppID(appId.getAppId());
-            appId.getInstanceId().ifPresent(source::setInstanceID);
-            meta.setSource(source);
-        }
-        return meta;
     }
 
     private FDC3EventType toFDC3EventType(String eventType) {
