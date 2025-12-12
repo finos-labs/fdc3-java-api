@@ -16,17 +16,19 @@
 
 package org.finos.fdc3.proxy.heartbeat;
 
+import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
+import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.RegisterableListener;
 import org.finos.fdc3.proxy.util.Logger;
+import org.finos.fdc3.schema.*;
 
 /**
  * Default implementation of HeartbeatSupport.
@@ -69,7 +71,7 @@ public class DefaultHeartbeatSupport implements HeartbeatSupport {
             @Override
             public void action(Map<String, Object> message) {
                 Map<String, Object> payload = (Map<String, Object>) message.get("payload");
-                String timestamp = (String) payload.get("timestamp");
+                String timestamp = payload != null ? (String) payload.get("timestamp") : null;
                 Logger.debug("Received heartbeat at {}", timestamp);
                 
                 // Respond to heartbeat
@@ -96,19 +98,25 @@ public class DefaultHeartbeatSupport implements HeartbeatSupport {
     private void respondToHeartbeat(Map<String, Object> heartbeatEvent) {
         try {
             Map<String, Object> meta = (Map<String, Object>) heartbeatEvent.get("meta");
-            String requestUuid = (String) meta.get("requestUuid");
+            String eventUuid = meta != null ? (String) meta.get("eventUuid") : null;
 
-            java.util.Map<String, Object> response = new java.util.HashMap<>();
-            java.util.Map<String, Object> responseMeta = messaging.createMeta();
-            responseMeta.put("requestUuid", requestUuid);
-            response.put("meta", responseMeta);
-            response.put("type", "heartbeatAcknowledgementRequest");
+            HeartbeatAcknowledgementRequest request = new HeartbeatAcknowledgementRequest();
+            request.setType(HeartbeatAcknowledgementRequestType.HEARTBEAT_ACKNOWLEDGEMENT_REQUEST);
+            
+            AddContextListenerRequestMeta requestMeta = createMeta();
+            // Set the requestUuid to match the eventUuid for correlation
+            if (eventUuid != null) {
+                requestMeta.setRequestUUID(eventUuid);
+            }
+            request.setMeta(requestMeta);
 
-            java.util.Map<String, Object> payload = new java.util.HashMap<>();
-            payload.put("heartbeatEventUuid", requestUuid);
-            response.put("payload", payload);
+            HeartbeatAcknowledgementRequestPayload payload = new HeartbeatAcknowledgementRequestPayload();
+            payload.setHeartbeatEventUUID(eventUuid);
+            request.setPayload(payload);
 
-            messaging.post(response);
+            Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+            messaging.post(requestMap);
         } catch (Exception e) {
             Logger.error("Failed to respond to heartbeat", e);
         }
@@ -125,5 +133,19 @@ public class DefaultHeartbeatSupport implements HeartbeatSupport {
         scheduler.shutdown();
         return CompletableFuture.completedFuture(null);
     }
-}
 
+    private AddContextListenerRequestMeta createMeta() {
+        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
+        meta.setRequestUUID(messaging.createUUID());
+        meta.setTimestamp(OffsetDateTime.now());
+
+        AppIdentifier appId = messaging.getAppIdentifier();
+        if (appId != null) {
+            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
+            source.setAppID(appId.getAppId());
+            appId.getInstanceId().ifPresent(source::setInstanceID);
+            meta.setSource(source);
+        }
+        return meta;
+    }
+}

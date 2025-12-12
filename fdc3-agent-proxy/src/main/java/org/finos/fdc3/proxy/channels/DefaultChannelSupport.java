@@ -16,8 +16,9 @@
 
 package org.finos.fdc3.proxy.channels;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -28,12 +29,14 @@ import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.channel.PrivateChannel;
 import org.finos.fdc3.api.errors.ChannelError;
 import org.finos.fdc3.api.metadata.DisplayMetadata;
+import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.DesktopAgentEventListener;
 import org.finos.fdc3.proxy.util.Logger;
+import org.finos.fdc3.schema.*;
 
 /**
  * Default implementation of ChannelSupport.
@@ -106,29 +109,29 @@ public class DefaultChannelSupport implements ChannelSupport {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<Channel> getUserChannel() {
-        Map<String, Object> request = new HashMap<>();
-        request.put("meta", messaging.createMeta());
-        request.put("type", "getCurrentChannelRequest");
-        request.put("payload", new HashMap<>());
+        GetCurrentChannelRequest request = new GetCurrentChannelRequest();
+        request.setType(GetCurrentChannelRequestType.GET_CURRENT_CHANNEL_REQUEST);
+        request.setMeta(createMeta());
+        request.setPayload(new GetCurrentChannelRequestPayload());
 
-        return messaging.<Map<String, Object>>exchange(request, "getCurrentChannelResponse", messageExchangeTimeout)
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "getCurrentChannelResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    Map<String, Object> payload = (Map<String, Object>) response.get("payload");
-                    Map<String, Object> channel = (Map<String, Object>) payload.get("channel");
+                    GetCurrentChannelResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, GetCurrentChannelResponse.class);
 
-                    if (channel == null) {
+                    if (typedResponse.getPayload() == null ||
+                        typedResponse.getPayload().getChannel() == null) {
                         return null;
                     }
 
-                    String id = (String) channel.get("id");
-                    Map<String, Object> displayMetadataMap = (Map<String, Object>) channel.get("displayMetadata");
-                    DisplayMetadata displayMetadata = displayMetadataMap != null
-                            ? DisplayMetadata.fromMap(displayMetadataMap)
-                            : null;
+                    org.finos.fdc3.schema.Channel schemaChannel = typedResponse.getPayload().getChannel();
+                    DisplayMetadata displayMetadata = toApiDisplayMetadata(schemaChannel.getDisplayMetadata());
 
-                    return new DefaultChannel(messaging, messageExchangeTimeout, id, Channel.Type.User, displayMetadata);
+                    return new DefaultChannel(messaging, messageExchangeTimeout, 
+                            schemaChannel.getID(), Channel.Type.User, displayMetadata);
                 });
     }
 
@@ -140,32 +143,30 @@ public class DefaultChannelSupport implements ChannelSupport {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<List<Channel>> getUserChannels() {
-        Map<String, Object> request = new HashMap<>();
-        request.put("meta", messaging.createMeta());
-        request.put("type", "getUserChannelsRequest");
-        request.put("payload", new HashMap<>());
+        GetUserChannelsRequest request = new GetUserChannelsRequest();
+        request.setType(GetUserChannelsRequestType.GET_USER_CHANNELS_REQUEST);
+        request.setMeta(createMeta());
+        request.setPayload(new GetUserChannelsRequestPayload());
 
-        return messaging.<Map<String, Object>>exchange(request, "getUserChannelsResponse", messageExchangeTimeout)
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "getUserChannelsResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    Map<String, Object> payload = (Map<String, Object>) response.get("payload");
-                    List<Map<String, Object>> channelList = (List<Map<String, Object>>) payload.get("userChannels");
+                    GetUserChannelsResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, GetUserChannelsResponse.class);
 
-                    if (channelList == null) {
+                    if (typedResponse.getPayload() == null ||
+                        typedResponse.getPayload().getUserChannels() == null) {
                         userChannels = new ArrayList<>();
                         return userChannels;
                     }
 
-                    userChannels = channelList.stream()
+                    userChannels = Arrays.stream(typedResponse.getPayload().getUserChannels())
                             .map(c -> {
-                                String id = (String) c.get("id");
-                                Map<String, Object> displayMetadataMap = (Map<String, Object>) c.get("displayMetadata");
-                                DisplayMetadata displayMetadata = displayMetadataMap != null
-                                        ? DisplayMetadata.fromMap(displayMetadataMap)
-                                        : null;
+                                DisplayMetadata displayMetadata = toApiDisplayMetadata(c.getDisplayMetadata());
                                 return (Channel) new DefaultChannel(
-                                        messaging, messageExchangeTimeout, id, Channel.Type.User, displayMetadata);
+                                        messaging, messageExchangeTimeout, c.getID(), Channel.Type.User, displayMetadata);
                             })
                             .collect(Collectors.toList());
 
@@ -174,65 +175,68 @@ public class DefaultChannelSupport implements ChannelSupport {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<Channel> getOrCreate(String id) {
-        Map<String, Object> request = new HashMap<>();
-        request.put("meta", messaging.createMeta());
-        request.put("type", "getOrCreateChannelRequest");
+        GetOrCreateChannelRequest request = new GetOrCreateChannelRequest();
+        request.setType(GetOrCreateChannelRequestType.GET_OR_CREATE_CHANNEL_REQUEST);
+        request.setMeta(createMeta());
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("channelId", id);
-        request.put("payload", payload);
+        GetOrCreateChannelRequestPayload payload = new GetOrCreateChannelRequestPayload();
+        payload.setChannelID(id);
+        request.setPayload(payload);
 
-        return messaging.<Map<String, Object>>exchange(request, "getOrCreateChannelResponse", messageExchangeTimeout)
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "getOrCreateChannelResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
-                    Map<String, Object> channel = (Map<String, Object>) responsePayload.get("channel");
+                    GetOrCreateChannelResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, GetOrCreateChannelResponse.class);
 
-                    if (channel == null) {
+                    if (typedResponse.getPayload() == null ||
+                        typedResponse.getPayload().getChannel() == null) {
                         throw new RuntimeException(ChannelError.CreationFailed.toString());
                     }
 
-                    Map<String, Object> displayMetadataMap = (Map<String, Object>) channel.get("displayMetadata");
-                    DisplayMetadata displayMetadata = displayMetadataMap != null
-                            ? DisplayMetadata.fromMap(displayMetadataMap)
-                            : null;
+                    org.finos.fdc3.schema.Channel schemaChannel = typedResponse.getPayload().getChannel();
+                    DisplayMetadata displayMetadata = toApiDisplayMetadata(schemaChannel.getDisplayMetadata());
 
                     return new DefaultChannel(messaging, messageExchangeTimeout, id, Channel.Type.App, displayMetadata);
                 });
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<PrivateChannel> createPrivateChannel() {
-        Map<String, Object> request = new HashMap<>();
-        request.put("meta", messaging.createMeta());
-        request.put("type", "createPrivateChannelRequest");
-        request.put("payload", new HashMap<>());
+        CreatePrivateChannelRequest request = new CreatePrivateChannelRequest();
+        request.setType(CreatePrivateChannelRequestType.CREATE_PRIVATE_CHANNEL_REQUEST);
+        request.setMeta(createMeta());
+        request.setPayload(new CreatePrivateChannelRequestPayload());
 
-        return messaging.<Map<String, Object>>exchange(request, "createPrivateChannelResponse", messageExchangeTimeout)
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "createPrivateChannelResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    Map<String, Object> payload = (Map<String, Object>) response.get("payload");
-                    Map<String, Object> channel = (Map<String, Object>) payload.get("privateChannel");
+                    CreatePrivateChannelResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, CreatePrivateChannelResponse.class);
 
-                    if (channel == null) {
+                    if (typedResponse.getPayload() == null ||
+                        typedResponse.getPayload().getPrivateChannel() == null) {
                         throw new RuntimeException(ChannelError.CreationFailed.toString());
                     }
 
-                    String id = (String) channel.get("id");
+                    String id = typedResponse.getPayload().getPrivateChannel().getID();
                     return new DefaultPrivateChannel(messaging, messageExchangeTimeout, id);
                 });
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<Void> leaveUserChannel() {
-        Map<String, Object> request = new HashMap<>();
-        request.put("meta", messaging.createMeta());
-        request.put("type", "leaveCurrentChannelRequest");
-        request.put("payload", new HashMap<>());
+        LeaveCurrentChannelRequest request = new LeaveCurrentChannelRequest();
+        request.setType(LeaveCurrentChannelRequestType.LEAVE_CURRENT_CHANNEL_REQUEST);
+        request.setMeta(createMeta());
+        request.setPayload(new LeaveCurrentChannelRequestPayload());
 
-        return messaging.<Map<String, Object>>exchange(request, "leaveCurrentChannelResponse", messageExchangeTimeout)
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "leaveCurrentChannelResponse", messageExchangeTimeout)
                 .thenCompose(response -> {
                     currentChannel = null;
                     return getUserChannelsCached().thenAccept(channels -> {
@@ -242,17 +246,18 @@ public class DefaultChannelSupport implements ChannelSupport {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<Void> joinUserChannel(String id) {
-        Map<String, Object> request = new HashMap<>();
-        request.put("meta", messaging.createMeta());
-        request.put("type", "joinUserChannelRequest");
+        JoinUserChannelRequest request = new JoinUserChannelRequest();
+        request.setType(JoinUserChannelRequestType.JOIN_USER_CHANNEL_REQUEST);
+        request.setMeta(createMeta());
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("channelId", id);
-        request.put("payload", payload);
+        JoinUserChannelRequestPayload payload = new JoinUserChannelRequestPayload();
+        payload.setChannelID(id);
+        request.setPayload(payload);
 
-        return messaging.<Map<String, Object>>exchange(request, "joinUserChannelResponse", messageExchangeTimeout)
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "joinUserChannelResponse", messageExchangeTimeout)
                 .thenCompose(response -> getUserChannelsCached())
                 .thenAccept(channels -> {
                     currentChannel = channels.stream()
@@ -278,5 +283,47 @@ public class DefaultChannelSupport implements ChannelSupport {
     Channel getCurrentChannelInternal() {
         return currentChannel;
     }
-}
 
+    // ============ Helper methods ============
+
+    private AddContextListenerRequestMeta createMeta() {
+        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
+        meta.setRequestUUID(messaging.createUUID());
+        meta.setTimestamp(OffsetDateTime.now());
+
+        AppIdentifier appId = messaging.getAppIdentifier();
+        if (appId != null) {
+            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
+            source.setAppID(appId.getAppId());
+            appId.getInstanceId().ifPresent(source::setInstanceID);
+            meta.setSource(source);
+        }
+        return meta;
+    }
+
+    private DisplayMetadata toApiDisplayMetadata(org.finos.fdc3.schema.DisplayMetadata schemaDisplayMetadata) {
+        if (schemaDisplayMetadata == null) {
+            return null;
+        }
+        String name = schemaDisplayMetadata.getName();
+        String color = schemaDisplayMetadata.getColor();
+        String glyph = schemaDisplayMetadata.getGlyph();
+
+        return new DisplayMetadata() {
+            @Override
+            public java.util.Optional<String> getName() {
+                return java.util.Optional.ofNullable(name);
+            }
+
+            @Override
+            public java.util.Optional<String> getColor() {
+                return java.util.Optional.ofNullable(color);
+            }
+
+            @Override
+            public java.util.Optional<String> getGlyph() {
+                return java.util.Optional.ofNullable(glyph);
+            }
+        };
+    }
+}

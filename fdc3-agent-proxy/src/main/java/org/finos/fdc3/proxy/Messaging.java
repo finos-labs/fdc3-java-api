@@ -22,6 +22,7 @@ import java.util.function.Predicate;
 
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.listeners.RegisterableListener;
+import org.finos.fdc3.schema.SchemaConverter;
 
 /**
  * Interface for messaging between the app and the Desktop Agent.
@@ -101,5 +102,12 @@ public interface Messaging {
      * @return a CompletionStage that completes when disconnected
      */
     CompletionStage<Void> disconnect();
+
+    /**
+     * Get the schema converter for converting between JSON and FDC3 message types.
+     *
+     * @return the SchemaConverter instance
+     */
+    SchemaConverter getConverter();
 }
 

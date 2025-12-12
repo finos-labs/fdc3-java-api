@@ -44,7 +44,7 @@
     <dependencies>
         <!-- FDC3 API -->
         <dependency>
-            <groupId>org.finos.fdc3.api</groupId>
+            <groupId>org.finos.fdc3</groupId>
             <artifactId>fdc3-standard</artifactId>
             <version>${project.version}</version>
         </dependency>

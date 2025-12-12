@@ -16,8 +16,9 @@
 
 package org.finos.fdc3.proxy.intents;
 
+import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -37,6 +38,7 @@ import org.finos.fdc3.api.types.IntentHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.DefaultIntentListener;
+import org.finos.fdc3.schema.*;
 
 /**
  * Default implementation of IntentSupport.
@@ -60,32 +62,34 @@ public class DefaultIntentSupport implements IntentSupport {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<AppIntent> findIntent(String intent, Context context, String resultType) {
-        Map<String, Object> request = new HashMap<>();
-        request.put("type", "findIntentRequest");
-        request.put("meta", messaging.createMeta());
+        FindIntentRequest request = new FindIntentRequest();
+        request.setType(FindIntentRequestType.FIND_INTENT_REQUEST);
+        request.setMeta(createMeta());
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("intent", intent);
+        FindIntentRequestPayload payload = new FindIntentRequestPayload();
+        payload.setIntent(intent);
         if (context != null) {
-            payload.put("context", context.toMap());
+            payload.setContext(context);
         }
         if (resultType != null) {
-            payload.put("resultType", resultType);
+            payload.setResultType(resultType);
         }
-        request.put("payload", payload);
+        request.setPayload(payload);
 
-        return messaging.<Map<String, Object>>exchange(request, "findIntentResponse", messageExchangeTimeout)
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "findIntentResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
-                    Map<String, Object> appIntentMap = (Map<String, Object>) responsePayload.get("appIntent");
+                    FindIntentResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, FindIntentResponse.class);
 
-                    if (appIntentMap == null) {
+                    if (typedResponse.getPayload() == null ||
+                        typedResponse.getPayload().getAppIntent() == null) {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
-                    AppIntent appIntent = parseAppIntent(appIntentMap);
+                    AppIntent appIntent = toApiAppIntent(typedResponse.getPayload().getAppIntent());
                     if (appIntent.getApps().isEmpty()) {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
@@ -95,66 +99,73 @@ public class DefaultIntentSupport implements IntentSupport {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<List<AppIntent>> findIntentsByContext(Context context) {
-        Map<String, Object> request = new HashMap<>();
-        request.put("type", "findIntentsByContextRequest");
-        request.put("meta", messaging.createMeta());
+        FindIntentsByContextRequest request = new FindIntentsByContextRequest();
+        request.setType(FindIntentsByContextRequestType.FIND_INTENTS_BY_CONTEXT_REQUEST);
+        request.setMeta(createMeta());
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("context", context.toMap());
-        request.put("payload", payload);
+        FindIntentsByContextRequestPayload payload = new FindIntentsByContextRequestPayload();
+        payload.setContext(context);
+        request.setPayload(payload);
 
-        return messaging.<Map<String, Object>>exchange(request, "findIntentsByContextResponse", messageExchangeTimeout)
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "findIntentsByContextResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
-                    List<Map<String, Object>> appIntentsList = (List<Map<String, Object>>) responsePayload.get("appIntents");
+                    FindIntentsByContextResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, FindIntentsByContextResponse.class);
 
-                    if (appIntentsList == null || appIntentsList.isEmpty()) {
+                    if (typedResponse.getPayload() == null ||
+                        typedResponse.getPayload().getAppIntents() == null ||
+                        typedResponse.getPayload().getAppIntents().length == 0) {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
-                    return appIntentsList.stream()
-                            .map(this::parseAppIntent)
+                    return Arrays.stream(typedResponse.getPayload().getAppIntents())
+                            .map(this::toApiAppIntent)
                             .collect(Collectors.toList());
                 });
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app) {
-        Map<String, Object> meta = messaging.createMeta();
-        String requestUuid = (String) meta.get("requestUuid");
+        AddContextListenerRequestMeta meta = createMeta();
+        String requestUuid = meta.getRequestUUID();
 
-        Map<String, Object> request = new HashMap<>();
-        request.put("type", "raiseIntentRequest");
-        request.put("meta", meta);
+        RaiseIntentRequest request = new RaiseIntentRequest();
+        request.setType(RaiseIntentRequestType.RAISE_INTENT_REQUEST);
+        request.setMeta(meta);
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("intent", intent);
-        payload.put("context", context.toMap());
+        RaiseIntentRequestPayload payload = new RaiseIntentRequestPayload();
+        payload.setIntent(intent);
+        payload.setContext(context);
         if (app != null) {
-            Map<String, Object> appMap = new HashMap<>();
-            appMap.put("appId", app.getAppId());
-            app.getInstanceId().ifPresent(id -> appMap.put("instanceId", id));
-            payload.put("app", appMap);
+            payload.setApp(toSchemaAppIdentifier(app));
         }
-        request.put("payload", payload);
+        request.setPayload(payload);
+
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
 
         CompletionStage<Object> resultPromise = createResultPromise(requestUuid);
 
-        return messaging.<Map<String, Object>>exchange(request, "raiseIntentResponse", appLaunchTimeout)
+        return messaging.<Map<String, Object>>exchange(requestMap, "raiseIntentResponse", appLaunchTimeout)
                 .thenCompose(response -> {
-                    Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
-                    Map<String, Object> appIntentMap = (Map<String, Object>) responsePayload.get("appIntent");
-                    Map<String, Object> intentResolutionMap = (Map<String, Object>) responsePayload.get("intentResolution");
+                    RaiseIntentResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, RaiseIntentResponse.class);
 
-                    if (appIntentMap == null && intentResolutionMap == null) {
+                    if (typedResponse.getPayload() == null) {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
-                    if (appIntentMap != null) {
-                        AppIntent appIntent = parseAppIntent(appIntentMap);
+                    org.finos.fdc3.schema.AppIntent schemaAppIntent = typedResponse.getPayload().getAppIntent();
+                    org.finos.fdc3.schema.IntentResolution schemaIntentResolution = typedResponse.getPayload().getIntentResolution();
+
+                    if (schemaAppIntent == null && schemaIntentResolution == null) {
+                        throw new RuntimeException(ResolveError.NoAppsFound.toString());
+                    }
+
+                    if (schemaAppIntent != null) {
+                        AppIntent appIntent = toApiAppIntent(schemaAppIntent);
                         return intentResolver.chooseIntent(List.of(appIntent), context)
                                 .thenCompose(choice -> {
                                     if (choice == null) {
@@ -163,9 +174,8 @@ public class DefaultIntentSupport implements IntentSupport {
                                     return raiseIntent(intent, context, choice.getAppId());
                                 });
                     } else {
-                        Map<String, Object> sourceMap = (Map<String, Object>) intentResolutionMap.get("source");
-                        String resolvedIntent = (String) intentResolutionMap.get("intent");
-                        AppIdentifier source = createAppIdentifier(sourceMap);
+                        AppIdentifier source = toApiAppIdentifier(schemaIntentResolution.getSource());
+                        String resolvedIntent = schemaIntentResolution.getIntent();
 
                         return java.util.concurrent.CompletableFuture.completedFuture(
                                 new DefaultIntentResolution(messaging, resultPromise, source, resolvedIntent));
@@ -174,40 +184,44 @@ public class DefaultIntentSupport implements IntentSupport {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app) {
-        Map<String, Object> meta = messaging.createMeta();
-        String requestUuid = (String) meta.get("requestUuid");
+        AddContextListenerRequestMeta meta = createMeta();
+        String requestUuid = meta.getRequestUUID();
 
-        Map<String, Object> request = new HashMap<>();
-        request.put("type", "raiseIntentForContextRequest");
-        request.put("meta", meta);
+        RaiseIntentForContextRequest request = new RaiseIntentForContextRequest();
+        request.setType(RaiseIntentForContextRequestType.RAISE_INTENT_FOR_CONTEXT_REQUEST);
+        request.setMeta(meta);
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("context", context.toMap());
+        RaiseIntentForContextRequestPayload payload = new RaiseIntentForContextRequestPayload();
+        payload.setContext(context);
         if (app != null) {
-            Map<String, Object> appMap = new HashMap<>();
-            appMap.put("appId", app.getAppId());
-            app.getInstanceId().ifPresent(id -> appMap.put("instanceId", id));
-            payload.put("app", appMap);
+            payload.setApp(toSchemaAppIdentifier(app));
         }
-        request.put("payload", payload);
+        request.setPayload(payload);
+
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
 
         CompletionStage<Object> resultPromise = createResultPromise(requestUuid);
 
-        return messaging.<Map<String, Object>>exchange(request, "raiseIntentForContextResponse", appLaunchTimeout)
+        return messaging.<Map<String, Object>>exchange(requestMap, "raiseIntentForContextResponse", appLaunchTimeout)
                 .thenCompose(response -> {
-                    Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
-                    List<Map<String, Object>> appIntentsList = (List<Map<String, Object>>) responsePayload.get("appIntents");
-                    Map<String, Object> intentResolutionMap = (Map<String, Object>) responsePayload.get("intentResolution");
+                    RaiseIntentForContextResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, RaiseIntentForContextResponse.class);
 
-                    if ((appIntentsList == null || appIntentsList.isEmpty()) && intentResolutionMap == null) {
+                    if (typedResponse.getPayload() == null) {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
-                    if (appIntentsList != null && !appIntentsList.isEmpty()) {
-                        List<AppIntent> appIntents = appIntentsList.stream()
-                                .map(this::parseAppIntent)
+                    org.finos.fdc3.schema.AppIntent[] schemaAppIntents = typedResponse.getPayload().getAppIntents();
+                    org.finos.fdc3.schema.IntentResolution schemaIntentResolution = typedResponse.getPayload().getIntentResolution();
+
+                    if ((schemaAppIntents == null || schemaAppIntents.length == 0) && schemaIntentResolution == null) {
+                        throw new RuntimeException(ResolveError.NoAppsFound.toString());
+                    }
+
+                    if (schemaAppIntents != null && schemaAppIntents.length > 0) {
+                        List<AppIntent> appIntents = Arrays.stream(schemaAppIntents)
+                                .map(this::toApiAppIntent)
                                 .collect(Collectors.toList());
 
                         return intentResolver.chooseIntent(appIntents, context)
@@ -218,9 +232,8 @@ public class DefaultIntentSupport implements IntentSupport {
                                     return raiseIntent(choice.getIntent(), context, choice.getAppId());
                                 });
                     } else {
-                        Map<String, Object> sourceMap = (Map<String, Object>) intentResolutionMap.get("source");
-                        String resolvedIntent = (String) intentResolutionMap.get("intent");
-                        AppIdentifier source = createAppIdentifier(sourceMap);
+                        AppIdentifier source = toApiAppIdentifier(schemaIntentResolution.getSource());
+                        String resolvedIntent = schemaIntentResolution.getIntent();
 
                         return java.util.concurrent.CompletableFuture.completedFuture(
                                 new DefaultIntentResolution(messaging, resultPromise, source, resolvedIntent));
@@ -232,6 +245,46 @@ public class DefaultIntentSupport implements IntentSupport {
     public CompletionStage<Listener> addIntentListener(String intent, IntentHandler handler) {
         DefaultIntentListener listener = new DefaultIntentListener(messaging, intent, handler, messageExchangeTimeout);
         return listener.register().thenApply(v -> listener);
+    }
+
+    // ============ Helper methods ============
+
+    private AddContextListenerRequestMeta createMeta() {
+        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
+        meta.setRequestUUID(messaging.createUUID());
+        meta.setTimestamp(OffsetDateTime.now());
+
+        AppIdentifier appId = messaging.getAppIdentifier();
+        if (appId != null) {
+            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
+            source.setAppID(appId.getAppId());
+            appId.getInstanceId().ifPresent(source::setInstanceID);
+            meta.setSource(source);
+        }
+        return meta;
+    }
+
+    private org.finos.fdc3.schema.AppIdentifier toSchemaAppIdentifier(AppIdentifier app) {
+        org.finos.fdc3.schema.AppIdentifier schemaApp = new org.finos.fdc3.schema.AppIdentifier();
+        schemaApp.setAppID(app.getAppId());
+        app.getInstanceId().ifPresent(schemaApp::setInstanceID);
+        return schemaApp;
+    }
+
+    private AppIdentifier toApiAppIdentifier(org.finos.fdc3.schema.AppIdentifier schemaApp) {
+        String appId = schemaApp.getAppID();
+        String instanceId = schemaApp.getInstanceID();
+        return new AppIdentifier() {
+            @Override
+            public String getAppId() {
+                return appId;
+            }
+
+            @Override
+            public Optional<String> getInstanceId() {
+                return Optional.ofNullable(instanceId);
+            }
+        };
     }
 
     @SuppressWarnings("unchecked")
@@ -251,29 +304,12 @@ public class DefaultIntentSupport implements IntentSupport {
         });
     }
 
-    private AppIdentifier createAppIdentifier(Map<String, Object> sourceMap) {
-        String appId = (String) sourceMap.get("appId");
-        String instanceId = (String) sourceMap.get("instanceId");
-        return new AppIdentifier() {
-            @Override
-            public String getAppId() {
-                return appId;
-            }
+    private AppIntent toApiAppIntent(org.finos.fdc3.schema.AppIntent schemaAppIntent) {
+        org.finos.fdc3.schema.IntentMetadata schemaIntent = schemaAppIntent.getIntent();
+        org.finos.fdc3.schema.AppMetadata[] schemaApps = schemaAppIntent.getApps();
 
-            @Override
-            public Optional<String> getInstanceId() {
-                return Optional.ofNullable(instanceId);
-            }
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private AppIntent parseAppIntent(Map<String, Object> appIntentMap) {
-        Map<String, Object> intentMap = (Map<String, Object>) appIntentMap.get("intent");
-        List<Map<String, Object>> appsList = (List<Map<String, Object>>) appIntentMap.get("apps");
-
-        String intentName = (String) intentMap.get("name");
-        String displayName = (String) intentMap.get("displayName");
+        String intentName = schemaIntent.getName();
+        String displayName = schemaIntent.getDisplayName();
 
         IntentMetadata intent = new IntentMetadata() {
             @Override
@@ -287,8 +323,8 @@ public class DefaultIntentSupport implements IntentSupport {
             }
         };
 
-        List<AppMetadata> apps = appsList.stream()
-                .map(this::parseAppMetadata)
+        List<AppMetadata> apps = Arrays.stream(schemaApps)
+                .map(this::toApiAppMetadata)
                 .collect(Collectors.toList());
 
         return new AppIntent() {
@@ -304,12 +340,12 @@ public class DefaultIntentSupport implements IntentSupport {
         };
     }
 
-    private AppMetadata parseAppMetadata(Map<String, Object> appMap) {
-        String appId = (String) appMap.get("appId");
-        String instanceId = (String) appMap.get("instanceId");
-        String name = (String) appMap.get("name");
-        String title = (String) appMap.get("title");
-        String description = (String) appMap.get("description");
+    private AppMetadata toApiAppMetadata(org.finos.fdc3.schema.AppMetadata schemaApp) {
+        String appId = schemaApp.getAppID();
+        String instanceId = schemaApp.getInstanceID();
+        String name = schemaApp.getName();
+        String title = schemaApp.getTitle();
+        String description = schemaApp.getDescription();
 
         return new AppMetadata() {
             @Override

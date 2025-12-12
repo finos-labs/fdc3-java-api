@@ -16,7 +16,7 @@
 
 package org.finos.fdc3.proxy.channels;
 
-import java.util.HashMap;
+import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
@@ -24,10 +24,12 @@ import java.util.concurrent.CompletionStage;
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.DisplayMetadata;
+import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.DefaultContextListener;
+import org.finos.fdc3.schema.*;
 
 /**
  * Default implementation of a Channel.
@@ -69,18 +71,19 @@ public class DefaultChannel implements Channel {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<Void> broadcast(Context context) {
-        Map<String, Object> request = new HashMap<>();
-        request.put("meta", messaging.createMeta());
-        request.put("type", "broadcastRequest");
+        BroadcastRequest request = new BroadcastRequest();
+        request.setType(BroadcastRequestType.BROADCAST_REQUEST);
+        request.setMeta(createMeta());
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("channelId", id);
-        payload.put("context", context.toMap());
-        request.put("payload", payload);
+        BroadcastRequestPayload payload = new BroadcastRequestPayload();
+        payload.setChannelID(id);
+        payload.setContext(context);
+        request.setPayload(payload);
 
-        return messaging.<Map<String, Object>>exchange(request, "broadcastResponse", messageExchangeTimeout)
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "broadcastResponse", messageExchangeTimeout)
                 .thenApply(response -> null);
     }
 
@@ -90,23 +93,26 @@ public class DefaultChannel implements Channel {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<Optional<Context>> getCurrentContext(String contextType) {
-        Map<String, Object> request = new HashMap<>();
-        request.put("meta", messaging.createMeta());
-        request.put("type", "getCurrentContextRequest");
+        GetCurrentContextRequest request = new GetCurrentContextRequest();
+        request.setType(GetCurrentContextRequestType.GET_CURRENT_CONTEXT_REQUEST);
+        request.setMeta(createMeta());
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("channelId", id);
-        payload.put("contextType", contextType);
-        request.put("payload", payload);
+        GetCurrentContextRequestPayload payload = new GetCurrentContextRequestPayload();
+        payload.setChannelID(id);
+        payload.setContextType(contextType);
+        request.setPayload(payload);
 
-        return messaging.<Map<String, Object>>exchange(request, "getCurrentContextResponse", messageExchangeTimeout)
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "getCurrentContextResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
-                    Map<String, Object> contextMap = (Map<String, Object>) responsePayload.get("context");
-                    if (contextMap != null) {
-                        return Optional.of(Context.fromMap(contextMap));
+                    GetCurrentContextResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, GetCurrentContextResponse.class);
+
+                    if (typedResponse.getPayload() != null &&
+                        typedResponse.getPayload().getContext() != null) {
+                        return Optional.of(typedResponse.getPayload().getContext());
                     }
                     return Optional.empty();
                 });
@@ -127,5 +133,19 @@ public class DefaultChannel implements Channel {
         );
         return listener.register().thenApply(v -> listener);
     }
-}
 
+    private AddContextListenerRequestMeta createMeta() {
+        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
+        meta.setRequestUUID(messaging.createUUID());
+        meta.setTimestamp(OffsetDateTime.now());
+
+        AppIdentifier appId = messaging.getAppIdentifier();
+        if (appId != null) {
+            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
+            source.setAppID(appId.getAppId());
+            appId.getInstanceId().ifPresent(source::setInstanceID);
+            meta.setSource(source);
+        }
+        return meta;
+    }
+}

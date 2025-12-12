@@ -16,9 +16,10 @@
 
 package org.finos.fdc3.proxy.apps;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +36,7 @@ import org.finos.fdc3.api.metadata.ImplementationMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.util.Logger;
+import org.finos.fdc3.schema.*;
 
 /**
  * Default implementation of AppSupport.
@@ -52,106 +54,113 @@ public class DefaultAppSupport implements AppSupport {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<List<AppIdentifier>> findInstances(AppIdentifier app) {
-        Map<String, Object> request = new HashMap<>();
-        request.put("type", "findInstancesRequest");
-        request.put("meta", messaging.createMeta());
+        // Build typed request
+        FindInstancesRequest request = new FindInstancesRequest();
+        request.setType(FindInstancesRequestType.FIND_INSTANCES_REQUEST);
+        request.setMeta(createMeta());
+        
+        FindInstancesRequestPayload payload = new FindInstancesRequestPayload();
+        payload.setApp(toSchemaAppIdentifier(app));
+        request.setPayload(payload);
 
-        Map<String, Object> payload = new HashMap<>();
-        Map<String, Object> appMap = new HashMap<>();
-        appMap.put("appId", app.getAppId());
-        app.getInstanceId().ifPresent(id -> appMap.put("instanceId", id));
-        payload.put("app", appMap);
-        request.put("payload", payload);
+        // Convert to Map for messaging
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
 
-        return messaging.<Map<String, Object>>exchange(request, "findInstancesResponse", messageExchangeTimeout)
+        return messaging.<Map<String, Object>>exchange(requestMap, "findInstancesResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
-                    List<Map<String, Object>> identifiers = (List<Map<String, Object>>) responsePayload.get("appIdentifiers");
-
-                    if (identifiers == null) {
+                    FindInstancesResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, FindInstancesResponse.class);
+                    
+                    if (typedResponse.getPayload() == null || 
+                        typedResponse.getPayload().getAppIdentifiers() == null) {
                         return new ArrayList<>();
                     }
 
-                    return identifiers.stream()
-                            .map(id -> createAppIdentifier(id))
+                    return Arrays.stream(typedResponse.getPayload().getAppIdentifiers())
+                            .map(this::toApiAppIdentifier)
                             .collect(Collectors.toList());
                 });
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<AppMetadata> getAppMetadata(AppIdentifier app) {
-        Map<String, Object> request = new HashMap<>();
-        request.put("type", "getAppMetadataRequest");
-        request.put("meta", messaging.createMeta());
+        // Build typed request
+        GetAppMetadataRequest request = new GetAppMetadataRequest();
+        request.setType(GetAppMetadataRequestType.GET_APP_METADATA_REQUEST);
+        request.setMeta(createMeta());
+        
+        GetAppMetadataRequestPayload payload = new GetAppMetadataRequestPayload();
+        payload.setApp(toSchemaAppIdentifier(app));
+        request.setPayload(payload);
 
-        Map<String, Object> payload = new HashMap<>();
-        Map<String, Object> appMap = new HashMap<>();
-        appMap.put("appId", app.getAppId());
-        app.getInstanceId().ifPresent(id -> appMap.put("instanceId", id));
-        payload.put("app", appMap);
-        request.put("payload", payload);
+        // Convert to Map for messaging
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
 
-        return messaging.<Map<String, Object>>exchange(request, "getAppMetadataResponse", messageExchangeTimeout)
+        return messaging.<Map<String, Object>>exchange(requestMap, "getAppMetadataResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
-                    Map<String, Object> appMetadataMap = (Map<String, Object>) responsePayload.get("appMetadata");
-
-                    if (appMetadataMap == null) {
+                    GetAppMetadataResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, GetAppMetadataResponse.class);
+                    
+                    if (typedResponse.getPayload() == null || 
+                        typedResponse.getPayload().getAppMetadata() == null) {
                         throw new RuntimeException(ResolveError.TargetAppUnavailable.toString());
                     }
 
-                    return parseAppMetadata(appMetadataMap);
+                    return toApiAppMetadata(typedResponse.getPayload().getAppMetadata());
                 });
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<AppIdentifier> open(AppIdentifier app, Context context) {
-        Map<String, Object> request = new HashMap<>();
-        request.put("type", "openRequest");
-        request.put("meta", messaging.createMeta());
-
-        Map<String, Object> payload = new HashMap<>();
-        Map<String, Object> appMap = new HashMap<>();
-        appMap.put("appId", app.getAppId());
-        app.getInstanceId().ifPresent(id -> appMap.put("instanceId", id));
-        payload.put("app", appMap);
+        // Build typed request
+        OpenRequest request = new OpenRequest();
+        request.setType(OpenRequestType.OPEN_REQUEST);
+        request.setMeta(createMeta());
+        
+        OpenRequestPayload payload = new OpenRequestPayload();
+        payload.setApp(toSchemaAppIdentifier(app));
         if (context != null) {
-            payload.put("context", context.toMap());
+            payload.setContext(context);
         }
-        request.put("payload", payload);
+        request.setPayload(payload);
 
-        return messaging.<Map<String, Object>>exchange(request, "openResponse", appLaunchTimeout)
+        // Convert to Map for messaging
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "openResponse", appLaunchTimeout)
                 .thenApply(response -> {
-                    Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
-                    Map<String, Object> appIdentifierMap = (Map<String, Object>) responsePayload.get("appIdentifier");
-
-                    if (appIdentifierMap == null) {
+                    OpenResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, OpenResponse.class);
+                    
+                    if (typedResponse.getPayload() == null || 
+                        typedResponse.getPayload().getAppIdentifier() == null) {
                         throw new RuntimeException(OpenError.AppNotFound.toString());
                     }
 
-                    return createAppIdentifier(appIdentifierMap);
+                    return toApiAppIdentifier(typedResponse.getPayload().getAppIdentifier());
                 });
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CompletionStage<ImplementationMetadata> getImplementationMetadata() {
-        Map<String, Object> request = new HashMap<>();
-        request.put("type", "getInfoRequest");
-        request.put("meta", messaging.createMeta());
-        request.put("payload", new HashMap<>());
+        // Build typed request
+        GetInfoRequest request = new GetInfoRequest();
+        request.setType(GetInfoRequestType.GET_INFO_REQUEST);
+        request.setMeta(createMeta());
+        request.setPayload(new GetInfoRequestPayload());
 
-        return messaging.<Map<String, Object>>exchange(request, "getInfoResponse", messageExchangeTimeout)
+        // Convert to Map for messaging
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "getInfoResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
-                    Map<String, Object> implMetadata = (Map<String, Object>) responsePayload.get("implementationMetadata");
-
-                    if (implMetadata != null) {
-                        return parseImplementationMetadata(implMetadata);
+                    GetInfoResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, GetInfoResponse.class);
+                    
+                    if (typedResponse.getPayload() != null && 
+                        typedResponse.getPayload().getImplementationMetadata() != null) {
+                        return toApiImplementationMetadata(typedResponse.getPayload().getImplementationMetadata());
                     } else {
                         Logger.error("Invalid response from Desktop Agent to getInfo!");
                         return createUnknownImplementationMetadata();
@@ -159,9 +168,34 @@ public class DefaultAppSupport implements AppSupport {
                 });
     }
 
-    private AppIdentifier createAppIdentifier(Map<String, Object> idMap) {
-        String appId = (String) idMap.get("appId");
-        String instanceId = (String) idMap.get("instanceId");
+    // ============ Conversion helpers ============
+
+    private AddContextListenerRequestMeta createMeta() {
+        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
+        meta.setRequestUUID(messaging.createUUID());
+        meta.setTimestamp(OffsetDateTime.now());
+        
+        // Set source from messaging's app identifier
+        AppIdentifier appId = messaging.getAppIdentifier();
+        if (appId != null) {
+            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
+            source.setAppID(appId.getAppId());
+            appId.getInstanceId().ifPresent(source::setInstanceID);
+            meta.setSource(source);
+        }
+        return meta;
+    }
+
+    private org.finos.fdc3.schema.AppIdentifier toSchemaAppIdentifier(AppIdentifier app) {
+        org.finos.fdc3.schema.AppIdentifier schemaApp = new org.finos.fdc3.schema.AppIdentifier();
+        schemaApp.setAppID(app.getAppId());
+        app.getInstanceId().ifPresent(schemaApp::setInstanceID);
+        return schemaApp;
+    }
+
+    private AppIdentifier toApiAppIdentifier(org.finos.fdc3.schema.AppIdentifier schemaApp) {
+        String appId = schemaApp.getAppID();
+        String instanceId = schemaApp.getInstanceID();
         return new AppIdentifier() {
             @Override
             public String getAppId() {
@@ -175,12 +209,31 @@ public class DefaultAppSupport implements AppSupport {
         };
     }
 
-    private AppMetadata parseAppMetadata(Map<String, Object> appMap) {
-        String appId = (String) appMap.get("appId");
-        String instanceId = (String) appMap.get("instanceId");
-        String name = (String) appMap.get("name");
-        String title = (String) appMap.get("title");
-        String description = (String) appMap.get("description");
+    private AppIdentifier toApiAppIdentifier(org.finos.fdc3.schema.AppMetadata schemaApp) {
+        String appId = schemaApp.getAppID();
+        String instanceId = schemaApp.getInstanceID();
+        return new AppIdentifier() {
+            @Override
+            public String getAppId() {
+                return appId;
+            }
+
+            @Override
+            public Optional<String> getInstanceId() {
+                return Optional.ofNullable(instanceId);
+            }
+        };
+    }
+
+    private AppMetadata toApiAppMetadata(org.finos.fdc3.schema.AppMetadata schemaMetadata) {
+        String appId = schemaMetadata.getAppID();
+        String instanceId = schemaMetadata.getInstanceID();
+        String name = schemaMetadata.getName();
+        String title = schemaMetadata.getTitle();
+        String description = schemaMetadata.getDescription();
+        String version = schemaMetadata.getVersion();
+        String tooltip = schemaMetadata.getTooltip();
+        String resultType = schemaMetadata.getResultType();
 
         return new AppMetadata() {
             @Override
@@ -200,7 +253,7 @@ public class DefaultAppSupport implements AppSupport {
 
             @Override
             public Optional<String> getVersion() {
-                return Optional.empty();
+                return Optional.ofNullable(version);
             }
 
             @Override
@@ -215,7 +268,7 @@ public class DefaultAppSupport implements AppSupport {
 
             @Override
             public Optional<String> getTooltip() {
-                return Optional.empty();
+                return Optional.ofNullable(tooltip);
             }
 
             @Override
@@ -235,20 +288,19 @@ public class DefaultAppSupport implements AppSupport {
 
             @Override
             public Optional<String> getResultType() {
-                return Optional.empty();
+                return Optional.ofNullable(resultType);
             }
         };
     }
 
-    @SuppressWarnings("unchecked")
-    private ImplementationMetadata parseImplementationMetadata(Map<String, Object> implMap) {
-        String fdc3Version = (String) implMap.get("fdc3Version");
-        String provider = (String) implMap.get("provider");
-        String providerVersion = (String) implMap.get("providerVersion");
-        Map<String, Object> appMetadataMap = (Map<String, Object>) implMap.get("appMetadata");
-        Map<String, Object> optionalFeaturesMap = (Map<String, Object>) implMap.get("optionalFeatures");
+    private ImplementationMetadata toApiImplementationMetadata(org.finos.fdc3.schema.ImplementationMetadata schemaMetadata) {
+        String fdc3Version = schemaMetadata.getFdc3Version();
+        String provider = schemaMetadata.getProvider();
+        String providerVersion = schemaMetadata.getProviderVersion();
+        org.finos.fdc3.schema.AppMetadata schemaAppMetadata = schemaMetadata.getAppMetadata();
+        org.finos.fdc3.schema.OptionalFeatures schemaOptionalFeatures = schemaMetadata.getOptionalFeatures();
 
-        AppMetadata appMetadata = appMetadataMap != null ? parseAppMetadata(appMetadataMap) : null;
+        AppMetadata appMetadata = schemaAppMetadata != null ? toApiAppMetadata(schemaAppMetadata) : null;
 
         return new ImplementationMetadata() {
             @Override
@@ -273,26 +325,23 @@ public class DefaultAppSupport implements AppSupport {
 
             @Override
             public OptionalFeatures getOptionalFeatures() {
-                if (optionalFeaturesMap == null) {
+                if (schemaOptionalFeatures == null) {
                     return null;
                 }
                 return new OptionalFeatures() {
                     @Override
                     public boolean isOriginatingAppMetadata() {
-                        Boolean val = (Boolean) optionalFeaturesMap.get("OriginatingAppMetadata");
-                        return val != null && val;
+                        return schemaOptionalFeatures.getOriginatingAppMetadata();
                     }
 
                     @Override
                     public boolean isUserChannelMembershipAPIs() {
-                        Boolean val = (Boolean) optionalFeaturesMap.get("UserChannelMembershipAPIs");
-                        return val != null && val;
+                        return schemaOptionalFeatures.getUserChannelMembershipAPIs();
                     }
 
                     @Override
                     public boolean isDesktopAgentBridging() {
-                        Boolean val = (Boolean) optionalFeaturesMap.get("DesktopAgentBridging");
-                        return val != null && val;
+                        return schemaOptionalFeatures.getDesktopAgentBridging();
                     }
                 };
             }

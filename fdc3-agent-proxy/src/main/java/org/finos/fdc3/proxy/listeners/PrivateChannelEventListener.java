@@ -16,15 +16,16 @@
 
 package org.finos.fdc3.proxy.listeners;
 
-import java.util.HashMap;
+import java.time.OffsetDateTime;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
+import org.finos.fdc3.schema.*;
 
 /**
  * Event listener for private channel events.
@@ -100,18 +101,20 @@ public class PrivateChannelEventListener implements RegisterableListener, Listen
 
     @Override
     public CompletionStage<Void> register() {
-        Map<String, Object> request = new HashMap<>();
-        request.put("meta", messaging.createMeta());
-        request.put("type", "privateChannelAddEventListenerRequest");
+        PrivateChannelAddEventListenerRequest request = new PrivateChannelAddEventListenerRequest();
+        request.setType(PrivateChannelAddEventListenerRequestType.PRIVATE_CHANNEL_ADD_EVENT_LISTENER_REQUEST);
+        request.setMeta(createMeta());
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("privateChannelId", channelId);
-        payload.put("listenerType", eventType);
-        request.put("payload", payload);
+        PrivateChannelAddEventListenerRequestPayload payload = new PrivateChannelAddEventListenerRequestPayload();
+        payload.setPrivateChannelID(channelId);
+        payload.setListenerType(toPrivateChannelEventType(eventType));
+        request.setPayload(payload);
+
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
 
         messaging.register(this);
 
-        return messaging.<Map<String, Object>>exchange(request, "privateChannelAddEventListenerResponse", messageExchangeTimeout)
+        return messaging.<Map<String, Object>>exchange(requestMap, "privateChannelAddEventListenerResponse", messageExchangeTimeout)
                 .thenApply(response -> null);
     }
 
@@ -130,5 +133,35 @@ public class PrivateChannelEventListener implements RegisterableListener, Listen
             throw new RuntimeException("Failed to register listener", e);
         }
     }
-}
 
+    private AddContextListenerRequestMeta createMeta() {
+        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
+        meta.setRequestUUID(messaging.createUUID());
+        meta.setTimestamp(OffsetDateTime.now());
+
+        AppIdentifier appId = messaging.getAppIdentifier();
+        if (appId != null) {
+            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
+            source.setAppID(appId.getAppId());
+            appId.getInstanceId().ifPresent(source::setInstanceID);
+            meta.setSource(source);
+        }
+        return meta;
+    }
+
+    private PrivateChannelEventType toPrivateChannelEventType(String eventType) {
+        if (eventType == null) {
+            return null;
+        }
+        switch (eventType) {
+            case "addContextListener":
+                return PrivateChannelEventType.ADD_CONTEXT_LISTENER;
+            case "unsubscribe":
+                return PrivateChannelEventType.UNSUBSCRIBE;
+            case "disconnect":
+                return PrivateChannelEventType.DISCONNECT;
+            default:
+                return null;
+        }
+    }
+}

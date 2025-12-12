@@ -16,7 +16,7 @@
 
 package org.finos.fdc3.proxy.channels;
 
-import java.util.HashMap;
+import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
@@ -24,11 +24,13 @@ import java.util.function.Consumer;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.channel.PrivateChannel;
+import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.DefaultContextListener;
 import org.finos.fdc3.proxy.listeners.PrivateChannelEventListener;
+import org.finos.fdc3.schema.*;
 
 /**
  * Default implementation of a PrivateChannel.
@@ -67,18 +69,19 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public void disconnect() {
-        Map<String, Object> request = new HashMap<>();
-        request.put("meta", messaging.createMeta());
-        request.put("type", "privateChannelDisconnectRequest");
+        PrivateChannelDisconnectRequest request = new PrivateChannelDisconnectRequest();
+        request.setType(PrivateChannelDisconnectRequestType.PRIVATE_CHANNEL_DISCONNECT_REQUEST);
+        request.setMeta(createMeta());
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("channelId", getId());
-        request.put("payload", payload);
+        PrivateChannelDisconnectRequestPayload payload = new PrivateChannelDisconnectRequestPayload();
+        payload.setChannelID(getId());
+        request.setPayload(payload);
+
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
 
         try {
-            messaging.<Map<String, Object>>exchange(request, "privateChannelDisconnectResponse", messageExchangeTimeout)
+            messaging.<Map<String, Object>>exchange(requestMap, "privateChannelDisconnectResponse", messageExchangeTimeout)
                     .toCompletableFuture().get();
         } catch (Exception e) {
             throw new RuntimeException("Failed to disconnect private channel", e);
@@ -96,5 +99,19 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
         );
         return listener.register().thenApply(v -> listener);
     }
-}
 
+    private AddContextListenerRequestMeta createMeta() {
+        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
+        meta.setRequestUUID(messaging.createUUID());
+        meta.setTimestamp(OffsetDateTime.now());
+
+        AppIdentifier appId = messaging.getAppIdentifier();
+        if (appId != null) {
+            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
+            source.setAppID(appId.getAppId());
+            appId.getInstanceId().ifPresent(source::setInstanceID);
+            meta.setSource(source);
+        }
+        return meta;
+    }
+}

@@ -16,9 +16,8 @@
 
 package org.finos.fdc3.proxy.listeners;
 
-import java.util.HashMap;
+import java.time.OffsetDateTime;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import org.finos.fdc3.api.context.Context;
@@ -27,6 +26,7 @@ import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.IntentHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
+import org.finos.fdc3.schema.*;
 
 /**
  * Default implementation of an intent listener.
@@ -111,17 +111,19 @@ public class DefaultIntentListener implements RegisterableListener, Listener {
 
     @Override
     public CompletionStage<Void> register() {
-        Map<String, Object> request = new HashMap<>();
-        request.put("meta", messaging.createMeta());
-        request.put("type", "addIntentListenerRequest");
+        AddIntentListenerRequest request = new AddIntentListenerRequest();
+        request.setType(AddIntentListenerRequestType.ADD_INTENT_LISTENER_REQUEST);
+        request.setMeta(createMeta());
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("intent", intent);
-        request.put("payload", payload);
+        AddIntentListenerRequestPayload payload = new AddIntentListenerRequestPayload();
+        payload.setIntent(intent);
+        request.setPayload(payload);
+
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
 
         messaging.register(this);
 
-        return messaging.<Map<String, Object>>exchange(request, "addIntentListenerResponse", messageExchangeTimeout)
+        return messaging.<Map<String, Object>>exchange(requestMap, "addIntentListenerResponse", messageExchangeTimeout)
                 .thenApply(response -> null);
     }
 
@@ -129,5 +131,19 @@ public class DefaultIntentListener implements RegisterableListener, Listener {
     public void unsubscribe() {
         messaging.unregister(id);
     }
-}
 
+    private AddContextListenerRequestMeta createMeta() {
+        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
+        meta.setRequestUUID(messaging.createUUID());
+        meta.setTimestamp(OffsetDateTime.now());
+
+        AppIdentifier appId = messaging.getAppIdentifier();
+        if (appId != null) {
+            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
+            source.setAppID(appId.getAppId());
+            appId.getInstanceId().ifPresent(source::setInstanceID);
+            meta.setSource(source);
+        }
+        return meta;
+    }
+}

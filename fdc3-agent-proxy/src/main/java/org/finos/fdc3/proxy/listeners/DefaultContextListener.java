@@ -16,15 +16,17 @@
 
 package org.finos.fdc3.proxy.listeners;
 
-import java.util.HashMap;
+import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
+import org.finos.fdc3.schema.*;
 
 /**
  * Default implementation of a context listener.
@@ -107,19 +109,20 @@ public class DefaultContextListener implements RegisterableListener, Listener {
 
     @Override
     public CompletionStage<Void> register() {
-        // Register with messaging to receive broadcasts
-        Map<String, Object> request = new HashMap<>();
-        request.put("meta", messaging.createMeta());
-        request.put("type", "addContextListenerRequest");
+        AddContextListenerRequest request = new AddContextListenerRequest();
+        request.setType(AddContextListenerRequestType.ADD_CONTEXT_LISTENER_REQUEST);
+        request.setMeta(createMeta());
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("channelId", channelId);
-        payload.put("contextType", contextType);
-        request.put("payload", payload);
+        AddContextListenerRequestPayload payload = new AddContextListenerRequestPayload();
+        payload.setChannelID(channelId);
+        payload.setContextType(contextType);
+        request.setPayload(payload);
+
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
 
         messaging.register(this);
 
-        return messaging.<Map<String, Object>>exchange(request, "addContextListenerResponse", messageExchangeTimeout)
+        return messaging.<Map<String, Object>>exchange(requestMap, "addContextListenerResponse", messageExchangeTimeout)
                 .thenApply(response -> null);
     }
 
@@ -132,5 +135,19 @@ public class DefaultContextListener implements RegisterableListener, Listener {
         messaging.unregister(id);
         return CompletableFuture.completedFuture(null);
     }
-}
 
+    private AddContextListenerRequestMeta createMeta() {
+        AddContextListenerRequestMeta meta = new AddContextListenerRequestMeta();
+        meta.setRequestUUID(messaging.createUUID());
+        meta.setTimestamp(OffsetDateTime.now());
+
+        AppIdentifier appId = messaging.getAppIdentifier();
+        if (appId != null) {
+            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
+            source.setAppID(appId.getAppId());
+            appId.getInstanceId().ifPresent(source::setInstanceID);
+            meta.setSource(source);
+        }
+        return meta;
+    }
+}

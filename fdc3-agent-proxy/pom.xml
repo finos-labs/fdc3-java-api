@@ -20,7 +20,6 @@
         <jdk.target.version>11</jdk.target.version>
         <cucumber.version>7.15.0</cucumber.version>
         <junit.version>5.10.1</junit.version>
-        <jackson.version>2.16.1</jackson.version>
     </properties>
 
     <dependencies>
@@ -31,29 +30,19 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- FDC3 Schema Types -->
+        <dependency>
+            <groupId>org.finos.fdc3</groupId>
+            <artifactId>fdc3-schema</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- FDC3 Testing Framework -->
         <dependency>
             <groupId>org.finos.fdc3</groupId>
             <artifactId>fdc3-testing</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
-        </dependency>
-
-        <!-- Jackson for JSON processing -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}</version>
         </dependency>
 
         <!-- SLF4J for logging -->

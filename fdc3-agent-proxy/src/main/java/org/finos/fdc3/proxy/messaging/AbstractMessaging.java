@@ -29,6 +29,7 @@ import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.RegisterableListener;
 import org.finos.fdc3.proxy.util.Logger;
+import org.finos.fdc3.schema.SchemaConverter;
 
 /**
  * Abstract base class for messaging implementations.
@@ -39,9 +40,11 @@ public abstract class AbstractMessaging implements Messaging {
     private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     private final AppIdentifier appIdentifier;
+    private final SchemaConverter converter;
 
     protected AbstractMessaging(AppIdentifier appIdentifier) {
         this.appIdentifier = appIdentifier;
+        this.converter = new SchemaConverter();
     }
 
     @Override
@@ -158,6 +161,11 @@ public abstract class AbstractMessaging implements Messaging {
     @Override
     public AppIdentifier getAppIdentifier() {
         return appIdentifier;
+    }
+
+    @Override
+    public SchemaConverter getConverter() {
+        return converter;
     }
 
     @Override

@@ -98,4 +98,19 @@ public class Context extends HashMap<String, Object> {
         }
     }
 
+    /**
+     * Create a Context from a Map.
+     * This is a convenience factory method for converting Map data to a Context object.
+     *
+     * @param map the map containing context data
+     * @return a new Context containing all entries from the map
+     */
+    public static Context fromMap(Map<String, Object> map) {
+        if (map == null) {
+            return null;
+        }
+        Context context = new Context();
+        context.putAll(map);
+        return context;
+    }
 }
