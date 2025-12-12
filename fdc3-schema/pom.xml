@@ -109,7 +109,7 @@
                             <arguments>init -y</arguments>
                         </configuration>
                     </execution>
-                    <!-- Install @finos/fdc3-schema and quicktype -->
+                    <!-- Install @finos/fdc3-schema, @finos/fdc3-context, and quicktype -->
                     <execution>
                         <id>npm-install-packages</id>
                         <phase>generate-sources</phase>
@@ -117,7 +117,7 @@
                             <goal>npm</goal>
                         </goals>
                         <configuration>
-                            <arguments>install @finos/fdc3-schema@${fdc3.schema.version} quicktype --save</arguments>
+                            <arguments>install @finos/fdc3-schema@${fdc3.schema.version} @finos/fdc3-context@${fdc3.schema.version} quicktype --save</arguments>
                         </configuration>
                     </execution>
                 </executions>
@@ -129,7 +129,24 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.1</version>
                 <executions>
-                    <!-- Generate API types -->
+                    <!-- Create symlink so relative schema refs work -->
+                    <execution>
+                        <id>create-context-symlink</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>ln</executable>
+                            <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
+                            <arguments>
+                                <argument>-sfn</argument>
+                                <argument>../../@finos/fdc3-context/dist/schemas/context</argument>
+                                <argument>node_modules/@finos/fdc3-schema/dist/schemas/context</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Generate API types using shell to properly list files individually -->
                     <execution>
                         <id>quicktype-api</id>
                         <phase>generate-sources</phase>
@@ -137,19 +154,11 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <executable>${project.build.directory}/node-installation/node/node</executable>
+                            <executable>/bin/sh</executable>
                             <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
                             <arguments>
-                                <argument>node_modules/.bin/quicktype</argument>
-                                <argument>--src-lang</argument>
-                                <argument>schema</argument>
-                                <argument>--lang</argument>
-                                <argument>java</argument>
-                                <argument>--package</argument>
-                                <argument>com.finos.fdc3.schema.api</argument>
-                                <argument>--out</argument>
-                                <argument>${project.build.directory}/generated-sources/fdc3/com/finos/fdc3/schema/api/ApiTypes.java</argument>
-                                <argument>node_modules/@finos/fdc3-schema/dist/schemas/api</argument>
+                                <argument>-c</argument>
+                                <argument>node_modules/.bin/quicktype -s schema --lang java --package com.finos.fdc3.schema.api --out ${project.build.directory}/generated-sources/fdc3/com/finos/fdc3/schema/api/ApiTypes.java -S node_modules/@finos/fdc3-context/dist/schemas/context/context.schema.json $(for f in node_modules/@finos/fdc3-schema/dist/schemas/api/*.schema.json; do echo "--src $f"; done)</argument>
                             </arguments>
                         </configuration>
                     </execution>

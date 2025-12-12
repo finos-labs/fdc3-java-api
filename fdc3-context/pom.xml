@@ -117,19 +117,18 @@
                             <goal>npm</goal>
                         </goals>
                         <configuration>
-                            <arguments>install @finos/fdc3-context@${fdc3.context.version} quicktype --save</arguments>
+                            <arguments>install @finos/fdc3-context@${fdc3.context.version} @finos/fdc3-schema@${fdc3.context.version} quicktype --save</arguments>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
 
-            <!-- Execute quicktype to generate Java -->
+            <!-- Execute quicktype to generate Java (excluding action.schema.json which has external refs) -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.1</version>
                 <executions>
-                    <!-- Generate Context types -->
                     <execution>
                         <id>quicktype-context</id>
                         <phase>generate-sources</phase>
@@ -137,19 +136,11 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <executable>${project.build.directory}/node-installation/node/node</executable>
+                            <executable>/bin/sh</executable>
                             <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
                             <arguments>
-                                <argument>node_modules/.bin/quicktype</argument>
-                                <argument>--src-lang</argument>
-                                <argument>schema</argument>
-                                <argument>--lang</argument>
-                                <argument>java</argument>
-                                <argument>--package</argument>
-                                <argument>com.finos.fdc3.context</argument>
-                                <argument>--out</argument>
-                                <argument>${project.build.directory}/generated-sources/fdc3/com/finos/fdc3/context/ContextTypes.java</argument>
-                                <argument>node_modules/@finos/fdc3-context/dist/schemas/context</argument>
+                                <argument>-c</argument>
+                                <argument>node_modules/.bin/quicktype -s schema --lang java --package com.finos.fdc3.context --out ${project.build.directory}/generated-sources/fdc3/com/finos/fdc3/context/ContextTypes.java -S node_modules/@finos/fdc3-schema/dist/schemas/api/api.schema.json $(find node_modules/@finos/fdc3-context/dist/schemas/context -name "*.schema.json" -exec printf "%s %s " "--src" {} \;)</argument>
                             </arguments>
                         </configuration>
                     </execution>
