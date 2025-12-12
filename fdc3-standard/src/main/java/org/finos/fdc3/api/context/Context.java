@@ -16,20 +16,16 @@
 
 package org.finos.fdc3.api.context;
 
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
-import com.fasterxml.jackson.annotation.JsonAnySetter;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
  * The base FDC3 Context type.
  * 
- * This implementation uses a Map to store all properties, which allows it to:
+ * This implementation extends HashMap to store all properties, which allows it to:
  * - Preserve all fields during serialization/deserialization (no data loss)
  * - Support any context type, including custom ones
+ * - Be used directly as a Map
  * - Be converted to typed context classes using the {@link #as(Class)} method
  * 
  * The `fdc3.context` type defines the basic contract or "shape" for all data exchanged by
@@ -37,11 +33,7 @@ import java.util.Map;
  * by more specific type definitions (standardized or custom) to provide the structure and
  * properties shared by all FDC3 context data types.
  */
-public class Context {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    private final Map<String, Object> properties = new LinkedHashMap<>();
+public class Context extends HashMap<String, Object> {
 
     public Context() {
     }
@@ -66,11 +58,11 @@ public class Context {
      * The FDC3 API relies on the `type` property being present to route shared context data appropriately.
      */
     public String getType() {
-        return (String) properties.get("type");
+        return (String) get("type");
     }
 
     public void setType(String type) {
-        properties.put("type", type);
+        put("type", type);
     }
 
     /**
@@ -78,14 +70,14 @@ public class Context {
      * or display purposes.
      */
     public String getName() {
-        return (String) properties.get("name");
+        return (String) get("name");
     }
 
     public void setName(String name) {
         if (name != null) {
-            properties.put("name", name);
+            put("name", name);
         } else {
-            properties.remove("name");
+            remove("name");
         }
     }
 
@@ -95,71 +87,15 @@ public class Context {
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getId() {
-        return (Map<String, Object>) properties.get("id");
+        return (Map<String, Object>) get("id");
     }
 
     public void setId(Map<String, Object> id) {
         if (id != null) {
-            properties.put("id", id);
+            put("id", id);
         } else {
-            properties.remove("id");
+            remove("id");
         }
     }
 
-    /**
-     * Get a property by name.
-     */
-    public Object get(String name) {
-        return properties.get(name);
-    }
-
-    /**
-     * Set a property by name.
-     */
-    @JsonAnySetter
-    public void set(String name, Object value) {
-        if (value != null) {
-            properties.put(name, value);
-        } else {
-            properties.remove(name);
-        }
-    }
-
-    /**
-     * Get all properties as a map.
-     */
-    @JsonAnyGetter
-    public Map<String, Object> getProperties() {
-        return properties;
-    }
-
-    /**
-     * Convert this context to a typed context class.
-     * 
-     * Example:
-     * <pre>
-     * Context ctx = ...;
-     * if ("fdc3.instrument".equals(ctx.getType())) {
-     *     Instrument instrument = ctx.as(Instrument.class);
-     * }
-     * </pre>
-     * 
-     * @param clazz the target class
-     * @param <T> the type of the context
-     * @return the typed context object
-     */
-    @JsonIgnore
-    public <T> T as(Class<T> clazz) {
-        return MAPPER.convertValue(properties, clazz);
-    }
-
-    @Override
-    public String toString() {
-        try {
-            return MAPPER.writeValueAsString(this);
-        } catch (Exception e) {
-            return properties.toString();
-        }
-    }
 }
-
