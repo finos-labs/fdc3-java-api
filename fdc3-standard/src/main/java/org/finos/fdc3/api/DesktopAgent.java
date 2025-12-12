@@ -18,7 +18,7 @@ package org.finos.fdc3.api;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.channel.PrivateChannel;
-import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.schema.Context;
 import org.finos.fdc3.api.metadata.AppIntent;
 import org.finos.fdc3.api.metadata.AppMetadata;
 import org.finos.fdc3.api.metadata.ImplementationMetadata;

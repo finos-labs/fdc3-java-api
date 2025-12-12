@@ -19,7 +19,7 @@ package org.finos.fdc3.api.types;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
-import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.schema.Context;
 import org.finos.fdc3.api.metadata.ContextMetadata;
 
 /**
