@@ -23,6 +23,13 @@
     </properties>
 
     <dependencies>
+        <!-- FDC3 Schema (Context class lives here) -->
+        <dependency>
+            <groupId>org.finos.fdc3</groupId>
+            <artifactId>fdc3-schema</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Jackson for JSON processing -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -32,6 +39,11 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+            <version>2.16.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
             <version>2.16.1</version>
         </dependency>
 
@@ -144,7 +156,31 @@
                             </arguments>
                         </configuration>
                     </execution>
+                    <!-- Remove duplicate Context class (it lives in fdc3-schema) and fix imports -->
+                    <execution>
+                        <id>fix-context-imports</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>/bin/sh</executable>
+                            <workingDirectory>${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context</workingDirectory>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument>rm -f Context.java 2>/dev/null; sed -i '' 's/^package org.finos.fdc3.context;$/package org.finos.fdc3.context;\
+import org.finos.fdc3.schema.Context;/' Converter.java || true</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
                 </executions>
+            </plugin>
+
+            <!-- Use newer surefire for JUnit 5 support -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.3</version>
             </plugin>
 
             <!-- Add generated sources to compilation -->
