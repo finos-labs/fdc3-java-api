@@ -23,6 +23,13 @@
     </properties>
 
     <dependencies>
+        <!-- FDC3 Standard (Context class lives here) -->
+        <dependency>
+            <groupId>org.finos.fdc3</groupId>
+            <artifactId>fdc3-standard</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Jackson for JSON processing -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -159,6 +166,23 @@
                             <arguments>
                                 <argument>-c</argument>
                                 <argument>node_modules/.bin/quicktype -s schema --quiet --lang java --package org.finos.fdc3.schema --out ${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/schema/ApiTypes.java -S node_modules/@finos/fdc3-context/dist/schemas/context/context.schema.json $(for f in node_modules/@finos/fdc3-schema/dist/schemas/api/*.schema.json; do echo "--src $f"; done)</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Delete generated Context.java (use the one from fdc3-standard) and fix imports -->
+                    <execution>
+                        <id>fix-context-imports</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>/bin/sh</executable>
+                            <workingDirectory>${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/schema</workingDirectory>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument>rm -f Context.java ContextID.java ContextType.java 2>/dev/null; for f in *.java; do grep -q "private Context " "$f" &amp;&amp; sed -i '' 's/^package org.finos.fdc3.schema;$/package org.finos.fdc3.schema;\
+import org.finos.fdc3.api.context.Context;/' "$f"; done || true</argument>
                             </arguments>
                         </configuration>
                     </execution>

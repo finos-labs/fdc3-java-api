@@ -23,10 +23,9 @@
     </properties>
 
     <dependencies>
-        <!-- FDC3 Schema (Context class lives here) -->
         <dependency>
             <groupId>org.finos.fdc3</groupId>
-            <artifactId>fdc3-schema</artifactId>
+            <artifactId>fdc3-standard</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -156,7 +155,7 @@
                             </arguments>
                         </configuration>
                     </execution>
-                    <!-- Remove duplicate Context class (it lives in fdc3-schema) and fix imports -->
+                    <!-- Remove duplicate Context/ContextElement classes (use the one from fdc3-standard) and fix imports -->
                     <execution>
                         <id>fix-context-imports</id>
                         <phase>generate-sources</phase>
@@ -168,8 +167,8 @@
                             <workingDirectory>${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context</workingDirectory>
                             <arguments>
                                 <argument>-c</argument>
-                                <argument>rm -f Context.java 2>/dev/null; sed -i '' 's/^package org.finos.fdc3.context;$/package org.finos.fdc3.context;\
-import org.finos.fdc3.schema.Context;/' Converter.java || true</argument>
+                                <argument>rm -f Context.java ContextElement.java 2>/dev/null; for f in *.java; do sed -i '' -e 's/ContextElement/Context/g' "$f"; grep -qE "(private|public) Context |Context get|Context\[\]|ContextFromJsonString" "$f" &amp;&amp; sed -i '' 's/^package org.finos.fdc3.context;$/package org.finos.fdc3.context;\
+import org.finos.fdc3.api.context.Context;/' "$f"; done || true</argument>
                             </arguments>
                         </configuration>
                     </execution>

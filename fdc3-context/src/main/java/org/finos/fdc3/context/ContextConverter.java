@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.finos.fdc3.schema.Context;
+import org.finos.fdc3.api.context.Context;
 
 import java.io.IOException;
 import java.util.HashMap;

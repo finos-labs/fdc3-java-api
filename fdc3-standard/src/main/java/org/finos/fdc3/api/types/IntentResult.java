@@ -16,7 +16,7 @@
 package org.finos.fdc3.api.types;
 
 import org.finos.fdc3.api.channel.Channel;
-import org.finos.fdc3.schema.Context;
+import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.IntentResolution;
 
 /**

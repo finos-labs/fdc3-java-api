@@ -25,9 +25,9 @@
     <name>FDC3 Java API</name>
     <url>http://maven.apache.org</url>
     <modules>
+        <module>fdc3-standard</module>
         <module>fdc3-schema</module>
         <module>fdc3-context</module>
-        <module>fdc3-standard</module>
         <module>fdc3-testing</module>
         <module>fdc3-agent-proxy</module>
     </modules>

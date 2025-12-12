@@ -40,6 +40,6 @@ public interface ContextMetadata {
   /** Get the source instance ID. Convenience method. */
   default String getSourceInstanceId() {
     AppIdentifier source = getSource();
-    return source != null ? source.getInstanceId() : null;
+    return source != null ? source.getInstanceId().orElse(null) : null;
   }
 }
