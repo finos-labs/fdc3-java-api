@@ -18,16 +18,16 @@
  -->
  
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.finos.fdc3.api</groupId>
-    <artifactId>finos-bmo-hackathon</artifactId>
+    <groupId>org.finos.fdc3</groupId>
+    <artifactId>fdc3-parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>finos-bmo-hackathon</name>
+    <name>FDC3 Java API</name>
     <url>http://maven.apache.org</url>
     <modules>
         <module>fdc3-schema</module>
         <module>fdc3-context</module>
-        <module>fdc3api</module>
+        <module>fdc3-standard</module>
         <module>fdc3-testing</module>
         <module>fdc3-agent-proxy</module>
     </modules>

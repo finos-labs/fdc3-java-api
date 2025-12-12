@@ -21,8 +21,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.finos.fdc3.api</groupId>
-        <artifactId>finos-bmo-hackathon</artifactId>
+        <groupId>org.finos.fdc3</groupId>
+        <artifactId>fdc3-parent</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 
@@ -44,8 +44,8 @@
     <dependencies>
         <!-- FDC3 API -->
         <dependency>
-            <groupId>com.finos.fdc3.api</groupId>
-            <artifactId>fdc3api</artifactId>
+            <groupId>org.finos.fdc3.api</groupId>
+            <artifactId>fdc3-standard</artifactId>
             <version>${project.version}</version>
         </dependency>
 
