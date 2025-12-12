@@ -158,7 +158,7 @@
                             <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
                             <arguments>
                                 <argument>-c</argument>
-                                <argument>node_modules/.bin/quicktype -s schema --lang java --package com.finos.fdc3.schema.api --out ${project.build.directory}/generated-sources/fdc3/com/finos/fdc3/schema/api/ApiTypes.java -S node_modules/@finos/fdc3-context/dist/schemas/context/context.schema.json $(for f in node_modules/@finos/fdc3-schema/dist/schemas/api/*.schema.json; do echo "--src $f"; done)</argument>
+                                <argument>node_modules/.bin/quicktype -s schema --quiet --lang java --package com.finos.fdc3.schema.api --out ${project.build.directory}/generated-sources/fdc3/com/finos/fdc3/schema/api/ApiTypes.java -S node_modules/@finos/fdc3-context/dist/schemas/context/context.schema.json $(for f in node_modules/@finos/fdc3-schema/dist/schemas/api/*.schema.json; do echo "--src $f"; done)</argument>
                             </arguments>
                         </configuration>
                     </execution>

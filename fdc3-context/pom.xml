@@ -140,7 +140,7 @@
                             <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
                             <arguments>
                                 <argument>-c</argument>
-                                <argument>node_modules/.bin/quicktype -s schema --lang java --package com.finos.fdc3.context --out ${project.build.directory}/generated-sources/fdc3/com/finos/fdc3/context/ContextTypes.java -S node_modules/@finos/fdc3-schema/dist/schemas/api/api.schema.json $(find node_modules/@finos/fdc3-context/dist/schemas/context -name "*.schema.json" -exec printf "%s %s " "--src" {} \;)</argument>
+                                <argument>node_modules/.bin/quicktype -s schema --quiet --lang java --package com.finos.fdc3.context --out ${project.build.directory}/generated-sources/fdc3/com/finos/fdc3/context/ContextTypes.java -S node_modules/@finos/fdc3-schema/dist/schemas/api/api.schema.json $(find node_modules/@finos/fdc3-context/dist/schemas/context -name "*.schema.json" -exec printf "%s %s " "--src" {} \;)</argument>
                             </arguments>
                         </configuration>
                     </execution>
