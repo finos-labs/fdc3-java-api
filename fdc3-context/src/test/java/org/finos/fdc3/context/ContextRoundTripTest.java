@@ -15,7 +15,6 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -137,9 +136,6 @@ public class ContextRoundTripTest {
         assertJsonContains(originalNode, reserializedNode, schemaName + " (" + type + ")");
     }
 
-    // Fields that are known to be lost in nested contexts due to ContextElement limitations
-    private static final Set<String> KNOWN_NESTED_CONTEXT_FIELDS = Set.of("instruments", "range", "style");
-
     /**
      * Asserts that all non-null fields in the original JSON are present in the reserialized JSON.
      */
@@ -150,14 +146,6 @@ public class ContextRoundTripTest {
             JsonNode reserializedValue = reserialized.get(fieldName);
 
             if (originalValue != null && !originalValue.isNull()) {
-                // Skip known fields that are lost in nested ContextElement serialization
-                if (reserializedValue == null && context.contains(".context") && 
-                    KNOWN_NESTED_CONTEXT_FIELDS.contains(fieldName)) {
-                    System.out.println("  [KNOWN ISSUE] Nested context field '" + fieldName + 
-                            "' lost in " + context + " (ContextElement limitation)");
-                    return;
-                }
-                
                 assertNotNull(reserializedValue, 
                     "Field '" + fieldName + "' should be present in reserialized JSON for " + context);
                 
