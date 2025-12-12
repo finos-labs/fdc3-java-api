@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api.metadata;
+package org.finos.fdc3.api.metadata;
 
-import com.finos.fdc3.api.types.AppIdentifier;
+import org.finos.fdc3.api.types.AppIdentifier;
 
 /**
  * Metadata relating to a context or intent and context received through the

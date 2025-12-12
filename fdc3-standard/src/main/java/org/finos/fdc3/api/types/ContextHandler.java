@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api.types;
+package org.finos.fdc3.api.types;
 
-import com.finos.fdc3.api.context.Context;
-import com.finos.fdc3.api.metadata.ContextMetadata;
+import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.ContextMetadata;
 
 @FunctionalInterface
 public interface ContextHandler {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api.errors;
+package org.finos.fdc3.api.errors;
 
 public enum ChannelError
 {

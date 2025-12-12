@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api;
+package org.finos.fdc3.api;
 
-import com.finos.fdc3.api.channel.Channel;
-import com.finos.fdc3.api.channel.PrivateChannel;
-import com.finos.fdc3.api.context.Context;
-import com.finos.fdc3.api.metadata.AppIntent;
-import com.finos.fdc3.api.metadata.AppMetadata;
-import com.finos.fdc3.api.metadata.ImplementationMetadata;
-import com.finos.fdc3.api.metadata.IntentResolution;
-import com.finos.fdc3.api.types.AppIdentifier;
-import com.finos.fdc3.api.types.ContextHandler;
-import com.finos.fdc3.api.types.EventHandler;
-import com.finos.fdc3.api.types.IntentHandler;
-import com.finos.fdc3.api.types.Listener;
+import org.finos.fdc3.api.channel.Channel;
+import org.finos.fdc3.api.channel.PrivateChannel;
+import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.AppIntent;
+import org.finos.fdc3.api.metadata.AppMetadata;
+import org.finos.fdc3.api.metadata.ImplementationMetadata;
+import org.finos.fdc3.api.metadata.IntentResolution;
+import org.finos.fdc3.api.types.AppIdentifier;
+import org.finos.fdc3.api.types.ContextHandler;
+import org.finos.fdc3.api.types.EventHandler;
+import org.finos.fdc3.api.types.IntentHandler;
+import org.finos.fdc3.api.types.Listener;
 
 import java.util.List;
 import java.util.Optional;

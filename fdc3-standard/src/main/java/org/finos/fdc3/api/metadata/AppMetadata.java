@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api.metadata;
+package org.finos.fdc3.api.metadata;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 
-import com.finos.fdc3.api.types.AppIdentifier;
+import org.finos.fdc3.api.types.AppIdentifier;
 
 /**
  * Extends an `AppIdentifier`, describing an application or instance of an application, with additional descriptive metadata that is usually provided by an FDC3 App Directory that the desktop agent connects to.

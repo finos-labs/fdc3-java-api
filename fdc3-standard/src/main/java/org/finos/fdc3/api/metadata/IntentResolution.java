@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api.metadata;
+package org.finos.fdc3.api.metadata;
 
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
-import com.finos.fdc3.api.types.AppIdentifier;
-import com.finos.fdc3.api.types.IntentResult;
+import org.finos.fdc3.api.types.AppIdentifier;
+import org.finos.fdc3.api.types.IntentResult;
 
 /**
  * IntentResolution provides a standard format for data returned upon resolving an intent.

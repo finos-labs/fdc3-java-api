@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api.channel;
+package org.finos.fdc3.api.channel;
 
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
-import com.finos.fdc3.api.context.Context;
-import com.finos.fdc3.api.metadata.DisplayMetadata;
-import com.finos.fdc3.api.types.ContextHandler;
-import com.finos.fdc3.api.types.IntentResult;
-import com.finos.fdc3.api.types.Listener;
+import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.DisplayMetadata;
+import org.finos.fdc3.api.types.ContextHandler;
+import org.finos.fdc3.api.types.IntentResult;
+import org.finos.fdc3.api.types.Listener;
 
 /**
  * Object representing a context channel.

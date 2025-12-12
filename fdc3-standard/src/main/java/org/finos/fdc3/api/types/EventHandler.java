@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api.types;
+package org.finos.fdc3.api.types;
 
 /**
  * Describes a callback that handles non-context and non-intent events from the

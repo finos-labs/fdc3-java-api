@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.finos.fdc3.api.types;
+package org.finos.fdc3.api.types;
 
-import com.finos.fdc3.api.channel.Channel;
-import com.finos.fdc3.api.context.Context;
-import com.finos.fdc3.api.metadata.IntentResolution;
+import org.finos.fdc3.api.channel.Channel;
+import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.IntentResolution;
 
 /**
  * Describes results that an {@link IntentHandler} may optionally return that should be communicated back to the app that raised the

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api.channel;
+package org.finos.fdc3.api.channel;
 
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import com.finos.fdc3.api.types.Listener;
+import org.finos.fdc3.api.types.Listener;
 
 /**
  * Object representing a private context channel, which is intended to support secure communication between applications, and

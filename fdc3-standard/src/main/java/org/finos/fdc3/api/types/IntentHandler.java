@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api.types;
+package org.finos.fdc3.api.types;
 
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
-import com.finos.fdc3.api.context.Context;
-import com.finos.fdc3.api.metadata.ContextMetadata;
+import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.ContextMetadata;
 
 /**
  * Describes a callback that handles a context event and may return a promise of a Context or Channel object to be returned to the

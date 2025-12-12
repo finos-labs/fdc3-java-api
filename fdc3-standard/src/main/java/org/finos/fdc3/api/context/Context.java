@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api.context;
+package org.finos.fdc3.api.context;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.finos.fdc3.api.utils.StringUtilities;
+import org.finos.fdc3.api.utils.StringUtilities;
 
 import java.util.HashMap;
 import java.util.Map;

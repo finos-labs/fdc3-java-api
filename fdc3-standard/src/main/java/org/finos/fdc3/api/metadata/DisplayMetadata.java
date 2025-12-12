@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api.metadata;
+package org.finos.fdc3.api.metadata;
 
 import java.util.Optional;
 

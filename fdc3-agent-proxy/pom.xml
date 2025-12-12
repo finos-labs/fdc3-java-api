@@ -129,7 +129,7 @@
                         <configurationParameters>
                             cucumber.junit-platform.naming-strategy=long
                             cucumber.plugin=pretty,html:target/cucumber-reports/cucumber.html
-                            cucumber.glue=com.finos.fdc3.proxy.steps,com.finos.fdc3.proxy.world,com.finos.fdc3.testing.steps
+                            cucumber.glue=org.finos.fdc3.proxy.steps,org.finos.fdc3.proxy.world,org.finos.fdc3.testing.steps
                             cucumber.features=src/test/resources/features
                         </configurationParameters>
                     </properties>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.finos.fdc3.api.context;
+package org.finos.fdc3.api.context;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
