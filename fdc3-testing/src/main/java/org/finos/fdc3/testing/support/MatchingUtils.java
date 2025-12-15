@@ -109,6 +109,15 @@ public final class MatchingUtils {
             return false;
         }
     }
+    
+    private static JsonSchema findSchema(Map<String, JsonSchema> schemas, String name) {
+        for (Map.Entry<String, JsonSchema> entry : schemas.entrySet()) {
+            if (entry.getKey().endsWith(name + ".schema.json")) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
 
     /**
      * Check if a table row matches the given data object.
@@ -141,7 +150,8 @@ public final class MatchingUtils {
                     return false;
                 }
 
-                JsonSchema schema = schemas.get(expected);
+                JsonSchema schema = findSchema(schemas,expected);
+                
                 if (schema == null) {
                     world.log("No schema found for " + expected);
                     return false;
