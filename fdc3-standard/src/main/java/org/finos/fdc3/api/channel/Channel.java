@@ -84,4 +84,8 @@ public interface Channel extends IntentResult {
    * Optional metadata about each context message received, including the app that originated the message, SHOULD be provided by the desktop agent implementation.
    */
   CompletionStage<Listener> addContextListener(String contextType, ContextHandler handler);
+  
+  @Deprecated
+  CompletionStage<Listener> addContextListener(ContextHandler handler);
+
 }

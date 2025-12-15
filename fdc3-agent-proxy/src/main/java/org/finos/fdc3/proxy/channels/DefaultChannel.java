@@ -121,6 +121,12 @@ public class DefaultChannel implements Channel {
         return addContextListenerInner(contextType, handler);
     }
 
+    @Override
+    @Deprecated
+    public CompletionStage<Listener> addContextListener(ContextHandler handler) {
+        return addContextListener(null, handler);
+    }
+
     protected CompletionStage<Listener> addContextListenerInner(String contextType, ContextHandler handler) {
         DefaultContextListener listener = new DefaultContextListener(
                 messaging,

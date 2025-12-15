@@ -16,7 +16,15 @@
 
 package org.finos.fdc3.testing.steps;
 
-import java.io.File;
+import static org.finos.fdc3.testing.support.MatchingUtils.doesRowMatch;
+import static org.finos.fdc3.testing.support.MatchingUtils.handleResolve;
+import static org.finos.fdc3.testing.support.MatchingUtils.matchData;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -32,22 +40,16 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.finos.fdc3.testing.world.PropsWorld;
+
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion;
-
-import org.finos.fdc3.testing.support.MatchingUtils;
-import org.finos.fdc3.testing.world.PropsWorld;
 
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-
-import static org.finos.fdc3.testing.support.MatchingUtils.doesRowMatch;
-import static org.finos.fdc3.testing.support.MatchingUtils.handleResolve;
-import static org.finos.fdc3.testing.support.MatchingUtils.matchData;
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Generic Cucumber step definitions for FDC3 testing.
@@ -213,7 +215,6 @@ public class GenericSteps {
 
     @Then("{string} is empty")
     public void isEmpty(String field) {
-        @SuppressWarnings("unchecked")
         List<?> data = (List<?>) handleResolve(field, world);
         assertTrue(data.isEmpty());
     }

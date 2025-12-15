@@ -20,6 +20,8 @@
         <jdk.target.version>11</jdk.target.version>
         <cucumber.version>7.15.0</cucumber.version>
         <junit.version>5.10.1</junit.version>
+        <!-- Path to FDC3 TypeScript repo feature files -->
+        <fdc3.features.source>${project.basedir}/../../FDC3/packages/fdc3-agent-proxy/test/features</fdc3.features.source>
     </properties>
 
     <dependencies>
@@ -109,9 +111,39 @@
         <testResources>
             <testResource>
                 <directory>src/test/resources</directory>
+                <excludes>
+                    <!-- Features are copied from FDC3 repo -->
+                    <exclude>features/**</exclude>
+                </excludes>
             </testResource>
         </testResources>
         <plugins>
+            <!-- Copy feature files from FDC3 TypeScript repo -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-fdc3-features</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/test-classes/features</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${fdc3.features.source}</directory>
+                                    <includes>
+                                        <include>*.feature</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -131,7 +163,7 @@
                             cucumber.junit-platform.naming-strategy=long
                             cucumber.plugin=pretty,html:target/cucumber-reports/cucumber.html
                             cucumber.glue=org.finos.fdc3.proxy,org.finos.fdc3.proxy.steps,org.finos.fdc3.proxy.world,org.finos.fdc3.testing.steps
-                            cucumber.features=src/test/resources/features
+                            cucumber.features=classpath:features
                         </configurationParameters>
                     </properties>
                 </configuration>
