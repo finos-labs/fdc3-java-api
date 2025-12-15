@@ -19,6 +19,7 @@ package org.finos.fdc3.testing.world;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.cucumber.java.Scenario;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +32,7 @@ public class PropsWorld {
     private static final Logger logger = LoggerFactory.getLogger(PropsWorld.class);
 
     private final Map<String, Object> props = new HashMap<>();
+    private Scenario scenario;
 
     /**
      * Get the props map containing all test state.
@@ -72,12 +74,62 @@ public class PropsWorld {
     }
 
     /**
-     * Log a message (equivalent to cw.log in TypeScript).
+     * Set the Cucumber scenario for logging.
+     * This should be called from a @Before hook.
+     * 
+     * @param scenario the current Cucumber scenario
+     */
+    public void setScenario(Scenario scenario) {
+        this.scenario = scenario;
+    }
+
+    /**
+     * Get the current scenario.
+     * 
+     * @return the current Cucumber scenario
+     */
+    public Scenario getScenario() {
+        return scenario;
+    }
+
+    /**
+     * Log a message to the Cucumber report.
+     * This is equivalent to this.log() in TypeScript Cucumber World.
      * 
      * @param message the message to log
      */
     public void log(String message) {
+        // Log to SLF4J for console output
         logger.info(message);
+        
+        // Log to Cucumber report if scenario is available
+        if (scenario != null) {
+            scenario.log(message);
+        }
+    }
+
+    /**
+     * Attach content to the Cucumber report.
+     * 
+     * @param data the data to attach
+     * @param mediaType the MIME type of the data
+     * @param name optional name for the attachment
+     */
+    public void attach(byte[] data, String mediaType, String name) {
+        if (scenario != null) {
+            scenario.attach(data, mediaType, name);
+        }
+    }
+
+    /**
+     * Attach text content to the Cucumber report.
+     * 
+     * @param data the text to attach
+     * @param mediaType the MIME type (e.g., "text/plain", "application/json")
+     */
+    public void attach(String data, String mediaType) {
+        if (scenario != null) {
+            scenario.attach(data, mediaType, null);
+        }
     }
 }
-

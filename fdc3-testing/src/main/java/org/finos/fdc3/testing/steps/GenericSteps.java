@@ -299,7 +299,6 @@ public class GenericSteps {
                              // Use the schema $id or filename as the key
                              String schemaId = extractSchemaId(schemaContent, file.getFileName().toString());
                              schemas.put(schemaId, schema);
-                             world.log("Loaded schema: " + schemaId);
                          } catch (IOException e) {
                              world.log("Error loading schema " + file + ": " + e.getMessage());
                          }
