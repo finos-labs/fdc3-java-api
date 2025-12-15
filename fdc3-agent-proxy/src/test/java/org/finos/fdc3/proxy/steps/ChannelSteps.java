@@ -23,6 +23,10 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.ContextMetadata;
+import org.finos.fdc3.api.types.ContextHandler;
+import org.finos.fdc3.api.types.EventHandler;
+import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.proxy.support.ContextMap;
 import org.finos.fdc3.proxy.support.TestMessaging;
 import org.finos.fdc3.proxy.world.CustomWorld;
@@ -157,25 +161,50 @@ public class ChannelSteps {
     public void pipesTypesTo(String typeHandlerName, String field) {
         List<String> types = new ArrayList<>();
         world.set(field, types);
-        world.set(typeHandlerName, (Consumer<String>) s -> types.add(s));
+        
+        ContextHandler ch = new ContextHandler() {
+			
+			@Override
+			public void handleContext(Context context, ContextMetadata metadata) {
+				types.add(context.getType());
+				
+			}
+		};
+        
+        world.set(typeHandlerName, ch);
     }
 
     @Given("{string} pipes events to {string}")
     public void pipesEventsTo(String typeHandlerName, String field) {
-        List<Object> events = new ArrayList<>();
+        List<FDC3Event<?>> events = new ArrayList<>();
         world.set(field, events);
-        world.set(typeHandlerName, (Consumer<Map<String, Object>>) event -> {
-            if (event != null) {
-                events.add(event.get("details"));
-            }
-        });
+        
+        EventHandler eh = new EventHandler() {
+			
+			@Override
+			public void handleEvent(FDC3Event<?> event) {
+				events.add(event);
+			}
+		};
+        
+        world.set(typeHandlerName, eh);
     }
 
     @Given("{string} pipes context to {string}")
     public void pipesContextTo(String contextHandlerName, String field) {
         List<Context> contexts = new ArrayList<>();
         world.set(field, contexts);
-        world.set(contextHandlerName, (Consumer<Context>) contexts::add);
+        
+        ContextHandler ch = new ContextHandler() {
+			
+			@Override
+			public void handleContext(Context context, ContextMetadata metadata) {
+				contexts.add(context);
+				
+			}
+		};
+        
+        world.set(contextHandlerName, ch);
     }
 
     @When("messaging receives {string}")
