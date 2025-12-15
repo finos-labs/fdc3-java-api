@@ -24,6 +24,7 @@ import java.util.Objects;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.finos.fdc3.schema.SchemaConverter;
 import org.finos.fdc3.testing.world.PropsWorld;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.PathNotFoundException;
@@ -43,7 +44,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public final class MatchingUtils {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final SchemaConverter converter = new SchemaConverter();
+    private static final ObjectMapper objectMapper = converter.getObjectMapper();
 
     private MatchingUtils() {
         // Utility class
