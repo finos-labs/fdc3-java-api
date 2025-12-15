@@ -16,15 +16,22 @@
 
 package org.finos.fdc3.proxy.steps;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.proxy.Connectable;
+import org.finos.fdc3.proxy.DesktopAgentProxy;
+import org.finos.fdc3.proxy.apps.DefaultAppSupport;
+import org.finos.fdc3.proxy.channels.DefaultChannelSupport;
+import org.finos.fdc3.proxy.heartbeat.DefaultHeartbeatSupport;
+import org.finos.fdc3.proxy.intents.DefaultIntentSupport;
+import org.finos.fdc3.proxy.support.SimpleChannelSelector;
+import org.finos.fdc3.proxy.support.SimpleIntentResolver;
 import org.finos.fdc3.proxy.support.TestMessaging;
 import org.finos.fdc3.proxy.world.CustomWorld;
-import org.finos.fdc3.testing.agent.SimpleChannelSelector;
-import org.finos.fdc3.testing.agent.SimpleIntentResolver;
 
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.When;
@@ -41,21 +48,28 @@ public class GenericSteps {
     }
 
     @Given("A Desktop Agent in {string}")
-    public void aDesktopAgentIn(String field) {
+    public void aDesktopAgentIn(String field) throws Exception {
         if (!world.hasMessaging()) {
             @SuppressWarnings("unchecked")
             Map<String, List<Context>> channelState = (Map<String, List<Context>>) world.get(ChannelSteps.CHANNEL_STATE);
             world.setMessaging(new TestMessaging(channelState != null ? channelState : new HashMap<>()));
         }
 
-        // TODO: Create actual DesktopAgentProxy with:
-        // - DefaultChannelSupport
-        // - DefaultHeartbeatSupport
-        // - DefaultIntentSupport
-        // - DefaultAppSupport
-
-        // For now, store a placeholder
-        world.set(field, new Object()); // Replace with actual DesktopAgentProxy
+        TestMessaging messaging = world.getMessaging();
+        
+        // Using short timeouts to avoid extending tests unnecessarily
+        DefaultChannelSupport cs = new DefaultChannelSupport(messaging, new SimpleChannelSelector(world), 1500);
+        DefaultHeartbeatSupport hs = new DefaultHeartbeatSupport(messaging, 30000);
+        DefaultIntentSupport is = new DefaultIntentSupport(messaging, new SimpleIntentResolver(world), 1500, 3000);
+        DefaultAppSupport as = new DefaultAppSupport(messaging, 1500, 3000);
+        
+        List<Connectable> connectables = new ArrayList<>();
+        connectables.add(hs);
+        
+        DesktopAgentProxy da = new DesktopAgentProxy(hs, cs, is, as, connectables);
+        da.connect().toCompletableFuture().get();
+        
+        world.set(field, da);
         world.set("result", null);
     }
 
@@ -73,4 +87,3 @@ public class GenericSteps {
     }
 
 }
-

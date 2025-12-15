@@ -26,7 +26,7 @@ import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.proxy.support.ContextMap;
 import org.finos.fdc3.proxy.support.TestMessaging;
 import org.finos.fdc3.proxy.world.CustomWorld;
-import org.finos.fdc3.testing.agent.SimpleChannelSelector;
+import org.finos.fdc3.proxy.support.SimpleChannelSelector;
 
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;

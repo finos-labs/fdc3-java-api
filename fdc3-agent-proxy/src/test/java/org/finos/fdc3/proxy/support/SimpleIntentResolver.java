@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.finos.fdc3.testing.agent;
+package org.finos.fdc3.proxy.support;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,14 +26,16 @@ import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.AppIntent;
 import org.finos.fdc3.api.metadata.AppMetadata;
 import org.finos.fdc3.api.metadata.IntentMetadata;
-import org.finos.fdc3.api.types.IntentResult;
+import org.finos.fdc3.api.types.AppIdentifier;
+import org.finos.fdc3.proxy.intents.IntentResolutionChoice;
+import org.finos.fdc3.proxy.intents.IntentResolver;
 import org.finos.fdc3.testing.world.PropsWorld;
 
 /**
  * A simple intent resolver for testing purposes.
  * <p>
  * This resolver automatically selects the first intent/app in the list,
- * unless the context type is "fdc3.cancel-me", in which case it cancels.
+ * unless the context type is "fdc3.cancel-me", in which case it returns null (cancelled).
  * <p>
  * This is equivalent to the TypeScript SimpleIntentResolver class.
  */
@@ -46,28 +48,10 @@ public class SimpleIntentResolver implements IntentResolver {
     }
 
     @Override
-    public CompletionStage<Void> connect() {
-        return CompletableFuture.completedFuture(null);
-    }
-
-    @Override
-    public CompletionStage<Void> disconnect() {
-        return CompletableFuture.completedFuture(null);
-    }
-
-    @Override
-    public CompletionStage<IntentResult> intentChosen(IntentResult intentResult) {
-        world.set("intent-result", intentResult);
-        return CompletableFuture.completedFuture(intentResult);
-    }
-
-    @Override
-    public CompletionStage<Optional<IntentResolutionChoice>> chooseIntent(
-            List<AppIntent> appIntents, Context context) {
-
+    public CompletionStage<IntentResolutionChoice> chooseIntent(List<AppIntent> appIntents, Context context) {
         // Cancel if the context type is "fdc3.cancel-me"
         if ("fdc3.cancel-me".equals(context.getType())) {
-            return CompletableFuture.completedFuture(Optional.empty());
+            return CompletableFuture.completedFuture(null);
         }
 
         // Select the first intent and first app
@@ -76,43 +60,31 @@ public class SimpleIntentResolver implements IntentResolver {
         List<AppMetadata> apps = new ArrayList<>(firstIntent.getApps());
         AppMetadata firstApp = apps.get(0);
 
-        // Store the resolution for testing
+        // Create an AppIdentifier from the AppMetadata
+        final String appId = firstApp.getAppId();
+        final Optional<String> instanceId = firstApp.getInstanceId();
+        AppIdentifier appIdentifier = new AppIdentifier() {
+            @Override
+            public String getAppId() {
+                return appId;
+            }
+
+            @Override
+            public Optional<String> getInstanceId() {
+                return instanceId;
+            }
+        };
+
+        // Create the resolution choice
         IntentResolutionChoice resolution = new IntentResolutionChoice(
-                firstApp.getAppId(),
-                firstApp.getInstanceId().orElse(null),
-                intent.getName()
+                intent.getName(),
+                appIdentifier
         );
 
+        // Store for testing verification
         world.set("intent-resolution", resolution);
 
-        return CompletableFuture.completedFuture(Optional.of(resolution));
-    }
-
-    /**
-     * Represents a choice made during intent resolution.
-     */
-    public static class IntentResolutionChoice {
-        private final String appId;
-        private final String instanceId;
-        private final String intent;
-
-        public IntentResolutionChoice(String appId, String instanceId, String intent) {
-            this.appId = appId;
-            this.instanceId = instanceId;
-            this.intent = intent;
-        }
-
-        public String getAppId() {
-            return appId;
-        }
-
-        public String getInstanceId() {
-            return instanceId;
-        }
-
-        public String getIntent() {
-            return intent;
-        }
+        return CompletableFuture.completedFuture(resolution);
     }
 }
 

@@ -16,15 +16,22 @@
 
 package org.finos.fdc3.proxy.steps;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.finos.fdc3.api.context.Context;
-import org.finos.fdc3.proxy.support.TestChannelSelector;
+import org.finos.fdc3.proxy.Connectable;
+import org.finos.fdc3.proxy.DesktopAgentProxy;
+import org.finos.fdc3.proxy.apps.DefaultAppSupport;
+import org.finos.fdc3.proxy.channels.DefaultChannelSupport;
+import org.finos.fdc3.proxy.heartbeat.DefaultHeartbeatSupport;
+import org.finos.fdc3.proxy.intents.DefaultIntentSupport;
+import org.finos.fdc3.proxy.support.SimpleChannelSelector;
+import org.finos.fdc3.proxy.support.SimpleIntentResolver;
 import org.finos.fdc3.proxy.support.TestMessaging;
 import org.finos.fdc3.proxy.world.CustomWorld;
-import org.finos.fdc3.testing.agent.SimpleIntentResolver;
 
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.When;
@@ -41,40 +48,48 @@ public class ChannelSelectorSteps {
     }
 
     @Given("A Channel Selector in {string} and a Desktop Agent in {string}")
-    public void aChannelSelectorAndDesktopAgent(String selectorField, String daField) {
+    public void aChannelSelectorAndDesktopAgent(String selectorField, String daField) throws Exception {
         if (!world.hasMessaging()) {
             @SuppressWarnings("unchecked")
             Map<String, List<Context>> channelState = (Map<String, List<Context>>) world.get(ChannelSteps.CHANNEL_STATE);
             world.setMessaging(new TestMessaging(channelState != null ? channelState : new HashMap<>()));
         }
 
-        TestChannelSelector ts = new TestChannelSelector();
+        TestMessaging messaging = world.getMessaging();
+        SimpleChannelSelector ts = new SimpleChannelSelector(world);
         world.set(selectorField, ts);
 
-        // TODO: Create DefaultChannelSupport, DefaultHeartbeatSupport, etc.
-        // For now, we just set up the basic structure
-
-        // Store the selector and desktop agent references
-        world.set(daField, new Object()); // Placeholder - replace with actual DesktopAgentProxy
+        // Create the DesktopAgentProxy with the test channel selector
+        DefaultChannelSupport cs = new DefaultChannelSupport(messaging, ts, 1500);
+        DefaultHeartbeatSupport hs = new DefaultHeartbeatSupport(messaging, 30000);
+        DefaultIntentSupport is = new DefaultIntentSupport(messaging, new SimpleIntentResolver(world), 1500, 3000);
+        DefaultAppSupport as = new DefaultAppSupport(messaging, 1500, 3000);
+        
+        List<Connectable> connectables = new ArrayList<>();
+        connectables.add(hs);
+        
+        DesktopAgentProxy da = new DesktopAgentProxy(hs, cs, is, as, connectables);
+        da.connect().toCompletableFuture().get();
+        
+        world.set(daField, da);
         world.set("result", null);
     }
 
     @When("The first channel is selected via the channel selector in {string}")
     public void theFirstChannelIsSelected(String selectorField) {
-        TestChannelSelector selector = (TestChannelSelector) world.get(selectorField);
+        SimpleChannelSelector selector = (SimpleChannelSelector) world.get(selectorField);
         selector.selectFirstChannel();
     }
 
     @When("The second channel is selected via the channel selector in {string}")
     public void theSecondChannelIsSelected(String selectorField) {
-        TestChannelSelector selector = (TestChannelSelector) world.get(selectorField);
+        SimpleChannelSelector selector = (SimpleChannelSelector) world.get(selectorField);
         selector.selectSecondChannel();
     }
 
     @When("The channel is deselected via the channel selector in {string}")
     public void theChannelIsDeselected(String selectorField) {
-        TestChannelSelector selector = (TestChannelSelector) world.get(selectorField);
+        SimpleChannelSelector selector = (SimpleChannelSelector) world.get(selectorField);
         selector.deselectChannel();
     }
 }
-

@@ -30,13 +30,13 @@ public final class ContextMap {
 
     static {
         // fdc3.instrument
-        Map<Object, Object> instrumentId = new HashMap<>();
+        Map<String, Object> instrumentId = new HashMap<>();
         instrumentId.put("ticker", "AAPL");
         Context instrument = new Context("fdc3.instrument", "Apple", instrumentId);
         CONTEXTS.put("fdc3.instrument", instrument);
 
         // fdc3.country
-        Map<Object, Object> countryId = new HashMap<>();
+        Map<String, Object> countryId = new HashMap<>();
         countryId.put("COUNTRY_ISOALPHA2", "SE");
         countryId.put("COUNTRY_ISOALPHA3", "SWE");
         Context country = new Context("fdc3.country", "Sweden", countryId);

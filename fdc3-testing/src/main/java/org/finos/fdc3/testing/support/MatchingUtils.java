@@ -76,7 +76,8 @@ public final class MatchingUtils {
             } else {
                 // Use JSONPath to resolve the value from props
                 try {
-                    Object propsAsJson = objectMapper.convertValue(world.getProps(), Object.class);
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> propsAsJson = objectMapper.convertValue(world.getProps(), Map.class);
                     String jsonPath = "$." + stripped;
                     return JsonPath.read(propsAsJson, jsonPath);
                 } catch (PathNotFoundException e) {

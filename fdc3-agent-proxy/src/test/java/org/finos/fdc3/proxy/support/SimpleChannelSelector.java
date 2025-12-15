@@ -18,50 +18,54 @@ package org.finos.fdc3.proxy.support;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 
 import org.finos.fdc3.api.channel.Channel;
-import org.finos.fdc3.testing.agent.ChannelSelector;
+import org.finos.fdc3.proxy.channels.ChannelSelector;
+import org.finos.fdc3.testing.world.PropsWorld;
 
 /**
- * Test implementation of ChannelSelector for Cucumber tests.
+ * A simple channel selector for testing purposes.
+ * <p>
+ * This selector stores channel state in the PropsWorld for verification.
+ * <p>
+ * This is equivalent to the TypeScript SimpleChannelSelector class.
  */
-public class TestChannelSelector implements ChannelSelector {
+public class SimpleChannelSelector implements ChannelSelector {
 
-    private Consumer<String> callback;
+    public static final String CHANNEL_STATE = "CHANNEL_STATE";
+
+    private final PropsWorld world;
+    private Consumer<String> channelChangeCallback;
     private String channelId;
     private List<Channel> channels = new ArrayList<>();
 
+    public SimpleChannelSelector(PropsWorld world) {
+        this.world = world;
+    }
+
     @Override
-    public CompletionStage<Void> updateChannel(String channelId, List<Channel> availableChannels) {
+    public void updateChannel(String channelId, List<Channel> availableChannels) {
         this.channelId = channelId;
         this.channels = new ArrayList<>(availableChannels);
-        return CompletableFuture.completedFuture(null);
+        world.set("channelId", channelId);
+        world.set("channels", availableChannels);
     }
 
     @Override
     public void setChannelChangeCallback(Consumer<String> callback) {
-        this.callback = callback;
+        this.channelChangeCallback = callback;
     }
 
-    @Override
-    public CompletionStage<Void> connect() {
-        System.out.println("TestChannelSelector was connected");
-        return CompletableFuture.completedFuture(null);
-    }
-
-    @Override
-    public CompletionStage<Void> disconnect() {
-        System.out.println("TestChannelSelector was disconnected");
-        return CompletableFuture.completedFuture(null);
-    }
-
+    /**
+     * Simulate a channel change (for testing).
+     *
+     * @param channelId the new channel ID, or null to leave channel
+     */
     public void selectChannel(String channelId) {
         this.channelId = channelId;
-        if (callback != null) {
-            callback.accept(channelId);
+        if (channelChangeCallback != null) {
+            channelChangeCallback.accept(channelId);
         } else {
             throw new IllegalStateException("Channel selected before Channel Change callback was set!");
         }

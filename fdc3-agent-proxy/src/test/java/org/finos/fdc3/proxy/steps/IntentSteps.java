@@ -200,7 +200,7 @@ public class IntentSteps {
     @Given("{string} returns a context item")
     public void returnsAContextItem(String intentHandlerName) {
         world.set(intentHandlerName, (Supplier<Context>) () -> {
-            Map<Object, Object> id = new HashMap<>();
+            Map<String, Object> id = new HashMap<>();
             id.put("in", "one");
             id.put("out", "two");
             return new Context("fdc3.returned-intent", null, id);

@@ -17,37 +17,76 @@
 package org.finos.fdc3.proxy.support;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.types.AppIdentifier;
+import org.finos.fdc3.proxy.listeners.RegisterableListener;
+import org.finos.fdc3.proxy.messaging.AbstractMessaging;
+import org.finos.fdc3.proxy.support.responses.*;
 
 /**
  * Test implementation of messaging for Cucumber tests.
  * Simulates the message exchange between the Desktop Agent and apps.
  */
-public class TestMessaging {
+public class TestMessaging extends AbstractMessaging {
 
     private final List<Map<String, Object>> allPosts = new ArrayList<>();
+    private final Map<String, RegisterableListener> listeners = new ConcurrentHashMap<>();
     private final List<IntentDetail> intentDetails = new ArrayList<>();
     private final Map<String, List<Context>> channelState;
+    private final List<AutomaticResponse> automaticResponses;
+    
     private Channel currentChannel;
     private PossibleIntentResult intentResult;
-    private final String appId;
-    private final String instanceId;
 
     public TestMessaging(Map<String, List<Context>> channelState) {
+        super(new AppIdentifier() {
+            @Override
+            public String getAppId() {
+                return "cucumber-app";
+            }
+
+            @Override
+            public java.util.Optional<String> getInstanceId() {
+                return java.util.Optional.of("cucumber-instance");
+            }
+        });
         this.channelState = channelState != null ? channelState : new HashMap<>();
-        this.appId = "cucumber-app";
-        this.instanceId = "cucumber-instance";
+        
+        // Set up automatic responses for various message types
+        this.automaticResponses = new ArrayList<>();
+        this.automaticResponses.add(new FindIntentResponse());
+        this.automaticResponses.add(new FindIntentByContextResponse());
+        this.automaticResponses.add(new RaiseIntentResponse());
+        this.automaticResponses.add(new RaiseIntentForContextResponse());
+        this.automaticResponses.add(new IntentResultResponse());
+        this.automaticResponses.add(new GetAppMetadataResponse());
+        this.automaticResponses.add(new GetInfoResponse());
+        this.automaticResponses.add(new FindInstancesResponse());
+        this.automaticResponses.add(new OpenResponse());
+        this.automaticResponses.add(new GetOrCreateChannelResponse());
+        this.automaticResponses.add(new ChannelStateResponse(this.channelState));
+        this.automaticResponses.add(new GetUserChannelsResponse());
+        this.automaticResponses.add(new RegisterListenersResponse());
+        this.automaticResponses.add(new UnsubscribeListenersResponse());
+        this.automaticResponses.add(new CreatePrivateChannelResponse());
+        this.automaticResponses.add(new DisconnectPrivateChannelResponse());
+        this.automaticResponses.add(new AddEventListenerResponse());
     }
 
+    @Override
     public String createUUID() {
         return UUID.randomUUID().toString();
     }
@@ -60,8 +99,43 @@ public class TestMessaging {
         return allPosts;
     }
 
-    public void post(Map<String, Object> message) {
+    @Override
+    public CompletionStage<Void> post(Map<String, Object> message) {
         allPosts.add(message);
+        
+        String type = (String) message.get("type");
+        if (!"WCP6Goodbye".equals(type)) {
+            for (AutomaticResponse ar : automaticResponses) {
+                if (ar.filter(type)) {
+                    return ar.action(message, this);
+                }
+            }
+        }
+        
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public void register(RegisterableListener listener) {
+        if (listener.getId() == null) {
+            throw new IllegalArgumentException("Listener must have ID set");
+        }
+        listeners.put(listener.getId(), listener);
+    }
+
+    @Override
+    public void unregister(String id) {
+        listeners.remove(id);
+    }
+
+    @Override
+    public CompletionStage<Void> disconnect() {
+        Map<String, Object> bye = new HashMap<>();
+        bye.put("type", "WCP6Goodbye");
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("timestamp", OffsetDateTime.now().toString());
+        bye.put("meta", meta);
+        return post(bye);
     }
 
     public void addAppIntentDetail(IntentDetail detail) {
@@ -72,34 +146,53 @@ public class TestMessaging {
         return intentDetails;
     }
 
-    public Map<String, Object> createMeta() {
+    /**
+     * Used in testing steps to create response metadata.
+     */
+    public Map<String, Object> createResponseMeta() {
         Map<String, Object> meta = new HashMap<>();
         meta.put("requestUuid", createUUID());
+        meta.put("responseUuid", createUUID());
         meta.put("timestamp", Instant.now().toString());
         Map<String, String> source = new HashMap<>();
-        source.put("appId", appId);
-        source.put("instanceId", instanceId);
+        source.put("appId", getAppIdentifier().getAppId());
+        getAppIdentifier().getInstanceId().ifPresent(id -> source.put("instanceId", id));
         meta.put("source", source);
         return meta;
     }
 
-    public Map<String, Object> createResponseMeta() {
-        Map<String, Object> meta = createMeta();
-        meta.put("responseUuid", createUUID());
-        return meta;
-    }
-
+    /**
+     * Used in testing steps to create event metadata.
+     */
     public Map<String, Object> createEventMeta() {
-        Map<String, Object> meta = createMeta();
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("requestUuid", createUUID());
         meta.put("eventUuid", createUUID());
+        meta.put("timestamp", Instant.now().toString());
+        Map<String, String> source = new HashMap<>();
+        source.put("appId", getAppIdentifier().getAppId());
+        getAppIdentifier().getInstanceId().ifPresent(id -> source.put("instanceId", id));
+        meta.put("source", source);
         return meta;
     }
 
+    /**
+     * Simulates receiving a message from the Desktop Agent.
+     * Dispatches to all registered listeners that match the message.
+     */
     public void receive(Map<String, Object> message, Consumer<String> log) {
-        // Process incoming messages
-        if (log != null) {
-            log.accept("Received message: " + message.get("type"));
-        }
+        listeners.forEach((id, listener) -> {
+            if (listener.filter(message)) {
+                if (log != null) {
+                    log.accept("Processing in " + id);
+                }
+                listener.action(message);
+            } else {
+                if (log != null) {
+                    log.accept("Ignoring in " + id);
+                }
+            }
+        });
     }
 
     public PossibleIntentResult getIntentResult() {
@@ -120,14 +213,6 @@ public class TestMessaging {
 
     public Map<String, List<Context>> getChannelState() {
         return channelState;
-    }
-
-    public String getAppId() {
-        return appId;
-    }
-
-    public String getInstanceId() {
-        return instanceId;
     }
 
     /**
@@ -214,4 +299,3 @@ public class TestMessaging {
         }
     }
 }
-
