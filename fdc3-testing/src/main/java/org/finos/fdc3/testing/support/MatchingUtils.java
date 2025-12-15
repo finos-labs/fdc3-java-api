@@ -31,7 +31,6 @@ import org.apache.commons.jxpath.JXPathNotFoundException;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion;
-import com.networknt.schema.ValidationMessage;
 
 import io.cucumber.datatable.DataTable;
 
@@ -51,6 +50,19 @@ public final class MatchingUtils {
         // Utility class
     }
 
+    private static Object extractFromWorld(Object world, String expression) {
+        // Use JXPath to resolve the value from props
+        try {
+            JXPathContext context = JXPathContext.newContext(world);
+            context.setLenient(true);
+            String xpathName = "//" + expression.replaceAll("\\.", "/");
+            return context.getValue(xpathName);
+        } catch (JXPathNotFoundException e) {
+            return null;
+        }
+
+    }
+    
     /**
      * Resolve a field reference to its actual value.
      * <p>
@@ -76,14 +88,7 @@ public final class MatchingUtils {
             } else if (isNumeric(stripped)) {
                 return Double.parseDouble(stripped);
             } else {
-                // Use JXPath to resolve the value from props
-                try {
-                    JXPathContext context = JXPathContext.newContext(world);
-                    context.setLenient(true);
-                    return context.getValue(stripped);
-                } catch (JXPathNotFoundException e) {
-                    return null;
-                }
+            	return extractFromWorld(world, stripped);
             }
         } else {
             return name;
@@ -125,14 +130,7 @@ public final class MatchingUtils {
                 if (field.length() > "matches_type".length()) {
                     // Extract path before matches_type
                     String path = field.substring(0, field.length() - "matches_type".length() - 1);
-                    try {
-                        JXPathContext context = JXPathContext.newContext(data);
-                        context.setLenient(true);
-                        valData = context.getValue(path);
-                    } catch (Exception e) {
-                        world.log("Error extracting path: " + e.getMessage());
-                        return false;
-                    }
+                    valData = extractFromWorld(world, path);
                 }
 
                 // Validate against schema
@@ -163,9 +161,7 @@ public final class MatchingUtils {
             } else {
                 // Field value comparison using JXPath
                 try {
-                    JXPathContext context = JXPathContext.newContext(data);
-                    context.setLenient(true);
-                    Object found = context.getValue(field);
+                    Object found = extractFromWorld(data, field);
                     Object resolved = handleResolve(expected, world);
 
                     if (!Objects.equals(asString(found), asString(resolved))) {

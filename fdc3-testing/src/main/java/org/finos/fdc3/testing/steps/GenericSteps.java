@@ -16,7 +16,13 @@
 
 package org.finos.fdc3.testing.steps;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -24,6 +30,11 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SpecVersion;
 
 import org.finos.fdc3.testing.support.MatchingUtils;
 import org.finos.fdc3.testing.world.PropsWorld;
@@ -90,10 +101,8 @@ public class GenericSteps {
     @When("I call {string} with {string} with parameter {string}")
     public void iCallWithParameter(String field, String fnName, String param) {
         try {
-            System.out.println("Starting call"); 
             Object object = handleResolve(field, world);
             Object paramValue = handleResolve(param, world);
-            System.out.println("Calling "+object+" with "+paramValue);
             Object result = invokeMethod(object, fnName, paramValue);
             world.set("result", result);
         } catch (Exception error) {
@@ -265,9 +274,117 @@ public class GenericSteps {
 
     @Given("schemas loaded")
     public void schemasLoaded() {
-        // Schema loading would be configured externally
-        // The schemas map should be set up in the test configuration
-        world.log("Schemas should be loaded by test configuration");
+        Map<String, JsonSchema> schemas = new HashMap<>();
+        JsonSchemaFactory factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7);
+
+        // Find the fdc3-schema module's npm-work directory
+        // This works when running from the project root or any submodule
+        Path schemaDir = findSchemaDirectory();
+        
+        if (schemaDir == null || !Files.exists(schemaDir)) {
+            world.log("Schema directory not found. Run 'mvn compile' on fdc3-schema first.");
+            return;
+        }
+
+        // Load all API schemas
+        Path apiDir = schemaDir.resolve("api");
+        if (Files.exists(apiDir)) {
+            try (Stream<Path> files = Files.list(apiDir)) {
+                files.filter(p -> p.toString().endsWith(".json"))
+                     .forEach(file -> {
+                         try {
+                             String schemaContent = Files.readString(file);
+                             JsonSchema schema = factory.getSchema(schemaContent);
+                             // Use the schema $id or filename as the key
+                             String schemaId = extractSchemaId(schemaContent, file.getFileName().toString());
+                             schemas.put(schemaId, schema);
+                             world.log("Loaded schema: " + schemaId);
+                         } catch (IOException e) {
+                             world.log("Error loading schema " + file + ": " + e.getMessage());
+                         }
+                     });
+            } catch (IOException e) {
+                world.log("Error reading schema directory: " + e.getMessage());
+            }
+        }
+
+        // Load context schema
+        Path contextSchemaPath = findContextSchemaDirectory();
+        if (contextSchemaPath != null) {
+            Path contextSchema = contextSchemaPath.resolve("context").resolve("context.schema.json");
+            if (Files.exists(contextSchema)) {
+                try {
+                    String schemaContent = Files.readString(contextSchema);
+                    JsonSchema schema = factory.getSchema(schemaContent);
+                    schemas.put("context", schema);
+                    world.log("Loaded context schema");
+                } catch (IOException e) {
+                    world.log("Error loading context schema: " + e.getMessage());
+                }
+            }
+        }
+
+        world.set("schemas", schemas);
+        world.log("Loaded " + schemas.size() + " schemas");
+    }
+
+    /**
+     * Find the schema directory by checking various possible locations.
+     */
+    private Path findSchemaDirectory() {
+        // Possible locations relative to current working directory
+        String[] possiblePaths = {
+            "fdc3-schema/target/npm-work/node_modules/@finos/fdc3-schema/dist/schemas",
+            "../fdc3-schema/target/npm-work/node_modules/@finos/fdc3-schema/dist/schemas",
+            "target/npm-work/node_modules/@finos/fdc3-schema/dist/schemas"
+        };
+        
+        for (String pathStr : possiblePaths) {
+            Path path = Paths.get(pathStr);
+            if (Files.exists(path)) {
+                return path;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Find the context schema directory.
+     */
+    private Path findContextSchemaDirectory() {
+        String[] possiblePaths = {
+            "fdc3-schema/target/npm-work/node_modules/@finos/fdc3-context/dist/schemas",
+            "../fdc3-schema/target/npm-work/node_modules/@finos/fdc3-context/dist/schemas",
+            "fdc3-context/target/npm-work/node_modules/@finos/fdc3-context/dist/schemas",
+            "../fdc3-context/target/npm-work/node_modules/@finos/fdc3-context/dist/schemas"
+        };
+        
+        for (String pathStr : possiblePaths) {
+            Path path = Paths.get(pathStr);
+            if (Files.exists(path)) {
+                return path;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extract the schema ID from the schema content or use the filename.
+     */
+    private String extractSchemaId(String schemaContent, String filename) {
+        // Try to extract $id from the schema
+        // Simple regex approach - could use Jackson for more robust parsing
+        int idIndex = schemaContent.indexOf("\"$id\"");
+        if (idIndex >= 0) {
+            int colonIndex = schemaContent.indexOf(":", idIndex);
+            int quoteStart = schemaContent.indexOf("\"", colonIndex + 1);
+            int quoteEnd = schemaContent.indexOf("\"", quoteStart + 1);
+            if (quoteStart >= 0 && quoteEnd > quoteStart) {
+                return schemaContent.substring(quoteStart + 1, quoteEnd);
+            }
+        }
+        // Fall back to filename without extension
+        return filename.replace(".schema.json", "").replace(".json", "");
     }
 
     // ========== Helper Methods ==========
