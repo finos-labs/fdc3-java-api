@@ -16,3 +16,9 @@ website/package-lock.json
 
 # Maven target
 target/
+
+# Eclipse Ignore
+.classpath
+.project
+.settings/*
+*/.settings

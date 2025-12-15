@@ -90,8 +90,10 @@ public class GenericSteps {
     @When("I call {string} with {string} with parameter {string}")
     public void iCallWithParameter(String field, String fnName, String param) {
         try {
+            System.out.println("Starting call"); 
             Object object = handleResolve(field, world);
             Object paramValue = handleResolve(param, world);
+            System.out.println("Calling "+object+" with "+paramValue);
             Object result = invokeMethod(object, fnName, paramValue);
             world.set("result", result);
         } catch (Exception error) {

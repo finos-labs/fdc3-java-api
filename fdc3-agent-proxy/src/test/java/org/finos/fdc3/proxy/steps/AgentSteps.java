@@ -37,13 +37,13 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.When;
 
 /**
- * Generic Cucumber step definitions for agent-proxy tests.
+ * Agent step definitions for agent-proxy tests.
  */
-public class GenericSteps {
+public class AgentSteps {
 
     private final CustomWorld world;
 
-    public GenericSteps(CustomWorld world) {
+    public AgentSteps(CustomWorld world) {
         this.world = world;
     }
 

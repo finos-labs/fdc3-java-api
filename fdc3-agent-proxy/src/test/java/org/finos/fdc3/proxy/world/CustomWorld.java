@@ -22,6 +22,9 @@ import org.finos.fdc3.testing.world.PropsWorld;
 /**
  * Custom Cucumber World for agent-proxy tests.
  * Extends PropsWorld and adds messaging support.
+ * 
+ * Bean configuration in TestSpringConfig ensures the same instance is shared
+ * across all step definition classes within a scenario.
  */
 public class CustomWorld extends PropsWorld {
 

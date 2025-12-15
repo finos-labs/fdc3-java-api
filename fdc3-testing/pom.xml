@@ -37,7 +37,6 @@
         <cucumber.version>7.15.0</cucumber.version>
         <junit.version>5.10.1</junit.version>
         <jackson.version>2.16.1</jackson.version>
-        <jsonpath.version>2.9.0</jsonpath.version>
         <networknt.version>1.3.1</networknt.version>
     </properties>
 
@@ -80,11 +79,11 @@
             <version>${junit.version}</version>
         </dependency>
 
-        <!-- JSONPath for Java -->
+        <!-- JXPath for navigating Java object graphs -->
         <dependency>
-            <groupId>com.jayway.jsonpath</groupId>
-            <artifactId>json-path</artifactId>
-            <version>${jsonpath.version}</version>
+            <groupId>commons-jxpath</groupId>
+            <artifactId>commons-jxpath</artifactId>
+            <version>1.3</version>
         </dependency>
 
         <!-- JSON Schema Validator -->

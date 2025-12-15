@@ -26,8 +26,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.finos.fdc3.schema.SchemaConverter;
 import org.finos.fdc3.testing.world.PropsWorld;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.PathNotFoundException;
+import org.apache.commons.jxpath.JXPathContext;
+import org.apache.commons.jxpath.JXPathNotFoundException;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion;
@@ -76,13 +76,12 @@ public final class MatchingUtils {
             } else if (isNumeric(stripped)) {
                 return Double.parseDouble(stripped);
             } else {
-                // Use JSONPath to resolve the value from props
+                // Use JXPath to resolve the value from props
                 try {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> propsAsJson = objectMapper.convertValue(world.getProps(), Map.class);
-                    String jsonPath = "$." + stripped;
-                    return JsonPath.read(propsAsJson, jsonPath);
-                } catch (PathNotFoundException e) {
+                    JXPathContext context = JXPathContext.newContext(world);
+                    context.setLenient(true);
+                    return context.getValue(stripped);
+                } catch (JXPathNotFoundException e) {
                     return null;
                 }
             }
@@ -127,8 +126,9 @@ public final class MatchingUtils {
                     // Extract path before matches_type
                     String path = field.substring(0, field.length() - "matches_type".length() - 1);
                     try {
-                        String dataJson = objectMapper.writeValueAsString(data);
-                        valData = JsonPath.read(dataJson, "$." + path);
+                        JXPathContext context = JXPathContext.newContext(data);
+                        context.setLenient(true);
+                        valData = context.getValue(path);
                     } catch (Exception e) {
                         world.log("Error extracting path: " + e.getMessage());
                         return false;
@@ -161,10 +161,11 @@ public final class MatchingUtils {
                     return false;
                 }
             } else {
-                // Field value comparison using JSONPath
+                // Field value comparison using JXPath
                 try {
-                    String dataJson = objectMapper.writeValueAsString(data);
-                    Object found = JsonPath.read(dataJson, "$." + field);
+                    JXPathContext context = JXPathContext.newContext(data);
+                    context.setLenient(true);
+                    Object found = context.getValue(field);
                     Object resolved = handleResolve(expected, world);
 
                     if (!Objects.equals(asString(found), asString(resolved))) {
@@ -172,11 +173,11 @@ public final class MatchingUtils {
                                 "Match failed on %s: '%s' vs '%s'", field, found, resolved));
                         return false;
                     }
-                } catch (PathNotFoundException e) {
+                } catch (JXPathNotFoundException e) {
                     world.log("Path not found: " + field);
                     return false;
-                } catch (JsonProcessingException e) {
-                    world.log("JSON processing error: " + e.getMessage());
+                } catch (Exception e) {
+                    world.log("Error: " + e.getMessage());
                     return false;
                 }
             }

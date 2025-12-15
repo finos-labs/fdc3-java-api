@@ -16,27 +16,13 @@
 
 package org.finos.fdc3.proxy;
 
-import org.finos.fdc3.proxy.world.CustomWorld;
-
-import io.cucumber.java.Before;
-import io.cucumber.java.Scenario;
+import io.cucumber.spring.CucumberContextConfiguration;
+import org.springframework.test.context.ContextConfiguration;
 
 /**
- * Cucumber configuration and hooks.
+ * Cucumber Spring configuration entry point.
  */
+@CucumberContextConfiguration
+@ContextConfiguration(classes = TestSpringConfig.class)
 public class CucumberSpringConfiguration {
-
-    private final CustomWorld world;
-
-    public CucumberSpringConfiguration(CustomWorld world) {
-        this.world = world;
-    }
-
-    @Before
-    public void beforeScenario(Scenario scenario) {
-        // Reset world state before each scenario
-        world.getProps().clear();
-        world.setMessaging(null);
-    }
 }
-
