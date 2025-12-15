@@ -273,7 +273,7 @@ public class DefaultChannelSupport implements ChannelSupport {
 
     @Override
     public CompletionStage<Listener> addContextListener(ContextHandler handler, String type) {
-        UserChannelContextListener listener = new UserChannelContextListener(this, messaging, messageExchangeTimeout, type, handler);
+        DefaultUserChannelContextListener listener = new DefaultUserChannelContextListener(this, messaging, messageExchangeTimeout, type, handler);
         return listener.register().thenApply(v -> listener);
     }
 

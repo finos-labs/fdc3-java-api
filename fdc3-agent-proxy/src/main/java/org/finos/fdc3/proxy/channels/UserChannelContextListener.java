@@ -16,80 +16,23 @@
 
 package org.finos.fdc3.proxy.channels;
 
-import java.util.Map;
-import java.util.concurrent.CompletionStage;
-
 import org.finos.fdc3.api.channel.Channel;
-import org.finos.fdc3.api.types.ContextHandler;
-import org.finos.fdc3.proxy.Messaging;
-import org.finos.fdc3.proxy.listeners.DefaultContextListener;
+import org.finos.fdc3.api.types.Listener;
+import org.finos.fdc3.proxy.listeners.RegisterableListener;
 
 /**
- * Context listener that tracks user channel changes.
+ * This is a special version of a ContextListener created when the user calls the
+ * fdc3.addContextListener method. In this scenario, the listener will respond to broadcasts
+ * on whatever is the current user channel.
  */
-public class UserChannelContextListener extends DefaultContextListener {
-
-    private final DefaultChannelSupport channelSupport;
-
-    public UserChannelContextListener(
-            DefaultChannelSupport channelSupport,
-            Messaging messaging,
-            long messageExchangeTimeout,
-            String contextType,
-            ContextHandler handler) {
-        super(messaging, messageExchangeTimeout, null, contextType, handler, "broadcastEvent");
-        this.channelSupport = channelSupport;
-    }
-
-    @Override
-    public CompletionStage<Void> register() {
-        return super.register().thenCompose(v -> changeChannel());
-    }
+public interface UserChannelContextListener extends Listener, RegisterableListener {
 
     /**
-     * Called when the user channel changes.
+     * This method is called when the user channel changes. The listener should then
+     * call its handler with the latest piece of relevant channel state and start responding to
+     * events on the new channelId.
+     *
+     * @param channel the new channel, or null if leaving channel
      */
-    public CompletionStage<Void> changeChannel() {
-        Channel currentChannel = channelSupport.getCurrentChannelInternal();
-        if (currentChannel != null) {
-            return currentChannel.getCurrentContext(contextType)
-                    .thenAccept(contextOpt -> {
-                        contextOpt.ifPresent(context -> handler.handleContext(context, null));
-                    });
-        }
-        return java.util.concurrent.CompletableFuture.completedFuture(null);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public boolean filter(Map<String, Object> message) {
-        String type = (String) message.get("type");
-        if (!messageType.equals(type)) {
-            return false;
-        }
-
-        Map<String, Object> payload = (Map<String, Object>) message.get("payload");
-        if (payload == null) {
-            return false;
-        }
-
-        // Check if on matching channel or open broadcast
-        String msgChannelId = (String) payload.get("channelId");
-        Channel currentChannel = channelSupport.getCurrentChannelInternal();
-        boolean onMatchingChannel = currentChannel != null && currentChannel.getId().equals(msgChannelId);
-        boolean openBroadcast = msgChannelId == null;
-
-        if (!onMatchingChannel && !openBroadcast) {
-            return false;
-        }
-
-        Map<String, Object> context = (Map<String, Object>) payload.get("context");
-        if (context == null) {
-            return false;
-        }
-
-        String msgContextType = (String) context.get("type");
-        return contextType == null || contextType.equals(msgContextType);
-    }
+    void changeChannel(Channel channel);
 }
-

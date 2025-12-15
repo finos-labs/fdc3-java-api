@@ -16,26 +16,22 @@
 
 package org.finos.fdc3.proxy.listeners;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
-import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
-import org.finos.fdc3.schema.*;
+import org.finos.fdc3.schema.PrivateChannelEventType;
 
 /**
  * Event listener for private channel events.
+ * Extends AbstractListener to handle registration/unregistration.
  */
-public class PrivateChannelEventListener implements RegisterableListener, Listener {
+public class PrivateChannelEventListener extends AbstractListener<EventHandler> {
 
-    private final Messaging messaging;
-    private final long messageExchangeTimeout;
     private final String channelId;
     private final String eventType;
-    private final EventHandler handler;
-    private final String id;
 
     public PrivateChannelEventListener(
             Messaging messaging,
@@ -43,17 +39,30 @@ public class PrivateChannelEventListener implements RegisterableListener, Listen
             String channelId,
             String eventType,
             EventHandler handler) {
-        this.messaging = messaging;
-        this.messageExchangeTimeout = messageExchangeTimeout;
+        super(
+            messaging,
+            messageExchangeTimeout,
+            handler,
+            "privateChannelAddEventListenerRequest",
+            "privateChannelAddEventListenerResponse",
+            "privateChannelUnsubscribeEventListenerRequest",
+            "privateChannelUnsubscribeEventListenerResponse"
+        );
         this.channelId = channelId;
         this.eventType = eventType;
-        this.handler = handler;
-        this.id = messaging.createUUID();
     }
 
     @Override
-    public String getId() {
-        return id;
+    protected Map<String, Object> buildSubscribeRequest() {
+        Map<String, Object> request = new HashMap<>();
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("privateChannelId", channelId);
+        PrivateChannelEventType pcEventType = toPrivateChannelEventType(eventType);
+        if (pcEventType != null) {
+            payload.put("listenerType", pcEventType.toValue());
+        }
+        request.put("payload", payload);
+        return request;
     }
 
     @Override
@@ -95,30 +104,6 @@ public class PrivateChannelEventListener implements RegisterableListener, Listen
         Map<String, Object> payload = (Map<String, Object>) message.get("payload");
         FDC3Event<Map<String, Object>> event = new FDC3Event<>(eventType, payload);
         handler.handleEvent(event);
-    }
-
-    @Override
-    public CompletionStage<Void> register() {
-        PrivateChannelAddEventListenerRequest request = new PrivateChannelAddEventListenerRequest();
-        request.setType(PrivateChannelAddEventListenerRequestType.PRIVATE_CHANNEL_ADD_EVENT_LISTENER_REQUEST);
-        request.setMeta(messaging.createMeta());
-
-        PrivateChannelAddEventListenerRequestPayload payload = new PrivateChannelAddEventListenerRequestPayload();
-        payload.setPrivateChannelID(channelId);
-        payload.setListenerType(toPrivateChannelEventType(eventType));
-        request.setPayload(payload);
-
-        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
-
-        messaging.register(this);
-
-        return messaging.<Map<String, Object>>exchange(requestMap, "privateChannelAddEventListenerResponse", messageExchangeTimeout)
-                .thenApply(response -> null);
-    }
-
-    @Override
-    public void unsubscribe() {
-        messaging.unregister(id);
     }
 
     /**

@@ -16,28 +16,24 @@
 
 package org.finos.fdc3.proxy.listeners;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
+import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.types.ContextHandler;
-import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
-import org.finos.fdc3.schema.*;
+import org.finos.fdc3.proxy.channels.UserChannelContextListener;
 
 /**
  * Default implementation of a context listener.
+ * Extends AbstractListener to handle registration/unregistration.
  */
-public class DefaultContextListener implements RegisterableListener, Listener {
+public class DefaultContextListener extends AbstractListener<ContextHandler> implements UserChannelContextListener {
 
-    protected final Messaging messaging;
-    protected final long messageExchangeTimeout;
-    protected final String channelId;
+    protected String channelId;
     protected final String contextType;
-    protected final ContextHandler handler;
     protected final String messageType;
-    private final String id;
 
     public DefaultContextListener(
             Messaging messaging,
@@ -55,18 +51,44 @@ public class DefaultContextListener implements RegisterableListener, Listener {
             String contextType,
             ContextHandler handler,
             String messageType) {
-        this.messaging = messaging;
-        this.messageExchangeTimeout = messageExchangeTimeout;
+        super(
+            messaging,
+            messageExchangeTimeout,
+            handler,
+            "addContextListenerRequest",
+            "addContextListenerResponse",
+            "contextListenerUnsubscribeRequest",
+            "contextListenerUnsubscribeResponse"
+        );
         this.channelId = channelId;
         this.contextType = contextType;
-        this.handler = handler;
         this.messageType = messageType;
-        this.id = messaging.createUUID();
     }
 
     @Override
-    public String getId() {
-        return id;
+    public void changeChannel(Channel channel) {
+        if (channel == null) {
+            this.channelId = null;
+        } else {
+            this.channelId = channel.getId();
+            // Get current context from the channel
+            channel.getCurrentContext(contextType)
+                .thenAccept(context -> {
+                    if (context.isPresent()) {
+                        handler.handleContext(context.get(), null);
+                    }
+                });
+        }
+    }
+
+    @Override
+    protected Map<String, Object> buildSubscribeRequest() {
+        Map<String, Object> request = new HashMap<>();
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("channelId", channelId);
+        payload.put("contextType", contextType);
+        request.put("payload", payload);
+        return request;
     }
 
     @Override
@@ -103,34 +125,5 @@ public class DefaultContextListener implements RegisterableListener, Listener {
         Map<String, Object> contextMap = (Map<String, Object>) payload.get("context");
         Context context = Context.fromMap(contextMap);
         handler.handleContext(context, null);
-    }
-
-    @Override
-    public CompletionStage<Void> register() {
-        AddContextListenerRequest request = new AddContextListenerRequest();
-        request.setType(AddContextListenerRequestType.ADD_CONTEXT_LISTENER_REQUEST);
-        request.setMeta(messaging.createMeta());
-
-        AddContextListenerRequestPayload payload = new AddContextListenerRequestPayload();
-        payload.setChannelID(channelId);
-        payload.setContextType(contextType);
-        request.setPayload(payload);
-
-        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
-
-        messaging.register(this);
-
-        return messaging.<Map<String, Object>>exchange(requestMap, "addContextListenerResponse", messageExchangeTimeout)
-                .thenApply(response -> null);
-    }
-
-    @Override
-    public void unsubscribe() {
-        messaging.unregister(id);
-    }
-
-    public CompletionStage<Void> unsubscribeAsync() {
-        messaging.unregister(id);
-        return CompletableFuture.completedFuture(null);
     }
 }

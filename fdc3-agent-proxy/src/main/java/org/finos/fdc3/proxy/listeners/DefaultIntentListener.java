@@ -16,43 +16,47 @@
 
 package org.finos.fdc3.proxy.listeners;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.ContextMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.IntentHandler;
-import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
-import org.finos.fdc3.schema.*;
 
 /**
  * Default implementation of an intent listener.
+ * Extends AbstractListener to handle registration/unregistration.
  */
-public class DefaultIntentListener implements RegisterableListener, Listener {
+public class DefaultIntentListener extends AbstractListener<IntentHandler> {
 
-    private final Messaging messaging;
     private final String intent;
-    private final IntentHandler handler;
-    private final long messageExchangeTimeout;
-    private final String id;
 
     public DefaultIntentListener(
             Messaging messaging,
             String intent,
             IntentHandler handler,
             long messageExchangeTimeout) {
-        this.messaging = messaging;
+        super(
+            messaging,
+            messageExchangeTimeout,
+            handler,
+            "addIntentListenerRequest",
+            "addIntentListenerResponse",
+            "intentListenerUnsubscribeRequest",
+            "intentListenerUnsubscribeResponse"
+        );
         this.intent = intent;
-        this.handler = handler;
-        this.messageExchangeTimeout = messageExchangeTimeout;
-        this.id = messaging.createUUID();
     }
 
     @Override
-    public String getId() {
-        return id;
+    protected Map<String, Object> buildSubscribeRequest() {
+        Map<String, Object> request = new HashMap<>();
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("intent", intent);
+        request.put("payload", payload);
+        return request;
     }
 
     @Override
@@ -106,28 +110,5 @@ public class DefaultIntentListener implements RegisterableListener, Listener {
         }
 
         handler.handleIntent(context, contextMetadata);
-    }
-
-    @Override
-    public CompletionStage<Void> register() {
-        AddIntentListenerRequest request = new AddIntentListenerRequest();
-        request.setType(AddIntentListenerRequestType.ADD_INTENT_LISTENER_REQUEST);
-        request.setMeta(messaging.createMeta());
-
-        AddIntentListenerRequestPayload payload = new AddIntentListenerRequestPayload();
-        payload.setIntent(intent);
-        request.setPayload(payload);
-
-        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
-
-        messaging.register(this);
-
-        return messaging.<Map<String, Object>>exchange(requestMap, "addIntentListenerResponse", messageExchangeTimeout)
-                .thenApply(response -> null);
-    }
-
-    @Override
-    public void unsubscribe() {
-        messaging.unregister(id);
     }
 }

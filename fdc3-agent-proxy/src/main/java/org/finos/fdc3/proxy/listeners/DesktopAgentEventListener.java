@@ -16,41 +16,49 @@
 
 package org.finos.fdc3.proxy.listeners;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
-import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
-import org.finos.fdc3.schema.*;
+import org.finos.fdc3.schema.FDC3EventType;
 
 /**
  * Listener for Desktop Agent events.
+ * Extends AbstractListener to handle registration/unregistration.
  */
-public class DesktopAgentEventListener implements RegisterableListener, Listener {
+public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
 
-    private final Messaging messaging;
-    private final long messageExchangeTimeout;
     private final String eventType;
-    private final EventHandler handler;
-    private final String id;
 
     public DesktopAgentEventListener(
             Messaging messaging,
             long messageExchangeTimeout,
             String eventType,
             EventHandler handler) {
-        this.messaging = messaging;
-        this.messageExchangeTimeout = messageExchangeTimeout;
+        super(
+            messaging,
+            messageExchangeTimeout,
+            handler,
+            "addEventListenerRequest",
+            "addEventListenerResponse",
+            "eventListenerUnsubscribeRequest",
+            "eventListenerUnsubscribeResponse"
+        );
         this.eventType = eventType;
-        this.handler = handler;
-        this.id = messaging.createUUID();
     }
 
     @Override
-    public String getId() {
-        return id;
+    protected Map<String, Object> buildSubscribeRequest() {
+        Map<String, Object> request = new HashMap<>();
+        Map<String, Object> payload = new HashMap<>();
+        FDC3EventType fdc3EventType = toFDC3EventType(eventType);
+        if (fdc3EventType != null) {
+            payload.put("type", fdc3EventType.toValue());
+        }
+        request.put("payload", payload);
+        return request;
     }
 
     @Override
@@ -73,29 +81,6 @@ public class DesktopAgentEventListener implements RegisterableListener, Listener
         Map<String, Object> payload = (Map<String, Object>) message.get("payload");
         FDC3Event<Map<String, Object>> event = new FDC3Event<>(eventType, payload);
         handler.handleEvent(event);
-    }
-
-    @Override
-    public CompletionStage<Void> register() {
-        AddEventListenerRequest request = new AddEventListenerRequest();
-        request.setType(AddEventListenerRequestType.ADD_EVENT_LISTENER_REQUEST);
-        request.setMeta(messaging.createMeta());
-
-        AddEventListenerRequestPayload payload = new AddEventListenerRequestPayload();
-        payload.setType(toFDC3EventType(eventType));
-        request.setPayload(payload);
-
-        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
-
-        messaging.register(this);
-
-        return messaging.<Map<String, Object>>exchange(requestMap, "addEventListenerResponse", messageExchangeTimeout)
-                .thenApply(response -> null);
-    }
-
-    @Override
-    public void unsubscribe() {
-        messaging.unregister(id);
     }
 
     private FDC3EventType toFDC3EventType(String eventType) {
