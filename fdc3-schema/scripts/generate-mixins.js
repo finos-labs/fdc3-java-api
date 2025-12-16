@@ -28,13 +28,13 @@ const mixinsNeeded = new Map(); // className -> Set of field names
  */
 function allowsNull(schema) {
     if (!schema) return false;
-    
+
     // Check for explicit null type
     if (schema.type === 'null') return true;
-    
+
     // Check for array of types including null
     if (Array.isArray(schema.type) && schema.type.includes('null')) return true;
-    
+
     // Check for oneOf/anyOf with null
     if (schema.oneOf) {
         return schema.oneOf.some(s => s.type === 'null');
@@ -42,7 +42,7 @@ function allowsNull(schema) {
     if (schema.anyOf) {
         return schema.anyOf.some(s => s.type === 'null');
     }
-    
+
     return false;
 }
 
@@ -65,10 +65,10 @@ function toGetterName(propName) {
  */
 function getJavaType(schema, propName) {
     if (!schema) return 'Object';
-    
+
     // Handle $ref - just use Object for simplicity
     if (schema.$ref) return 'Object';
-    
+
     const type = schema.type;
     if (type === 'string') return 'String';
     if (type === 'integer') return 'Long';
@@ -76,7 +76,7 @@ function getJavaType(schema, propName) {
     if (type === 'boolean') return 'Boolean';
     if (type === 'array') return 'Object';
     if (type === 'object') return 'Object';
-    
+
     return 'Object';
 }
 
@@ -87,20 +87,20 @@ function processDefinition(name, schema, schemaFile) {
     if (!schema || schema.type !== 'object' || !schema.properties) {
         return;
     }
-    
+
     const required = new Set(schema.required || []);
     const optionalNonNullFields = [];
-    
+
     for (const [propName, propSchema] of Object.entries(schema.properties)) {
         // Skip if required
         if (required.has(propName)) continue;
-        
+
         // Skip if allows null
         if (allowsNull(propSchema)) continue;
-        
+
         // Skip if it's just "true" (any type allowed)
         if (propSchema === true) continue;
-        
+
         // This field needs NON_NULL
         optionalNonNullFields.push({
             name: propName,
@@ -108,7 +108,7 @@ function processDefinition(name, schema, schemaFile) {
             jsonProperty: propName
         });
     }
-    
+
     if (optionalNonNullFields.length > 0) {
         const className = toJavaClassName(name);
         if (!mixinsNeeded.has(className)) {
@@ -125,14 +125,14 @@ function processSchemaFile(filePath) {
     try {
         const content = fs.readFileSync(filePath, 'utf8');
         const schema = JSON.parse(content);
-        
+
         // Process $defs
         if (schema.$defs) {
             for (const [name, def] of Object.entries(schema.$defs)) {
                 processDefinition(name, def, filePath);
             }
         }
-        
+
         // Process definitions (older style)
         if (schema.definitions) {
             for (const [name, def] of Object.entries(schema.definitions)) {
@@ -153,13 +153,13 @@ function generateInnerMixin(className, fields) {
     for (const field of fields) {
         uniqueFields.set(field.name, field);
     }
-    
+
     const fieldDefs = Array.from(uniqueFields.values()).map(field => {
         return `        @JsonProperty("${field.jsonProperty}")
         @JsonInclude(JsonInclude.Include.NON_NULL)
         abstract ${field.type} ${toGetterName(field.name)}();`;
     }).join('\n\n');
-    
+
     return `    public static abstract class ${className}Mixin {
 ${fieldDefs}
     }`;
@@ -170,17 +170,17 @@ ${fieldDefs}
  */
 function generateNullHandlingMixin() {
     const sortedClassNames = Array.from(mixinsNeeded.keys()).sort();
-    
+
     // Generate registration calls
     const registrations = sortedClassNames
         .map(className => `        om.addMixIn(${className}.class, ${className}Mixin.class);`)
         .join('\n');
-    
+
     // Generate inner mixin classes
     const innerClasses = sortedClassNames
         .map(className => generateInnerMixin(className, mixinsNeeded.get(className)))
         .join('\n\n');
-    
+
     return `package ${PACKAGE_NAME};
 
 import com.fasterxml.jackson.annotation.JsonInclude;
