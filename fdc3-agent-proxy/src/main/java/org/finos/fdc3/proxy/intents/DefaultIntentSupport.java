@@ -258,6 +258,7 @@ public class DefaultIntentSupport implements IntentSupport {
     private AppIdentifier toApiAppIdentifier(org.finos.fdc3.schema.AppIdentifier schemaApp) {
         String appId = schemaApp.getAppID();
         String instanceId = schemaApp.getInstanceID();
+        String desktopAgent = schemaApp.getDesktopAgent();
         return new AppIdentifier() {
             @Override
             public String getAppId() {
@@ -267,6 +268,11 @@ public class DefaultIntentSupport implements IntentSupport {
             @Override
             public Optional<String> getInstanceId() {
                 return Optional.ofNullable(instanceId);
+            }
+
+            @Override
+            public Optional<String> getDesktopAgent() {
+                return Optional.ofNullable(desktopAgent);
             }
         };
     }
@@ -327,6 +333,7 @@ public class DefaultIntentSupport implements IntentSupport {
     private AppMetadata toApiAppMetadata(org.finos.fdc3.schema.AppMetadata schemaApp) {
         String appId = schemaApp.getAppID();
         String instanceId = schemaApp.getInstanceID();
+        String desktopAgent = schemaApp.getDesktopAgent();
         String name = schemaApp.getName();
         String title = schemaApp.getTitle();
         String description = schemaApp.getDescription();
@@ -340,6 +347,11 @@ public class DefaultIntentSupport implements IntentSupport {
             @Override
             public Optional<String> getInstanceId() {
                 return Optional.ofNullable(instanceId);
+            }
+
+            @Override
+            public Optional<String> getDesktopAgent() {
+                return Optional.ofNullable(desktopAgent);
             }
 
             @Override

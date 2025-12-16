@@ -111,6 +111,10 @@ public class SchemaConverter {
         om.registerModule(new Jdk8Module());
         om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         om.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        
+        // Register mix-ins to handle optional fields that should be omitted when null
+        NullHandlingMixin.registerAll(om);
+        
         return om;
     }
 

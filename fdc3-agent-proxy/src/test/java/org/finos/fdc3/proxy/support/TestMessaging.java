@@ -62,6 +62,11 @@ public class TestMessaging extends AbstractMessaging {
             public java.util.Optional<String> getInstanceId() {
                 return java.util.Optional.of("cucumber-instance");
             }
+
+            @Override
+            public java.util.Optional<String> getDesktopAgent() {
+                return java.util.Optional.of("testing-da");
+            }
         });
         this.channelState = channelState != null ? channelState : new HashMap<>();
         

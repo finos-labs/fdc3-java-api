@@ -91,6 +91,7 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
         if (sourceMap != null) {
             String sourceAppId = (String) sourceMap.get("appId");
             String sourceInstanceId = (String) sourceMap.get("instanceId");
+            String sourceDesktopAgent = (String) sourceMap.get("desktopAgent");
             contextMetadata = new ContextMetadata() {
                 @Override
                 public AppIdentifier getSource() {
@@ -103,6 +104,11 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
                         @Override
                         public java.util.Optional<String> getInstanceId() {
                             return java.util.Optional.ofNullable(sourceInstanceId);
+                        }
+
+                        @Override
+                        public java.util.Optional<String> getDesktopAgent() {
+                            return java.util.Optional.ofNullable(sourceDesktopAgent);
                         }
                     };
                 }

@@ -234,6 +234,11 @@ public class IntentSteps {
             }
 
             @Override
+            public Optional<String> getDesktopAgent() {
+                return Optional.of("some-desktop-agent");
+            }
+
+            @Override
             public Optional<String> getInstanceId() {
                 return Optional.ofNullable(instanceId);
             }

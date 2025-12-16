@@ -179,6 +179,7 @@ public class DefaultAppSupport implements AppSupport {
     private AppIdentifier toApiAppIdentifier(org.finos.fdc3.schema.AppIdentifier schemaApp) {
         String appId = schemaApp.getAppID();
         String instanceId = schemaApp.getInstanceID();
+        String desktopAgent = schemaApp.getDesktopAgent();
         return new AppIdentifier() {
             @Override
             public String getAppId() {
@@ -188,6 +189,11 @@ public class DefaultAppSupport implements AppSupport {
             @Override
             public Optional<String> getInstanceId() {
                 return Optional.ofNullable(instanceId);
+            }
+
+            @Override
+            public Optional<String> getDesktopAgent() {
+                return Optional.ofNullable(desktopAgent);
             }
         };
     }
@@ -195,6 +201,7 @@ public class DefaultAppSupport implements AppSupport {
     private AppIdentifier toApiAppIdentifier(org.finos.fdc3.schema.AppMetadata schemaApp) {
         String appId = schemaApp.getAppID();
         String instanceId = schemaApp.getInstanceID();
+        String desktopAgent = schemaApp.getDesktopAgent();
         return new AppIdentifier() {
             @Override
             public String getAppId() {
@@ -205,12 +212,18 @@ public class DefaultAppSupport implements AppSupport {
             public Optional<String> getInstanceId() {
                 return Optional.ofNullable(instanceId);
             }
+
+            @Override
+            public Optional<String> getDesktopAgent() {
+                return Optional.ofNullable(desktopAgent);
+            }
         };
     }
 
     private AppMetadata toApiAppMetadata(org.finos.fdc3.schema.AppMetadata schemaMetadata) {
         String appId = schemaMetadata.getAppID();
         String instanceId = schemaMetadata.getInstanceID();
+        String desktopAgent = schemaMetadata.getDesktopAgent();
         String name = schemaMetadata.getName();
         String title = schemaMetadata.getTitle();
         String description = schemaMetadata.getDescription();
@@ -227,6 +240,11 @@ public class DefaultAppSupport implements AppSupport {
             @Override
             public Optional<String> getInstanceId() {
                 return Optional.ofNullable(instanceId);
+            }
+
+            @Override
+            public Optional<String> getDesktopAgent() {
+                return Optional.ofNullable(desktopAgent);
             }
 
             @Override
@@ -359,6 +377,11 @@ public class DefaultAppSupport implements AppSupport {
                     @Override
                     public Optional<String> getInstanceId() {
                         return Optional.of("unknown");
+                    }
+
+                    @Override
+                    public Optional<String> getDesktopAgent() {
+                        return Optional.empty();
                     }
 
                     @Override

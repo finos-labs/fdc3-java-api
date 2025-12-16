@@ -63,6 +63,7 @@ public class SimpleIntentResolver implements IntentResolver {
         // Create an AppIdentifier from the AppMetadata
         final String appId = firstApp.getAppId();
         final Optional<String> instanceId = firstApp.getInstanceId();
+        final Optional<String> desktopAgent = firstApp.getDesktopAgent();
         AppIdentifier appIdentifier = new AppIdentifier() {
             @Override
             public String getAppId() {
@@ -72,6 +73,11 @@ public class SimpleIntentResolver implements IntentResolver {
             @Override
             public Optional<String> getInstanceId() {
                 return instanceId;
+            }
+
+            @Override
+            public Optional<String> getDesktopAgent() {
+                return desktopAgent;
             }
         };
 

@@ -31,4 +31,9 @@ public interface AppIdentifier {
 
   /** An optional instance identifier, indicating that this object represents a specific instance of the application described.*/
   public Optional<String> getInstanceId();
+  
+  /**
+   * Identifier of the desktop agent, used in bridging.
+   */
+  public Optional<String> getDesktopAgent();
 }
