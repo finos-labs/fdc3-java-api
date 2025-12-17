@@ -55,7 +55,7 @@ public final class MatchingUtils {
         try {
             JXPathContext context = JXPathContext.newContext(world);
             context.setLenient(true);
-            String xpathName = "//" + expression.replaceAll("\\.", "/");
+            String xpathName = "/" + expression.replaceAll("\\.", "/");
             Object result = context.getValue(xpathName);
             // Unwrap Optional if needed
             if (result instanceof java.util.Optional) {

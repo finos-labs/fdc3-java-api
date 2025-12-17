@@ -100,12 +100,13 @@ public class TestMessaging extends AbstractMessaging {
         return 1000;
     }
 
-    public List<Map<String, Object>> getAllPosts() {
+    public synchronized List<Map<String, Object>> getAllPosts() {
         return allPosts;
     }
 
     @Override
-    public CompletionStage<Void> post(Map<String, Object> message) {
+    public synchronized CompletionStage<Void> post(Map<String, Object> message) {
+    	System.out.println("Post: "+message.get("type"));
         allPosts.add(message);
         
         String type = (String) message.get("type");

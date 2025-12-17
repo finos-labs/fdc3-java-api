@@ -233,8 +233,23 @@ public class GenericSteps {
     @Then("{string} is an error with message {string}")
     public void isAnErrorWithMessage(String field, String errorType) {
         Object value = handleResolve(field, world);
-        assertTrue(value instanceof Throwable);
-        assertEquals(errorType, ((Throwable) value).getMessage());
+        assertTrue(value instanceof Throwable, "Expected a Throwable but got: " + value);
+        
+        // Extract the root cause message - exceptions may be wrapped multiple times
+        Throwable t = (Throwable) value;
+        String message = getRootCauseMessage(t);
+        assertEquals(errorType, message);
+    }
+    
+    /**
+     * Gets the message from the root cause of a potentially wrapped exception chain.
+     */
+    private String getRootCauseMessage(Throwable t) {
+        Throwable root = t;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        return root.getMessage();
     }
 
     @Then("{string} is an error")

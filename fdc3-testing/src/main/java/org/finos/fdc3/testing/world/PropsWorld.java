@@ -16,8 +16,10 @@
 
 package org.finos.fdc3.testing.world;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import io.cucumber.java.Scenario;
 import org.slf4j.Logger;
@@ -27,7 +29,7 @@ import org.slf4j.LoggerFactory;
  * Cucumber World class that holds test state in a props map.
  * This is equivalent to the TypeScript PropsWorld class.
  */
-public class PropsWorld {
+public class PropsWorld implements Map<String, Object>{
 
     private static final Logger logger = LoggerFactory.getLogger(PropsWorld.class);
 
@@ -132,4 +134,65 @@ public class PropsWorld {
             scenario.attach(data, mediaType, null);
         }
     }
+
+	@Override
+	public int size() {
+		return props.size();
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return props.size() == 0;
+	}
+
+	@Override
+	public boolean containsKey(Object key) {
+		return props.containsKey(key);
+	}
+
+	@Override
+	public boolean containsValue(Object value) {
+		return props.containsValue(value);
+
+	}
+	
+	@Override
+	public Object put(String key, Object value) {
+		return props.put(key, value);
+	}
+
+	@Override
+	public Object remove(Object key) {
+		return props.remove(key);
+	}
+
+	@Override
+	public void putAll(Map<? extends String, ? extends Object> m) {
+		props.putAll(m);
+	}
+
+	@Override
+	public void clear() {
+		props.clear();
+	}
+
+	@Override
+	public Set<String> keySet() {
+		return props.keySet();
+	}
+
+	@Override
+	public Collection<Object> values() {
+		return props.values();
+	}
+
+	@Override
+	public Set<Entry<String, Object>> entrySet() {
+		return props.entrySet();
+	}
+
+	@Override
+	public Object get(Object key) {
+		return props.get(key);
+	}
 }
