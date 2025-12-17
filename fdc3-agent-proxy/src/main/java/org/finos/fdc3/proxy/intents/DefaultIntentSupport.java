@@ -177,7 +177,7 @@ public class DefaultIntentSupport implements IntentSupport {
                         String resolvedIntent = schemaIntentResolution.getIntent();
 
                         return java.util.concurrent.CompletableFuture.completedFuture(
-                                new DefaultIntentResolution(messaging, resultPromise, source, resolvedIntent));
+                                new DefaultIntentResolution(messaging, messageExchangeTimeout, resultPromise, source, resolvedIntent));
                     }
                 });
     }
@@ -235,7 +235,7 @@ public class DefaultIntentSupport implements IntentSupport {
                         String resolvedIntent = schemaIntentResolution.getIntent();
 
                         return java.util.concurrent.CompletableFuture.completedFuture(
-                                new DefaultIntentResolution(messaging, resultPromise, source, resolvedIntent));
+                                new DefaultIntentResolution(messaging, messageExchangeTimeout, resultPromise, source, resolvedIntent));
                     }
                 });
     }

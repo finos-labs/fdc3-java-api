@@ -22,14 +22,7 @@ import org.finos.fdc3.api.metadata.IntentResolution;
 /**
  * Describes results that an {@link IntentHandler} may optionally return that should be communicated back to the app that raised the
  * intent, via the {@link IntentResolution}. Represented as a union type in TypeScript, however in Java it is a marker interface
- * implemented by {@link Context} and {@link Channel}
+ * implemented by {@link Context} and {@link Channel}.
  */
 public interface IntentResult {
-    /**
-     * Get the underlying value of this result.
-     * This may be a Context, Channel, or null.
-     */
-    default Object getValue() {
-        return this;
-    }
 }

@@ -19,6 +19,8 @@ package org.finos.fdc3.api.context;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.finos.fdc3.api.types.IntentResult;
+
 /**
  * The base FDC3 Context type.
  * 
@@ -33,7 +35,7 @@ import java.util.Map;
  * by more specific type definitions (standardized or custom) to provide the structure and
  * properties shared by all FDC3 context data types.
  */
-public class Context extends HashMap<String, Object> {
+public class Context extends HashMap<String, Object> implements IntentResult {
 
     public Context() {
     }

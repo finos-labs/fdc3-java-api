@@ -39,9 +39,25 @@ public interface Channel extends IntentResult {
    * Can be "user", "app" or "private".
    */
   enum Type {
-    User,
-    App,
-    Private,
+    User("user"),
+    App("app"),
+    Private("private");
+
+    private final String value;
+
+    Type(String value) {
+      this.value = value;
+    }
+
+    @com.fasterxml.jackson.annotation.JsonValue
+    public String getValue() {
+      return value;
+    }
+
+    @Override
+    public String toString() {
+      return value;
+    }
   }
 
   Type getType();

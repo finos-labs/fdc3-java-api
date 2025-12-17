@@ -142,6 +142,29 @@ public class DefaultAppSupport implements AppSupport {
     }
 
     @Override
+    @Deprecated
+    public CompletionStage<AppIdentifier> open(String name, Context context) {
+        // Create an AppIdentifier from the name string
+        AppIdentifier appIdentifier = new AppIdentifier() {
+            @Override
+            public String getAppId() {
+                return name;
+            }
+
+            @Override
+            public Optional<String> getInstanceId() {
+                return Optional.empty();
+            }
+
+            @Override
+            public Optional<String> getDesktopAgent() {
+                return Optional.empty();
+            }
+        };
+        return open(appIdentifier, context);
+    }
+
+    @Override
     public CompletionStage<ImplementationMetadata> getImplementationMetadata() {
         // Build typed request
         GetInfoRequest request = new GetInfoRequest();

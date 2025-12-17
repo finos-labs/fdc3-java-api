@@ -55,6 +55,17 @@ public interface AppSupport {
     CompletionStage<AppIdentifier> open(AppIdentifier app, Context context);
 
     /**
+     * Open an application by name.
+     *
+     * @param name    the application name
+     * @param context optional context to pass
+     * @return a CompletionStage containing the opened app identifier
+     * @deprecated Use {@link #open(AppIdentifier, Context)} instead
+     */
+    @Deprecated
+    CompletionStage<AppIdentifier> open(String name, Context context);
+
+    /**
      * Get implementation metadata for the Desktop Agent.
      *
      * @return a CompletionStage containing the implementation metadata

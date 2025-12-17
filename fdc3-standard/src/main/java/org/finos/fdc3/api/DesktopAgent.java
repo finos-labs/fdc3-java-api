@@ -86,6 +86,22 @@ public interface DesktopAgent {
     }
 
     /**
+     * @deprecated version of `open` that launches an app by name rather than `AppIdentifier`.
+     * Provided for backwards compatibility with FDC3 standard versions < 2.0.
+     */
+    @Deprecated
+    CompletionStage<AppIdentifier> open(String name, Context context);
+
+    /**
+     * @deprecated version of `open` that launches an app by name rather than `AppIdentifier`.
+     * Provided for backwards compatibility with FDC3 standard versions < 2.0.
+     */
+    @Deprecated
+    default CompletionStage<AppIdentifier> open(String name) {
+        return open(name, null);
+    }
+
+    /**
      * Find out more information about a particular intent by passing its name, and
      * optionally its context and/or a desired result context type.
      *
