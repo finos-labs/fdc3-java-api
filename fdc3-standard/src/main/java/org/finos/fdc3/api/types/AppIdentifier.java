@@ -16,24 +16,85 @@
 
 package org.finos.fdc3.api.types;
 
-import java.util.Optional;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Identifies an application, or instance of an application, and is used to target FDC3 API calls, such as `fdc3.open` or `fdc3.raiseIntent` at specific applications or application instances.
+ * Identifies an application, or instance of an application, and is used to target FDC3 API calls,
+ * such as `fdc3.open` or `fdc3.raiseIntent` at specific applications or application instances.
  *
  * Will always include at least an `appId` field, which uniquely identifies a specific app.
  *
- * If the `instanceId` field is set then the `AppMetadata` object represents a specific instance of the application that may be addressed using that Id.
+ * If the `instanceId` field is set then the `AppIdentifier` object represents a specific instance
+ * of the application that may be addressed using that Id.
  */
-public interface AppIdentifier {
-  /** The unique application identifier located within a specific application directory instance. An example of an appId might be 'app@sub.root' */
-  public String getAppId();
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class AppIdentifier {
 
-  /** An optional instance identifier, indicating that this object represents a specific instance of the application described.*/
-  public Optional<String> getInstanceId();
-  
-  /**
-   * Identifier of the desktop agent, used in bridging.
-   */
-  public Optional<String> getDesktopAgent();
+    private String appID;
+    private String instanceID;
+    private String desktopAgent;
+
+    /**
+     * Default constructor for Jackson deserialization.
+     */
+    public AppIdentifier() {
+    }
+
+    @JsonCreator
+    public AppIdentifier(
+            @JsonProperty("appId") String appID,
+            @JsonProperty("instanceId") String instanceID,
+            @JsonProperty("desktopAgent") String desktopAgent) {
+        this.appID = appID;
+        this.instanceID = instanceID;
+        this.desktopAgent = desktopAgent;
+    }
+
+    public AppIdentifier(String appID, String instanceID) {
+        this(appID, instanceID, null);
+    }
+
+    public AppIdentifier(String appID) {
+        this(appID, null, null);
+    }
+
+    /**
+     * The unique application identifier located within a specific application directory instance.
+     * An example of an appId might be 'app@sub.root'.
+     */
+    @JsonProperty("appId")
+    public String getAppID() {
+        return appID;
+    }
+
+    public void setAppID(String appID) {
+        this.appID = appID;
+    }
+
+    /**
+     * An optional instance identifier, indicating that this object represents a specific instance
+     * of the application described.
+     */
+    @JsonProperty("instanceId")
+    public String getInstanceID() {
+        return instanceID;
+    }
+
+    public void setInstanceID(String instanceID) {
+        this.instanceID = instanceID;
+    }
+
+    /**
+     * Identifier of the desktop agent, used in bridging.
+     */
+    @JsonProperty("desktopAgent")
+    public String getDesktopAgent() {
+        return desktopAgent;
+    }
+
+    public void setDesktopAgent(String desktopAgent) {
+        this.desktopAgent = desktopAgent;
+    }
 }

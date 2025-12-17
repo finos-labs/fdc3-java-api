@@ -20,6 +20,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.DisplayMetadata;
@@ -34,10 +37,13 @@ import org.finos.fdc3.schema.*;
  */
 public class DefaultChannel implements Channel {
 
+    @JsonIgnore
     protected final Messaging messaging;
+    @JsonIgnore
     protected final long messageExchangeTimeout;
     private final String id;
     private final Type type;
+    @JsonIgnore
     private final DisplayMetadata displayMetadataValue;
 
     public DefaultChannel(
@@ -59,8 +65,14 @@ public class DefaultChannel implements Channel {
     }
 
     @Override
+    @JsonIgnore
     public Type getType() {
         return type;
+    }
+    
+    @JsonGetter("type")
+    public String getTypeValue() {
+        return type != null ? type.getValue() : null;
     }
 
     @Override
@@ -69,6 +81,7 @@ public class DefaultChannel implements Channel {
     }
 
     @Override
+    @JsonIgnore
     public CompletionStage<Void> broadcast(Context context) {
         BroadcastRequest request = new BroadcastRequest();
         request.setType(BroadcastRequestType.BROADCAST_REQUEST);
@@ -86,11 +99,13 @@ public class DefaultChannel implements Channel {
     }
 
     @Override
+    @JsonIgnore
     public CompletionStage<Optional<Context>> getCurrentContext() {
         return getCurrentContext(null);
     }
 
     @Override
+    @JsonIgnore
     public CompletionStage<Optional<Context>> getCurrentContext(String contextType) {
         GetCurrentContextRequest request = new GetCurrentContextRequest();
         request.setType(GetCurrentContextRequestType.GET_CURRENT_CONTEXT_REQUEST);
@@ -117,11 +132,13 @@ public class DefaultChannel implements Channel {
     }
 
     @Override
+    @JsonIgnore
     public CompletionStage<Listener> addContextListener(String contextType, ContextHandler handler) {
         return addContextListenerInner(contextType, handler);
     }
 
     @Override
+    @JsonIgnore
     @Deprecated
     public CompletionStage<Listener> addContextListener(ContextHandler handler) {
         return addContextListener(null, handler);

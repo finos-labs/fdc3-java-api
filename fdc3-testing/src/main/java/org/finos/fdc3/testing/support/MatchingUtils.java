@@ -53,7 +53,18 @@ public final class MatchingUtils {
     private static Object extractFromWorld(Object world, String expression) {
         // Use JXPath to resolve the value from props
         try {
-            JXPathContext context = JXPathContext.newContext(world);
+            // For non-Map objects, convert to Map first using Jackson
+            // This ensures enums with @JsonValue are properly serialized
+            Object navigable = world;
+            if (!(world instanceof Map)) {
+                try {
+                    navigable = objectMapper.convertValue(world, Map.class);
+                } catch (Exception e) {
+                    // If conversion fails, try using JXPath directly on the object
+                }
+            }
+            
+            JXPathContext context = JXPathContext.newContext(navigable);
             context.setLenient(true);
             String xpathName = "/" + expression.replaceAll("\\.", "/");
             Object result = context.getValue(xpathName);

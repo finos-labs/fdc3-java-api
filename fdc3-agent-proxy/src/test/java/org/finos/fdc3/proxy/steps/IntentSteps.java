@@ -28,6 +28,8 @@ import java.util.function.Supplier;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.ContextMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
+import org.finos.fdc3.proxy.channels.DefaultChannel;
+import org.finos.fdc3.proxy.channels.DefaultPrivateChannel;
 import org.finos.fdc3.proxy.support.TestMessaging;
 import org.finos.fdc3.proxy.world.CustomWorld;
 
@@ -142,23 +144,38 @@ public class IntentSteps {
 
     @Given("Raise Intent returns an app channel")
     public void raiseIntentReturnsAppChannel() {
-        // Would need a Channel implementation
         TestMessaging.PossibleIntentResult intentResult = new TestMessaging.PossibleIntentResult();
-        // intentResult.setChannel(...);
+        intentResult.setChannel(new DefaultChannel(
+                world.getMessaging(),
+                world.getMessaging().getTimeoutMs(),
+                "result-channel",
+                org.finos.fdc3.api.channel.Channel.Type.App,
+                null
+        ));
         world.getMessaging().setIntentResult(intentResult);
     }
 
     @Given("Raise Intent returns a user channel")
     public void raiseIntentReturnsUserChannel() {
         TestMessaging.PossibleIntentResult intentResult = new TestMessaging.PossibleIntentResult();
-        // intentResult.setChannel(...);
+        intentResult.setChannel(new DefaultChannel(
+                world.getMessaging(),
+                world.getMessaging().getTimeoutMs(),
+                "result-channel",
+                org.finos.fdc3.api.channel.Channel.Type.User,
+                null
+        ));
         world.getMessaging().setIntentResult(intentResult);
     }
 
     @Given("Raise Intent returns a private channel")
     public void raiseIntentReturnsPrivateChannel() {
         TestMessaging.PossibleIntentResult intentResult = new TestMessaging.PossibleIntentResult();
-        // intentResult.setChannel(...);
+        intentResult.setChannel(new DefaultPrivateChannel(
+                world.getMessaging(),
+                world.getMessaging().getTimeoutMs(),
+                "result-channel"
+        ));
         world.getMessaging().setIntentResult(intentResult);
     }
 
@@ -227,22 +244,7 @@ public class IntentSteps {
     }
 
     private AppIdentifier createAppIdentifier(String appId, String instanceId) {
-        return new AppIdentifier() {
-            @Override
-            public String getAppId() {
-                return appId;
-            }
-
-            @Override
-            public Optional<String> getDesktopAgent() {
-                return Optional.of("some-desktop-agent");
-            }
-
-            @Override
-            public Optional<String> getInstanceId() {
-                return Optional.ofNullable(instanceId);
-            }
-        };
+        return new AppIdentifier(appId, instanceId, "some-desktop-agent");
     }
 
     private TestMessaging.IntentDetail createIntentDetail(AppIdentifier app, String intent, String context, String resultType) {

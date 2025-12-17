@@ -69,9 +69,11 @@ public abstract class AbstractMessaging implements Messaging {
 
         if (appIdentifier != null) {
             org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
-            source.setAppID(appIdentifier.getAppId());
+            source.setAppID(appIdentifier.getAppID());
             source.setDesktopAgent("testing-da");
-            appIdentifier.getInstanceId().ifPresent(source::setInstanceID);
+            if (appIdentifier.getInstanceID() != null) {
+                source.setInstanceID(appIdentifier.getInstanceID());
+            }
             meta.setSource(source);
         }
         return meta;

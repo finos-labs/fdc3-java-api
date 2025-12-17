@@ -136,55 +136,20 @@ public class DefaultIntentResolution implements IntentResolution {
         }
         
         Map<String, Object> displayMetadataMap = (Map<String, Object>) channelMap.get("displayMetadata");
-        final String dmName = displayMetadataMap != null ? (String) displayMetadataMap.get("name") : null;
-        final String dmColor = displayMetadataMap != null ? (String) displayMetadataMap.get("color") : null;
-        final String dmGlyph = displayMetadataMap != null ? (String) displayMetadataMap.get("glyph") : null;
-        DisplayMetadata displayMetadata = displayMetadataMap != null ? new DisplayMetadata() {
-            @Override
-            public Optional<String> getName() {
-                return Optional.ofNullable(dmName);
-            }
-
-            @Override
-            public Optional<String> getColor() {
-                return Optional.ofNullable(dmColor);
-            }
-
-            @Override
-            public Optional<String> getGlyph() {
-                return Optional.ofNullable(dmGlyph);
-            }
-        } : null;
-        
-        // Create DisplayMetadata if present
-        DisplayMetadata dm = null;
-        if (dmName != null || dmColor != null || dmGlyph != null) {
-            final String finalName = dmName;
-            final String finalColor = dmColor;
-            final String finalGlyph = dmGlyph;
-            dm = new DisplayMetadata() {
-                @Override
-                public Optional<String> getName() {
-                    return Optional.ofNullable(finalName);
-                }
-
-                @Override
-                public Optional<String> getColor() {
-                    return Optional.ofNullable(finalColor);
-                }
-
-                @Override
-                public Optional<String> getGlyph() {
-                    return Optional.ofNullable(finalGlyph);
-                }
-            };
+        DisplayMetadata displayMetadata = null;
+        if (displayMetadataMap != null) {
+            displayMetadata = new DisplayMetadata(
+                    (String) displayMetadataMap.get("name"),
+                    (String) displayMetadataMap.get("color"),
+                    (String) displayMetadataMap.get("glyph")
+            );
         }
         
         // Use existing channel implementations
         if (type == Channel.Type.Private) {
             return new DefaultPrivateChannel(messaging, messageExchangeTimeout, id);
         } else {
-            return new DefaultChannel(messaging, messageExchangeTimeout, id, type, dm);
+            return new DefaultChannel(messaging, messageExchangeTimeout, id, type, displayMetadata);
         }
     }
 }

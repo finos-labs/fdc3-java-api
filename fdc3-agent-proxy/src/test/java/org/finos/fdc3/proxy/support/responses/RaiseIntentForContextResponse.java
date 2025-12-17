@@ -84,12 +84,12 @@ public class RaiseIntentForContextResponse implements AutomaticResponse {
             if (matches && targetApp != null && detail.getApp() != null) {
                 String targetAppId = (String) targetApp.get("appId");
                 String targetInstanceId = (String) targetApp.get("instanceId");
-                if (targetAppId != null && !targetAppId.equals(detail.getApp().getAppId())) {
+                if (targetAppId != null && !targetAppId.equals(detail.getApp().getAppID())) {
                     matches = false;
                 }
                 if (matches && targetInstanceId != null && 
-                    detail.getApp().getInstanceId().isPresent() && 
-                    !targetInstanceId.equals(detail.getApp().getInstanceId().get())) {
+                    detail.getApp().getInstanceID() != null && 
+                    !targetInstanceId.equals(detail.getApp().getInstanceID())) {
                     matches = false;
                 }
             }
@@ -111,8 +111,8 @@ public class RaiseIntentForContextResponse implements AutomaticResponse {
         } else if (relevant.size() == 1 && relevant.get(0).getIntent() != null && relevant.get(0).getApp() != null) {
             IntentDetail detail = relevant.get(0);
             Map<String, Object> source = new HashMap<>();
-            source.put("appId", detail.getApp().getAppId());
-            detail.getApp().getInstanceId().ifPresent(id -> source.put("instanceId", id));
+            source.put("appId", detail.getApp().getAppID());
+            if (detail.getApp().getInstanceID() != null) { source.put("instanceId", detail.getApp().getInstanceID()); }
             
             Map<String, Object> resolution = new HashMap<>();
             resolution.put("intent", detail.getIntent());
@@ -137,8 +137,8 @@ public class RaiseIntentForContextResponse implements AutomaticResponse {
                 for (IntentDetail detail : relevant) {
                     if (intentName.equals(detail.getIntent()) && detail.getApp() != null) {
                         Map<String, String> app = new HashMap<>();
-                        app.put("appId", detail.getApp().getAppId());
-                        detail.getApp().getInstanceId().ifPresent(id -> app.put("instanceId", id));
+                        app.put("appId", detail.getApp().getAppID());
+                        if (detail.getApp().getInstanceID() != null) { app.put("instanceId", detail.getApp().getInstanceID()); }
                         apps.add(app);
                     }
                 }

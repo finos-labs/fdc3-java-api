@@ -18,10 +18,8 @@ package org.finos.fdc3.proxy.apps;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
@@ -29,8 +27,6 @@ import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.errors.OpenError;
 import org.finos.fdc3.api.errors.ResolveError;
 import org.finos.fdc3.api.metadata.AppMetadata;
-import org.finos.fdc3.api.metadata.Icon;
-import org.finos.fdc3.api.metadata.Image;
 import org.finos.fdc3.api.metadata.ImplementationMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.Messaging;
@@ -76,8 +72,9 @@ public class DefaultAppSupport implements AppSupport {
                         return new ArrayList<>();
                     }
 
+                    // AppMetadata extends AppIdentifier, so we can return directly
                     return Arrays.stream(typedResponse.getPayload().getAppIdentifiers())
-                            .map(this::toApiAppIdentifier)
+                            .map(am -> (AppIdentifier) am)
                             .collect(Collectors.toList());
                 });
     }
@@ -106,7 +103,8 @@ public class DefaultAppSupport implements AppSupport {
                         throw new RuntimeException(ResolveError.TargetAppUnavailable.toString());
                     }
 
-                    return toApiAppMetadata(typedResponse.getPayload().getAppMetadata());
+                    // Schema now uses fdc3-standard AppMetadata directly
+                    return typedResponse.getPayload().getAppMetadata();
                 });
     }
 
@@ -145,23 +143,7 @@ public class DefaultAppSupport implements AppSupport {
     @Deprecated
     public CompletionStage<AppIdentifier> open(String name, Context context) {
         // Create an AppIdentifier from the name string
-        AppIdentifier appIdentifier = new AppIdentifier() {
-            @Override
-            public String getAppId() {
-                return name;
-            }
-
-            @Override
-            public Optional<String> getInstanceId() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<String> getDesktopAgent() {
-                return Optional.empty();
-            }
-        };
-        return open(appIdentifier, context);
+        return open(new AppIdentifier(name), context);
     }
 
     @Override
@@ -182,7 +164,8 @@ public class DefaultAppSupport implements AppSupport {
                     
                     if (typedResponse.getPayload() != null && 
                         typedResponse.getPayload().getImplementationMetadata() != null) {
-                        return toApiImplementationMetadata(typedResponse.getPayload().getImplementationMetadata());
+                        // Schema now uses fdc3-standard ImplementationMetadata directly
+                        return typedResponse.getPayload().getImplementationMetadata();
                     } else {
                         Logger.error("Invalid response from Desktop Agent to getInfo!");
                         return createUnknownImplementationMetadata();
@@ -194,285 +177,34 @@ public class DefaultAppSupport implements AppSupport {
 
     private org.finos.fdc3.schema.AppIdentifier toSchemaAppIdentifier(AppIdentifier app) {
         org.finos.fdc3.schema.AppIdentifier schemaApp = new org.finos.fdc3.schema.AppIdentifier();
-        schemaApp.setAppID(app.getAppId());
-        app.getInstanceId().ifPresent(schemaApp::setInstanceID);
+        schemaApp.setAppID(app.getAppID());
+        if (app.getInstanceID() != null) {
+            schemaApp.setInstanceID(app.getInstanceID());
+        }
         return schemaApp;
     }
 
     private AppIdentifier toApiAppIdentifier(org.finos.fdc3.schema.AppIdentifier schemaApp) {
-        String appId = schemaApp.getAppID();
-        String instanceId = schemaApp.getInstanceID();
-        String desktopAgent = schemaApp.getDesktopAgent();
-        return new AppIdentifier() {
-            @Override
-            public String getAppId() {
-                return appId;
-            }
-
-            @Override
-            public Optional<String> getInstanceId() {
-                return Optional.ofNullable(instanceId);
-            }
-
-            @Override
-            public Optional<String> getDesktopAgent() {
-                return Optional.ofNullable(desktopAgent);
-            }
-        };
-    }
-
-    private AppIdentifier toApiAppIdentifier(org.finos.fdc3.schema.AppMetadata schemaApp) {
-        String appId = schemaApp.getAppID();
-        String instanceId = schemaApp.getInstanceID();
-        String desktopAgent = schemaApp.getDesktopAgent();
-        return new AppIdentifier() {
-            @Override
-            public String getAppId() {
-                return appId;
-            }
-
-            @Override
-            public Optional<String> getInstanceId() {
-                return Optional.ofNullable(instanceId);
-            }
-
-            @Override
-            public Optional<String> getDesktopAgent() {
-                return Optional.ofNullable(desktopAgent);
-            }
-        };
-    }
-
-    private AppMetadata toApiAppMetadata(org.finos.fdc3.schema.AppMetadata schemaMetadata) {
-        String appId = schemaMetadata.getAppID();
-        String instanceId = schemaMetadata.getInstanceID();
-        String desktopAgent = schemaMetadata.getDesktopAgent();
-        String name = schemaMetadata.getName();
-        String title = schemaMetadata.getTitle();
-        String description = schemaMetadata.getDescription();
-        String version = schemaMetadata.getVersion();
-        String tooltip = schemaMetadata.getTooltip();
-        String resultType = schemaMetadata.getResultType();
-
-        return new AppMetadata() {
-            @Override
-            public String getAppId() {
-                return appId;
-            }
-
-            @Override
-            public Optional<String> getInstanceId() {
-                return Optional.ofNullable(instanceId);
-            }
-
-            @Override
-            public Optional<String> getDesktopAgent() {
-                return Optional.ofNullable(desktopAgent);
-            }
-
-            @Override
-            public Optional<String> getName() {
-                return Optional.ofNullable(name);
-            }
-
-            @Override
-            public Optional<String> getVersion() {
-                return Optional.ofNullable(version);
-            }
-
-            @Override
-            public Optional<Map<String, Object>> getInstanceMetadata() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<String> getTitle() {
-                return Optional.ofNullable(title);
-            }
-
-            @Override
-            public Optional<String> getTooltip() {
-                return Optional.ofNullable(tooltip);
-            }
-
-            @Override
-            public Optional<String> getDescription() {
-                return Optional.ofNullable(description);
-            }
-
-            @Override
-            public Optional<Collection<Icon>> getIcons() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<Collection<Image>> getScreenshots() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<String> getResultType() {
-                return Optional.ofNullable(resultType);
-            }
-        };
-    }
-
-    private ImplementationMetadata toApiImplementationMetadata(org.finos.fdc3.schema.ImplementationMetadata schemaMetadata) {
-        String fdc3Version = schemaMetadata.getFdc3Version();
-        String provider = schemaMetadata.getProvider();
-        String providerVersion = schemaMetadata.getProviderVersion();
-        org.finos.fdc3.schema.AppMetadata schemaAppMetadata = schemaMetadata.getAppMetadata();
-        org.finos.fdc3.schema.OptionalFeatures schemaOptionalFeatures = schemaMetadata.getOptionalFeatures();
-
-        AppMetadata appMetadata = schemaAppMetadata != null ? toApiAppMetadata(schemaAppMetadata) : null;
-
-        return new ImplementationMetadata() {
-            @Override
-            public String getFdc3Version() {
-                return fdc3Version;
-            }
-
-            @Override
-            public String getProvider() {
-                return provider;
-            }
-
-            @Override
-            public String getProviderVersion() {
-                return providerVersion;
-            }
-
-            @Override
-            public AppMetadata getAppMetadata() {
-                return appMetadata;
-            }
-
-            @Override
-            public OptionalFeatures getOptionalFeatures() {
-                if (schemaOptionalFeatures == null) {
-                    return null;
-                }
-                return new OptionalFeatures() {
-                    @Override
-                    public boolean isOriginatingAppMetadata() {
-                        return schemaOptionalFeatures.getOriginatingAppMetadata();
-                    }
-
-                    @Override
-                    public boolean isUserChannelMembershipAPIs() {
-                        return schemaOptionalFeatures.getUserChannelMembershipAPIs();
-                    }
-
-                    @Override
-                    public boolean isDesktopAgentBridging() {
-                        return schemaOptionalFeatures.getDesktopAgentBridging();
-                    }
-                };
-            }
-        };
+        return new AppIdentifier(
+                schemaApp.getAppID(),
+                schemaApp.getInstanceID(),
+                schemaApp.getDesktopAgent()
+        );
     }
 
     private ImplementationMetadata createUnknownImplementationMetadata() {
-        return new ImplementationMetadata() {
-            @Override
-            public String getFdc3Version() {
-                return "unknown";
-            }
+        ImplementationMetadata result = new ImplementationMetadata();
+        result.setFdc3Version("unknown");
+        result.setProvider("unknown");
 
-            @Override
-            public String getProvider() {
-                return "unknown";
-            }
+        AppMetadata appMetadata = new AppMetadata();
+        appMetadata.setAppID("unknown");
+        appMetadata.setInstanceID("unknown");
+        result.setAppMetadata(appMetadata);
 
-            @Override
-            public String getProviderVersion() {
-                return null;
-            }
+        ImplementationMetadata.OptionalFeatures optFeatures = new ImplementationMetadata.OptionalFeatures();
+        result.setOptionalFeatures(optFeatures);
 
-            @Override
-            public AppMetadata getAppMetadata() {
-                return new AppMetadata() {
-                    @Override
-                    public String getAppId() {
-                        return "unknown";
-                    }
-
-                    @Override
-                    public Optional<String> getInstanceId() {
-                        return Optional.of("unknown");
-                    }
-
-                    @Override
-                    public Optional<String> getDesktopAgent() {
-                        return Optional.empty();
-                    }
-
-                    @Override
-                    public Optional<String> getName() {
-                        return Optional.empty();
-                    }
-
-                    @Override
-                    public Optional<String> getVersion() {
-                        return Optional.empty();
-                    }
-
-                    @Override
-                    public Optional<Map<String, Object>> getInstanceMetadata() {
-                        return Optional.empty();
-                    }
-
-                    @Override
-                    public Optional<String> getTitle() {
-                        return Optional.empty();
-                    }
-
-                    @Override
-                    public Optional<String> getTooltip() {
-                        return Optional.empty();
-                    }
-
-                    @Override
-                    public Optional<String> getDescription() {
-                        return Optional.empty();
-                    }
-
-                    @Override
-                    public Optional<Collection<Icon>> getIcons() {
-                        return Optional.empty();
-                    }
-
-                    @Override
-                    public Optional<Collection<Image>> getScreenshots() {
-                        return Optional.empty();
-                    }
-
-                    @Override
-                    public Optional<String> getResultType() {
-                        return Optional.empty();
-                    }
-                };
-            }
-
-            @Override
-            public OptionalFeatures getOptionalFeatures() {
-                return new OptionalFeatures() {
-                    @Override
-                    public boolean isOriginatingAppMetadata() {
-                        return false;
-                    }
-
-                    @Override
-                    public boolean isUserChannelMembershipAPIs() {
-                        return false;
-                    }
-
-                    @Override
-                    public boolean isDesktopAgentBridging() {
-                        return false;
-                    }
-                };
-            }
-        };
+        return result;
     }
 }

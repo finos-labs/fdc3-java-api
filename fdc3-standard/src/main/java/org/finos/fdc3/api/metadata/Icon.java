@@ -16,15 +16,64 @@
 
 package org.finos.fdc3.api.metadata;
 
-import java.util.Optional;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-public interface Icon {
-  /** The icon url */
-  public String getSrc();
+/**
+ * Describes an Icon image that may be used to represent the application.
+ */
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class Icon {
 
-  /** The icon dimension, formatted as `<height>x<width>`. */
-  public Optional<String> getSize();
+    private String src;
+    private String size;
+    private String type;
 
-  /** Icon media type. If not present the Desktop Agent may use the src file extension. */
-  public Optional<String> getType();
+    /**
+     * Default constructor for Jackson deserialization.
+     */
+    public Icon() {
+    }
+
+    public Icon(String src, String size, String type) {
+        this.src = src;
+        this.size = size;
+        this.type = type;
+    }
+
+    /**
+     * The icon url.
+     */
+    @JsonProperty("src")
+    public String getSrc() {
+        return src;
+    }
+
+    public void setSrc(String src) {
+        this.src = src;
+    }
+
+    /**
+     * The icon dimension, formatted as `<height>x<width>`.
+     */
+    @JsonProperty("size")
+    public String getSize() {
+        return size;
+    }
+
+    public void setSize(String size) {
+        this.size = size;
+    }
+
+    /**
+     * Icon media type. If not present the Desktop Agent may use the src file extension.
+     */
+    @JsonProperty("type")
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
 }

@@ -17,20 +17,14 @@
 package org.finos.fdc3.proxy.intents;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.errors.ResolveError;
 import org.finos.fdc3.api.metadata.AppIntent;
-import org.finos.fdc3.api.metadata.AppMetadata;
-import org.finos.fdc3.api.metadata.Icon;
-import org.finos.fdc3.api.metadata.Image;
-import org.finos.fdc3.api.metadata.IntentMetadata;
 import org.finos.fdc3.api.metadata.IntentResolution;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.IntentHandler;
@@ -88,8 +82,9 @@ public class DefaultIntentSupport implements IntentSupport {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
-                    AppIntent appIntent = toApiAppIntent(typedResponse.getPayload().getAppIntent());
-                    if (appIntent.getApps().isEmpty()) {
+                    // Schema types now use fdc3-standard types directly
+                    AppIntent appIntent = typedResponse.getPayload().getAppIntent();
+                    if (appIntent.getApps() == null || appIntent.getApps().length == 0) {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
@@ -120,9 +115,8 @@ public class DefaultIntentSupport implements IntentSupport {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
-                    return Arrays.stream(typedResponse.getPayload().getAppIntents())
-                            .map(this::toApiAppIntent)
-                            .collect(Collectors.toList());
+                    // Schema types now use fdc3-standard AppIntent directly
+                    return Arrays.asList(typedResponse.getPayload().getAppIntents());
                 });
     }
 
@@ -156,7 +150,7 @@ public class DefaultIntentSupport implements IntentSupport {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
-                    org.finos.fdc3.schema.AppIntent schemaAppIntent = typedResponse.getPayload().getAppIntent();
+                    AppIntent schemaAppIntent = typedResponse.getPayload().getAppIntent();
                     org.finos.fdc3.schema.IntentResolution schemaIntentResolution = typedResponse.getPayload().getIntentResolution();
 
                     if (schemaAppIntent == null && schemaIntentResolution == null) {
@@ -164,8 +158,7 @@ public class DefaultIntentSupport implements IntentSupport {
                     }
 
                     if (schemaAppIntent != null) {
-                        AppIntent appIntent = toApiAppIntent(schemaAppIntent);
-                        return intentResolver.chooseIntent(List.of(appIntent), context)
+                        return intentResolver.chooseIntent(List.of(schemaAppIntent), context)
                                 .thenCompose(choice -> {
                                     if (choice == null) {
                                         throw new RuntimeException(ResolveError.UserCancelled.toString());
@@ -211,7 +204,7 @@ public class DefaultIntentSupport implements IntentSupport {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
-                    org.finos.fdc3.schema.AppIntent[] schemaAppIntents = typedResponse.getPayload().getAppIntents();
+                    AppIntent[] schemaAppIntents = typedResponse.getPayload().getAppIntents();
                     org.finos.fdc3.schema.IntentResolution schemaIntentResolution = typedResponse.getPayload().getIntentResolution();
 
                     if ((schemaAppIntents == null || schemaAppIntents.length == 0) && schemaIntentResolution == null) {
@@ -219,9 +212,7 @@ public class DefaultIntentSupport implements IntentSupport {
                     }
 
                     if (schemaAppIntents != null && schemaAppIntents.length > 0) {
-                        List<AppIntent> appIntents = Arrays.stream(schemaAppIntents)
-                                .map(this::toApiAppIntent)
-                                .collect(Collectors.toList());
+                        List<AppIntent> appIntents = Arrays.asList(schemaAppIntents);
 
                         return intentResolver.chooseIntent(appIntents, context)
                                 .thenCompose(choice -> {
@@ -250,31 +241,19 @@ public class DefaultIntentSupport implements IntentSupport {
 
     private org.finos.fdc3.schema.AppIdentifier toSchemaAppIdentifier(AppIdentifier app) {
         org.finos.fdc3.schema.AppIdentifier schemaApp = new org.finos.fdc3.schema.AppIdentifier();
-        schemaApp.setAppID(app.getAppId());
-        app.getInstanceId().ifPresent(schemaApp::setInstanceID);
+        schemaApp.setAppID(app.getAppID());
+        if (app.getInstanceID() != null) {
+            schemaApp.setInstanceID(app.getInstanceID());
+        }
         return schemaApp;
     }
 
     private AppIdentifier toApiAppIdentifier(org.finos.fdc3.schema.AppIdentifier schemaApp) {
-        String appId = schemaApp.getAppID();
-        String instanceId = schemaApp.getInstanceID();
-        String desktopAgent = schemaApp.getDesktopAgent();
-        return new AppIdentifier() {
-            @Override
-            public String getAppId() {
-                return appId;
-            }
-
-            @Override
-            public Optional<String> getInstanceId() {
-                return Optional.ofNullable(instanceId);
-            }
-
-            @Override
-            public Optional<String> getDesktopAgent() {
-                return Optional.ofNullable(desktopAgent);
-            }
-        };
+        return new AppIdentifier(
+                schemaApp.getAppID(),
+                schemaApp.getInstanceID(),
+                schemaApp.getDesktopAgent()
+        );
     }
 
     @SuppressWarnings("unchecked")
@@ -292,112 +271,5 @@ public class DefaultIntentSupport implements IntentSupport {
             Map<String, Object> payload = (Map<String, Object>) response.get("payload");
             return payload.get("intentResult");
         });
-    }
-
-    private AppIntent toApiAppIntent(org.finos.fdc3.schema.AppIntent schemaAppIntent) {
-        org.finos.fdc3.schema.IntentMetadata schemaIntent = schemaAppIntent.getIntent();
-        org.finos.fdc3.schema.AppMetadata[] schemaApps = schemaAppIntent.getApps();
-
-        String intentName = schemaIntent.getName();
-        String displayName = schemaIntent.getDisplayName();
-
-        IntentMetadata intent = new IntentMetadata() {
-            @Override
-            public String getName() {
-                return intentName;
-            }
-
-            @Override
-            public String getDisplayName() {
-                return displayName != null ? displayName : intentName;
-            }
-        };
-
-        List<AppMetadata> apps = Arrays.stream(schemaApps)
-                .map(this::toApiAppMetadata)
-                .collect(Collectors.toList());
-
-        return new AppIntent() {
-            @Override
-            public IntentMetadata getIntent() {
-                return intent;
-            }
-
-            @Override
-            public List<AppMetadata> getApps() {
-                return apps;
-            }
-        };
-    }
-
-    private AppMetadata toApiAppMetadata(org.finos.fdc3.schema.AppMetadata schemaApp) {
-        String appId = schemaApp.getAppID();
-        String instanceId = schemaApp.getInstanceID();
-        String desktopAgent = schemaApp.getDesktopAgent();
-        String name = schemaApp.getName();
-        String title = schemaApp.getTitle();
-        String description = schemaApp.getDescription();
-
-        return new AppMetadata() {
-            @Override
-            public String getAppId() {
-                return appId;
-            }
-
-            @Override
-            public Optional<String> getInstanceId() {
-                return Optional.ofNullable(instanceId);
-            }
-
-            @Override
-            public Optional<String> getDesktopAgent() {
-                return Optional.ofNullable(desktopAgent);
-            }
-
-            @Override
-            public Optional<String> getName() {
-                return Optional.ofNullable(name);
-            }
-
-            @Override
-            public Optional<String> getVersion() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<Map<String, Object>> getInstanceMetadata() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<String> getTitle() {
-                return Optional.ofNullable(title);
-            }
-
-            @Override
-            public Optional<String> getTooltip() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<String> getDescription() {
-                return Optional.ofNullable(description);
-            }
-
-            @Override
-            public Optional<Collection<Icon>> getIcons() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<Collection<Image>> getScreenshots() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<String> getResultType() {
-                return Optional.empty();
-            }
-        };
     }
 }

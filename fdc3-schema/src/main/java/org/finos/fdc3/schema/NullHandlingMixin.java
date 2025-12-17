@@ -12,6 +12,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * In JSON Schema, optional fields (not in "required" array) that don't allow null
  * should be omitted when null, not serialized as "field": null.
  * These mix-ins apply @JsonInclude(NON_NULL) to those fields.
+ * 
+ * Note: Some types (AppIdentifier, AppMetadata, DisplayMetadata, Icon, Image, 
+ * ImplementationMetadata, IntentMetadata) are now beans in fdc3-standard with 
+ * @JsonInclude(NON_NULL) at class level, so they don't need mixins here.
  */
 public final class NullHandlingMixin {
     
@@ -21,92 +25,22 @@ public final class NullHandlingMixin {
     
     /**
      * Register all mix-ins with the given ObjectMapper.
+     * Note: Types from fdc3-standard (AppIdentifier, AppMetadata, DisplayMetadata, 
+     * Icon, Image, ImplementationMetadata, IntentMetadata) already have proper 
+     * JSON annotations and don't need mixins.
      */
     public static void registerAll(ObjectMapper om) {
-        om.addMixIn(AppIdentifier.class, AppIdentifierMixin.class);
-        om.addMixIn(AppMetadata.class, AppMetadataMixin.class);
-        om.addMixIn(ImplementationMetadata.class, ImplementationMetadataMixin.class);
         om.addMixIn(BroadcastEventPayload.class, BroadcastEventPayloadMixin.class);
         om.addMixIn(Channel.class, ChannelMixin.class);
-        om.addMixIn(DisplayMetadata.class, DisplayMetadataMixin.class);
         om.addMixIn(FindIntentRequestPayload.class, FindIntentRequestPayloadMixin.class);
         om.addMixIn(FindIntentsByContextRequestPayload.class, FindIntentsByContextRequestPayloadMixin.class);
-        om.addMixIn(Icon.class, IconMixin.class);
-        om.addMixIn(Image.class, ImageMixin.class);
         om.addMixIn(IntentEventPayload.class, IntentEventPayloadMixin.class);
-        om.addMixIn(IntentMetadata.class, IntentMetadataMixin.class);
         om.addMixIn(OpenRequestPayload.class, OpenRequestPayloadMixin.class);
         om.addMixIn(RaiseIntentForContextRequestPayload.class, RaiseIntentForContextRequestPayloadMixin.class);
         om.addMixIn(RaiseIntentRequestPayload.class, RaiseIntentRequestPayloadMixin.class);
     }
     
-    // === Mix-in classes for each schema type ===
-    
-    public static abstract class AppIdentifierMixin {
-        @JsonProperty("instanceId")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getInstanceId();
-
-        @JsonProperty("desktopAgent")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getDesktopAgent();
-    }
-    
-    public static abstract class AppMetadataMixin {
-        @JsonProperty("name")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getName();
-
-        @JsonProperty("version")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getVersion();
-
-        @JsonProperty("title")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getTitle();
-
-        @JsonProperty("tooltip")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getTooltip();
-
-        @JsonProperty("description")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getDescription();
-
-        @JsonProperty("icons")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract Object getIcons();
-
-        @JsonProperty("screenshots")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract Object getScreenshots();
-
-        @JsonProperty("resultType")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getResultType();
-
-        @JsonProperty("instanceId")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getInstanceId();
-
-        @JsonProperty("instanceMetadata")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract Object getInstanceMetadata();
-
-        @JsonProperty("desktopAgent")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getDesktopAgent();
-    }
-    
-    public static abstract class ImplementationMetadataMixin {
-        @JsonProperty("optionalFeatures")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract Object getOptionalFeatures();
-
-        @JsonProperty("providerVersion")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getProviderVersion();
-    }
+    // === Mix-in classes for schema types that need null handling ===
     
     public static abstract class BroadcastEventPayloadMixin {
         @JsonProperty("originatingApp")
@@ -118,20 +52,6 @@ public final class NullHandlingMixin {
         @JsonProperty("displayMetadata")
         @JsonInclude(JsonInclude.Include.NON_NULL)
         abstract Object getDisplayMetadata();
-    }
-    
-    public static abstract class DisplayMetadataMixin {
-        @JsonProperty("name")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getName();
-
-        @JsonProperty("color")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getColor();
-
-        @JsonProperty("glyph")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getGlyph();
     }
     
     public static abstract class FindIntentRequestPayloadMixin {
@@ -150,40 +70,10 @@ public final class NullHandlingMixin {
         abstract String getResultType();
     }
     
-    public static abstract class IconMixin {
-        @JsonProperty("size")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getSize();
-
-        @JsonProperty("type")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getType();
-    }
-    
-    public static abstract class ImageMixin {
-        @JsonProperty("size")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getSize();
-
-        @JsonProperty("type")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getType();
-
-        @JsonProperty("label")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getLabel();
-    }
-    
     public static abstract class IntentEventPayloadMixin {
         @JsonProperty("originatingApp")
         @JsonInclude(JsonInclude.Include.NON_NULL)
         abstract Object getOriginatingApp();
-    }
-    
-    public static abstract class IntentMetadataMixin {
-        @JsonProperty("displayName")
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        abstract String getDisplayName();
     }
     
     public static abstract class OpenRequestPayloadMixin {
@@ -204,4 +94,3 @@ public final class NullHandlingMixin {
         abstract Object getApp();
     }
 }
-

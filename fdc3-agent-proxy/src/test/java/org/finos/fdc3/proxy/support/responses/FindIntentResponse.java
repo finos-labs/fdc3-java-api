@@ -47,10 +47,10 @@ public class FindIntentResponse implements AutomaticResponse {
         // Build app list
         List<Map<String, String>> apps = new ArrayList<>();
         for (IntentDetail detail : matching) {
-            if (detail.getApp() != null && detail.getApp().getAppId() != null) {
+            if (detail.getApp() != null && detail.getApp().getAppID() != null) {
                 Map<String, String> app = new HashMap<>();
-                app.put("appId", detail.getApp().getAppId());
-                detail.getApp().getInstanceId().ifPresent(id -> app.put("instanceId", id));
+                app.put("appId", detail.getApp().getAppID());
+                if (detail.getApp().getInstanceID() != null) { app.put("instanceId", detail.getApp().getInstanceID()); }
                 apps.add(app);
             }
         }

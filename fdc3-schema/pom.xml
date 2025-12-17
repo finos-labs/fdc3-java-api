@@ -179,21 +179,69 @@
                             </arguments>
                         </configuration>
                     </execution>
-                    <!-- Delete generated Context.java (use the one from fdc3-standard) and fix imports -->
+                    <!-- Delete generated classes that we use from fdc3-standard -->
                     <execution>
-                        <id>fix-context-imports</id>
+                        <id>delete-duplicate-classes</id>
                         <phase>generate-sources</phase>
                         <goals>
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <executable>/bin/sh</executable>
+                            <executable>rm</executable>
                             <workingDirectory>${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/schema</workingDirectory>
                             <arguments>
-                                <argument>-c</argument>
-                                <argument>rm -f Context.java ContextID.java ContextType.java 2>/dev/null; for f in *.java; do grep -q "private Context " "$f" &amp;&amp; sed -i '' 's/^package org.finos.fdc3.schema;$/package org.finos.fdc3.schema;\
-import org.finos.fdc3.api.context.Context;/' "$f"; done || true</argument>
+                                <argument>-f</argument>
+                                <argument>Context.java</argument>
+                                <argument>ContextID.java</argument>
+                                <argument>ContextType.java</argument>
+                                <argument>Icon.java</argument>
+                                <argument>Image.java</argument>
+                                <argument>DisplayMetadata.java</argument>
+                                <argument>IntentMetadata.java</argument>
+                                <argument>ImplementationMetadata.java</argument>
+                                <argument>OptionalFeatures.java</argument>
+                                <argument>AppMetadata.java</argument>
+                                <argument>AppIntent.java</argument>
                             </arguments>
+                            <successCodes>
+                                <successCode>0</successCode>
+                                <successCode>1</successCode>
+                            </successCodes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Replace package statement with imports for fdc3-standard types -->
+            <plugin>
+                <groupId>com.google.code.maven-replacer-plugin</groupId>
+                <artifactId>replacer</artifactId>
+                <version>1.5.3</version>
+                <executions>
+                    <execution>
+                        <id>add-standard-imports</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>replace</goal>
+                        </goals>
+                        <configuration>
+                            <basedir>${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/schema</basedir>
+                            <includes>
+                                <include>*.java</include>
+                            </includes>
+                            <replacements>
+                                <replacement>
+                                    <token>^package org\.finos\.fdc3\.schema;</token>
+                                    <value>package org.finos.fdc3.schema;
+
+import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.*;</value>
+                                </replacement>
+                            </replacements>
+                            <regex>true</regex>
+                            <regexFlags>
+                                <regexFlag>MULTILINE</regexFlag>
+                            </regexFlags>
                         </configuration>
                     </execution>
                 </executions>

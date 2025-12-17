@@ -126,10 +126,9 @@ public class DefaultChannelSupport implements ChannelSupport {
                     }
 
                     org.finos.fdc3.schema.Channel schemaChannel = typedResponse.getPayload().getChannel();
-                    DisplayMetadata displayMetadata = toApiDisplayMetadata(schemaChannel.getDisplayMetadata());
-
+                    // Schema now uses fdc3-standard DisplayMetadata directly
                     return new DefaultChannel(messaging, messageExchangeTimeout, 
-                            schemaChannel.getID(), Channel.Type.User, displayMetadata);
+                            schemaChannel.getID(), Channel.Type.User, schemaChannel.getDisplayMetadata());
                 });
     }
 
@@ -160,12 +159,10 @@ public class DefaultChannelSupport implements ChannelSupport {
                         return userChannels;
                     }
 
+                    // Schema now uses fdc3-standard DisplayMetadata directly
                     userChannels = Arrays.stream(typedResponse.getPayload().getUserChannels())
-                            .map(c -> {
-                                DisplayMetadata displayMetadata = toApiDisplayMetadata(c.getDisplayMetadata());
-                                return (Channel) new DefaultChannel(
-                                        messaging, messageExchangeTimeout, c.getID(), Channel.Type.User, displayMetadata);
-                            })
+                            .map(c -> (Channel) new DefaultChannel(
+                                        messaging, messageExchangeTimeout, c.getID(), Channel.Type.User, c.getDisplayMetadata()))
                             .collect(Collectors.toList());
 
                     return userChannels;
@@ -195,9 +192,8 @@ public class DefaultChannelSupport implements ChannelSupport {
                     }
 
                     org.finos.fdc3.schema.Channel schemaChannel = typedResponse.getPayload().getChannel();
-                    DisplayMetadata displayMetadata = toApiDisplayMetadata(schemaChannel.getDisplayMetadata());
-
-                    return new DefaultChannel(messaging, messageExchangeTimeout, id, Channel.Type.App, displayMetadata);
+                    // Schema now uses fdc3-standard DisplayMetadata directly
+                    return new DefaultChannel(messaging, messageExchangeTimeout, id, Channel.Type.App, schemaChannel.getDisplayMetadata());
                 });
     }
 
@@ -284,29 +280,5 @@ public class DefaultChannelSupport implements ChannelSupport {
 
     // ============ Helper methods ============
 
-    private DisplayMetadata toApiDisplayMetadata(org.finos.fdc3.schema.DisplayMetadata schemaDisplayMetadata) {
-        if (schemaDisplayMetadata == null) {
-            return null;
-        }
-        String name = schemaDisplayMetadata.getName();
-        String color = schemaDisplayMetadata.getColor();
-        String glyph = schemaDisplayMetadata.getGlyph();
-
-        return new DisplayMetadata() {
-            @Override
-            public java.util.Optional<String> getName() {
-                return java.util.Optional.ofNullable(name);
-            }
-
-            @Override
-            public java.util.Optional<String> getColor() {
-                return java.util.Optional.ofNullable(color);
-            }
-
-            @Override
-            public java.util.Optional<String> getGlyph() {
-                return java.util.Optional.ofNullable(glyph);
-            }
-        };
-    }
+    // Schema now uses fdc3-standard DisplayMetadata directly, no conversion needed
 }

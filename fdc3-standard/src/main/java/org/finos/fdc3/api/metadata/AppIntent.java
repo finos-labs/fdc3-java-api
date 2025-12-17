@@ -16,15 +16,48 @@
 
 package org.finos.fdc3.api.metadata;
 
-import java.util.Collection;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * An interface that relates an intent to apps
+ * An interface that relates an intent to apps.
+ *
+ * Used if a raiseIntent request requires additional resolution (e.g. by showing an intent
+ * resolver) before it can be handled.
  */
-public interface AppIntent {
-  /** Details of the intent whose relationship to resolving applications is being described. */
-  public IntentMetadata getIntent();
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class AppIntent {
 
-  /** Details of applications that can resolve the intent. */
-  public Collection<AppMetadata> getApps();
+    private AppMetadata[] apps;
+    private IntentMetadata intent;
+
+    /**
+     * Default constructor for Jackson deserialization.
+     */
+    public AppIntent() {
+    }
+
+    /**
+     * Details of applications that can resolve the intent.
+     */
+    @JsonProperty("apps")
+    public AppMetadata[] getApps() {
+        return apps;
+    }
+
+    public void setApps(AppMetadata[] apps) {
+        this.apps = apps;
+    }
+
+    /**
+     * Details of the intent whose relationship to resolving applications is being described.
+     */
+    @JsonProperty("intent")
+    public IntentMetadata getIntent() {
+        return intent;
+    }
+
+    public void setIntent(IntentMetadata intent) {
+        this.intent = intent;
+    }
 }

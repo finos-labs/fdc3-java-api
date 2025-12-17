@@ -432,12 +432,7 @@ public class GenericSteps {
      * Invoke a method on an object by name.
      */
     private Object invokeMethod(Object target, String methodName, Object... args) throws Exception {
-        Class<?>[] paramTypes = new Class<?>[args.length];
-        for (int i = 0; i < args.length; i++) {
-            paramTypes[i] = args[i] != null ? args[i].getClass() : Object.class;
-        }
-
-        Method method = findMethod(target.getClass(), methodName, args.length);
+        Method method = findMethod(target.getClass(), methodName, args.length, args);
         if (method == null) {
             throw new NoSuchMethodException("Method not found: " + methodName);
         }
@@ -450,15 +445,38 @@ public class GenericSteps {
     }
 
     /**
-     * Find a method by name and parameter count.
+     * Find a method by name and parameter types.
+     * First tries to find an exact match, then falls back to compatible types.
      */
-    private Method findMethod(Class<?> clazz, String name, int paramCount) {
+    private Method findMethod(Class<?> clazz, String name, int paramCount, Object... args) {
+        Method fallback = null;
         for (Method method : clazz.getMethods()) {
             if (method.getName().equals(name) && method.getParameterCount() == paramCount) {
-                return method;
+                // Check if parameter types are compatible
+                Class<?>[] paramTypes = method.getParameterTypes();
+                boolean matches = true;
+                for (int i = 0; i < paramCount; i++) {
+                    if (args[i] != null && !paramTypes[i].isAssignableFrom(args[i].getClass())) {
+                        matches = false;
+                        break;
+                    }
+                }
+                if (matches) {
+                    return method;
+                }
+                if (fallback == null) {
+                    fallback = method;
+                }
             }
         }
-        return null;
+        return fallback;
+    }
+
+    /**
+     * Find a method by name and parameter count (for backwards compatibility).
+     */
+    private Method findMethod(Class<?> clazz, String name, int paramCount) {
+        return findMethod(clazz, name, paramCount, new Object[paramCount]);
     }
 
     /**

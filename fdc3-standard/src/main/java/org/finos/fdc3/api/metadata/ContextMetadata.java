@@ -34,12 +34,12 @@ public interface ContextMetadata {
   /** Get the source app ID. Convenience method. */
   default String getSourceAppId() {
     AppIdentifier source = getSource();
-    return source != null ? source.getAppId() : null;
+    return source != null ? source.getAppID() : null;
   }
 
   /** Get the source instance ID. Convenience method. */
   default String getSourceInstanceId() {
     AppIdentifier source = getSource();
-    return source != null ? source.getInstanceId().orElse(null) : null;
+    return source != null ? source.getInstanceID() : null;
   }
 }

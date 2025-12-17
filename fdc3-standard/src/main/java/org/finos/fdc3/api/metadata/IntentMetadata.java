@@ -16,13 +16,50 @@
 
 package org.finos.fdc3.api.metadata;
 
-/**
- * Intent descriptor
- */
-public interface IntentMetadata {
-  /** The unique name of the intent that can be invoked by the raiseIntent call */
-  public String getName();
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-  /** A friendly display name for the intent that should be used to render UI elements */
-  public String getDisplayName();
+/**
+ * Metadata describing an Intent.
+ */
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class IntentMetadata {
+
+    private String name;
+    private String displayName;
+
+    /**
+     * Default constructor for Jackson deserialization.
+     */
+    public IntentMetadata() {
+    }
+
+    public IntentMetadata(String name, String displayName) {
+        this.name = name;
+        this.displayName = displayName;
+    }
+
+    /**
+     * The unique name of the intent that can be invoked by the raiseIntent call.
+     */
+    @JsonProperty("name")
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    /**
+     * Display name for the intent.
+     */
+    @JsonProperty("displayName")
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
 }

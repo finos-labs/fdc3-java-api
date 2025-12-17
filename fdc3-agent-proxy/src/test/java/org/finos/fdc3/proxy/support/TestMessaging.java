@@ -52,22 +52,7 @@ public class TestMessaging extends AbstractMessaging {
     private PossibleIntentResult intentResult;
 
     public TestMessaging(Map<String, List<Context>> channelState) {
-        super(new AppIdentifier() {
-            @Override
-            public String getAppId() {
-                return "cucumber-app";
-            }
-
-            @Override
-            public java.util.Optional<String> getInstanceId() {
-                return java.util.Optional.of("cucumber-instance");
-            }
-
-            @Override
-            public java.util.Optional<String> getDesktopAgent() {
-                return java.util.Optional.of("testing-da");
-            }
-        });
+        super(new AppIdentifier("cucumber-app", "cucumber-instance", "testing-da"));
         this.channelState = channelState != null ? channelState : new HashMap<>();
         
         // Set up automatic responses for various message types
@@ -161,8 +146,10 @@ public class TestMessaging extends AbstractMessaging {
         meta.put("responseUuid", createUUID());
         meta.put("timestamp", Instant.now().toString());
         Map<String, String> source = new HashMap<>();
-        source.put("appId", getAppIdentifier().getAppId());
-        getAppIdentifier().getInstanceId().ifPresent(id -> source.put("instanceId", id));
+        source.put("appId", getAppIdentifier().getAppID());
+        if (getAppIdentifier().getInstanceID() != null) {
+            source.put("instanceId", getAppIdentifier().getInstanceID());
+        }
         meta.put("source", source);
         return meta;
     }
@@ -176,8 +163,10 @@ public class TestMessaging extends AbstractMessaging {
         meta.put("eventUuid", createUUID());
         meta.put("timestamp", Instant.now().toString());
         Map<String, String> source = new HashMap<>();
-        source.put("appId", getAppIdentifier().getAppId());
-        getAppIdentifier().getInstanceId().ifPresent(id -> source.put("instanceId", id));
+        source.put("appId", getAppIdentifier().getAppID());
+        if (getAppIdentifier().getInstanceID() != null) {
+            source.put("instanceId", getAppIdentifier().getInstanceID());
+        }
         meta.put("source", source);
         return meta;
     }

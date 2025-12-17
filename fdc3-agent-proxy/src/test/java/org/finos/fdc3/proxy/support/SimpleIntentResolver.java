@@ -16,9 +16,8 @@
 
 package org.finos.fdc3.proxy.support;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -57,29 +56,16 @@ public class SimpleIntentResolver implements IntentResolver {
         // Select the first intent and first app
         AppIntent firstIntent = appIntents.get(0);
         IntentMetadata intent = firstIntent.getIntent();
-        List<AppMetadata> apps = new ArrayList<>(firstIntent.getApps());
+        // getApps() returns AppMetadata[] so convert to list
+        List<AppMetadata> apps = Arrays.asList(firstIntent.getApps());
         AppMetadata firstApp = apps.get(0);
 
         // Create an AppIdentifier from the AppMetadata
-        final String appId = firstApp.getAppId();
-        final Optional<String> instanceId = firstApp.getInstanceId();
-        final Optional<String> desktopAgent = firstApp.getDesktopAgent();
-        AppIdentifier appIdentifier = new AppIdentifier() {
-            @Override
-            public String getAppId() {
-                return appId;
-            }
-
-            @Override
-            public Optional<String> getInstanceId() {
-                return instanceId;
-            }
-
-            @Override
-            public Optional<String> getDesktopAgent() {
-                return desktopAgent;
-            }
-        };
+        AppIdentifier appIdentifier = new AppIdentifier(
+                firstApp.getAppID(),
+                firstApp.getInstanceID(),
+                firstApp.getDesktopAgent()
+        );
 
         // Create the resolution choice
         IntentResolutionChoice resolution = new IntentResolutionChoice(
