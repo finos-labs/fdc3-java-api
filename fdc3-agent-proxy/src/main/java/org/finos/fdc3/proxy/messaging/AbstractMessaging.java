@@ -119,8 +119,9 @@ public abstract class AbstractMessaging implements Messaging {
             }
 
             @Override
-            public void unsubscribe() {
+            public CompletionStage<Void> unsubscribe() {
                 AbstractMessaging.this.unregister(id);
+                return CompletableFuture.completedFuture(null);
             }
         };
 

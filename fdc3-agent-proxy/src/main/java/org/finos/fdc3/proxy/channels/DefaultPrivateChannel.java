@@ -26,8 +26,14 @@ import org.finos.fdc3.api.channel.PrivateChannel;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
+import org.finos.fdc3.api.types.EventHandler;
+import org.finos.fdc3.api.types.FDC3Event;
+import org.finos.fdc3.proxy.listeners.AbstractPrivateChannelEventListener;
 import org.finos.fdc3.proxy.listeners.DefaultContextListener;
-import org.finos.fdc3.proxy.listeners.PrivateChannelEventListener;
+import org.finos.fdc3.proxy.listeners.PrivateChannelAddContextEventListener;
+import org.finos.fdc3.proxy.listeners.PrivateChannelDisconnectEventListener;
+import org.finos.fdc3.proxy.listeners.PrivateChannelNullEventListener;
+import org.finos.fdc3.proxy.listeners.PrivateChannelUnsubscribeEventListener;
 import org.finos.fdc3.schema.*;
 
 /**
@@ -40,29 +46,69 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
     }
 
     @Override
-    public Listener onAddContextListener(Consumer<Optional<String>> handler) {
-        PrivateChannelEventListener listener = new PrivateChannelEventListener(
-                messaging, messageExchangeTimeout, getId(), "addContextListener", 
-                event -> handler.accept(Optional.ofNullable((String) event.getDetails())));
-        listener.registerSync();
+    public CompletionStage<Listener> addEventListener(String type, EventHandler handler) {
+        AbstractPrivateChannelEventListener listener;
+        
+        if (type == null) {
+            listener = new PrivateChannelNullEventListener(messaging, messageExchangeTimeout, getId(), handler);
+        } else {
+            switch (type) {
+                case "addContextListener":
+                    listener = new PrivateChannelAddContextEventListener(messaging, messageExchangeTimeout, getId(), handler);
+                    break;
+                case "unsubscribe":
+                    listener = new PrivateChannelUnsubscribeEventListener(messaging, messageExchangeTimeout, getId(), handler);
+                    break;
+                case "disconnect":
+                    listener = new PrivateChannelDisconnectEventListener(messaging, messageExchangeTimeout, getId(), handler);
+                    break;
+                default:
+                    throw new RuntimeException("Unsupported event type: " + type);
+            }
+        }
+        
+        return listener.register().thenApply(v -> listener);
+    }
+
+    @Override
+    public Listener onAddContextListener(EventHandler handler) {
+        // Adapt handler type for differences between addEventListener and onAddContextListener handler types
+        PrivateChannelAddContextEventListener listener = new PrivateChannelAddContextEventListener(
+                messaging, messageExchangeTimeout, getId(), 
+                event -> {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> details = (Map<String, Object>) event.getDetails();
+                    String contextType = details != null ? (String) details.get("contextType") : null;
+                    handler.handleEvent(new FDC3Event(FDC3Event.Type.ADD_CONTEXT_LISTENER, details));
+                });
+        // Register asynchronously (fire and forget) like TypeScript
+        listener.register();
         return listener;
     }
 
     @Override
-    public Listener onUnsubsrcibe(Consumer<Optional<String>> handler) {
-        PrivateChannelEventListener listener = new PrivateChannelEventListener(
-                messaging, messageExchangeTimeout, getId(), "unsubscribe",
-                event -> handler.accept(Optional.ofNullable((String) event.getDetails())));
-        listener.registerSync();
+    public Listener onUnsubscribe(EventHandler handler) {
+        // Adapt handler type for differences between addEventListener and onUnsubscribe handler types
+        PrivateChannelUnsubscribeEventListener listener = new PrivateChannelUnsubscribeEventListener(
+                messaging, messageExchangeTimeout, getId(),
+                event -> {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> details = (Map<String, Object>) event.getDetails();
+                    String contextType = details != null ? (String) details.get("contextType") : null;
+                    handler.handleEvent(new FDC3Event(FDC3Event.Type.ON_UNSUBSCRIBE, details));
+                });
+        // Register asynchronously (fire and forget) like TypeScript
+        listener.register();
         return listener;
     }
 
     @Override
-    public Listener onDisconnect(Runnable handler) {
-        PrivateChannelEventListener listener = new PrivateChannelEventListener(
-                messaging, messageExchangeTimeout, getId(), "disconnect",
-                event -> handler.run());
-        listener.registerSync();
+    public Listener onDisconnect(EventHandler handler) {
+        // Adapt handler type for differences between addEventListener and onDisconnect handler types
+        PrivateChannelDisconnectEventListener listener = new PrivateChannelDisconnectEventListener(
+                messaging, messageExchangeTimeout, getId(),
+                event -> handler.handleEvent(new FDC3Event(FDC3Event.Type.ON_DISCONNECT, null)));
+        listener.register();
         return listener;
     }
 

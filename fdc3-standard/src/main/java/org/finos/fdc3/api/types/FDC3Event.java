@@ -16,31 +16,66 @@
 
 package org.finos.fdc3.api.types;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
 /**
  * Type representing the event object passed to event handlers subscribed to
  * FDC3 events via the {@code addEventListener} method.
  * 
  * Events will always include both {@code type} and {@code details} properties,
  * which describe the type of event and any additional details, respectively.
- *
- * @param <T> The type of the details object for this event
  */
-public class FDC3Event<T> {
+public class FDC3Event {
 
-    private final String type;
-    private final T details;
+    /**
+     * Enumeration of FDC3 event types.
+     */
+    public enum Type {
+        ADD_CONTEXT_LISTENER("addContextListener"),
+        ON_UNSUBSCRIBE("onUnsubscribe"),
+        ON_DISCONNECT("onDisconnect"),
+        USER_CHANNEL_CHANGED("userChannelChanged");
 
-    public FDC3Event(String type, T details) {
+        private final String value;
+
+        Type(String value) {
+            this.value = value;
+        }
+
+        @JsonValue
+        public String getValue() {
+            return value;
+        }
+
+        @JsonCreator
+        public static Type fromValue(String value) {
+            for (Type type : Type.values()) {
+                if (type.value.equals(value)) {
+                    return type;
+                }
+            }
+            throw new IllegalArgumentException("Unknown FDC3 event type: " + value);
+        }
+
+        @Override
+        public String toString() {
+            return value;
+        }
+    }
+
+    private final Type type;
+    private final Object details;
+
+    public FDC3Event(Type type, Object details) {
         this.type = type;
         this.details = details;
     }
 
     /**
-     * Returns the type of the event.
-     * 
-     * @return the event type string (e.g., "userChannelChanged")
+     * Returns the type of the event.     
      */
-    public String getType() {
+    public Type getType() {
         return type;
     }
 
@@ -49,7 +84,7 @@ public class FDC3Event<T> {
      * 
      * @return the event details
      */
-    public T getDetails() {
+    public Object getDetails() {
         return details;
     }
 }

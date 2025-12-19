@@ -173,14 +173,14 @@ public class ChannelSteps {
 
     @Given("{string} pipes events to {string}")
     public void pipesEventsTo(String typeHandlerName, String field) {
-        List<FDC3Event<?>> events = new ArrayList<>();
+        List<Object> events = new ArrayList<>();
         world.set(field, events);
         
         EventHandler eh = new EventHandler() {
 			
 			@Override
-			public void handleEvent(FDC3Event<?> event) {
-				events.add(event);
+			public void handleEvent(FDC3Event event) {
+				events.add(event.getDetails());
 			}
 		};
         

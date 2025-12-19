@@ -130,32 +130,7 @@ public abstract class AbstractListener<H> implements RegisterableListener, Liste
     }
 
     @Override
-    public void unsubscribe() {
-        if (this.id != null) {
-            messaging.unregister(this.id);
-            
-            // Send unsubscribe request to the server
-            Map<String, Object> request = new java.util.HashMap<>();
-            request.put("type", unsubscribeRequestType);
-            request.put("meta", messaging.getConverter().toMap(messaging.createMeta()));
-            
-            Map<String, Object> payload = new java.util.HashMap<>();
-            payload.put("listenerUUID", this.id);
-            request.put("payload", payload);
-            
-            // Fire and forget - we don't wait for the response
-            messaging.<Map<String, Object>>exchange(request, unsubscribeResponseType, messageExchangeTimeout);
-        } else {
-            throw new RuntimeException("This listener doesn't have an id and hence can't be removed!");
-        }
-    }
-
-    /**
-     * Unsubscribe asynchronously and wait for server acknowledgement.
-     *
-     * @return a CompletionStage that completes when unsubscribed
-     */
-    public CompletionStage<Void> unsubscribeAsync() {
+    public CompletionStage<Void> unsubscribe() {
         if (this.id != null) {
             messaging.unregister(this.id);
             

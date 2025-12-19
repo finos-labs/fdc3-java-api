@@ -17,26 +17,28 @@
 package org.finos.fdc3.proxy.listeners;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.finos.fdc3.api.types.EventHandler;
-import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.schema.PrivateChannelEventType;
 
 /**
- * Event listener for private channel events.
+ * Abstract base class for private channel event listeners.
  * Extends AbstractListener to handle registration/unregistration.
  */
-public class PrivateChannelEventListener extends AbstractListener<EventHandler> {
+public abstract class AbstractPrivateChannelEventListener extends AbstractListener<EventHandler> {
 
-    private final String channelId;
-    private final String eventType;
+    protected final String privateChannelId;
+    protected final List<String> eventMessageTypes;
+    protected final String eventType;
 
-    public PrivateChannelEventListener(
+    protected AbstractPrivateChannelEventListener(
             Messaging messaging,
             long messageExchangeTimeout,
-            String channelId,
+            String privateChannelId,
+            List<String> eventMessageTypes,
             String eventType,
             EventHandler handler) {
         super(
@@ -48,7 +50,8 @@ public class PrivateChannelEventListener extends AbstractListener<EventHandler> 
             "privateChannelUnsubscribeEventListenerRequest",
             "privateChannelUnsubscribeEventListenerResponse"
         );
-        this.channelId = channelId;
+        this.privateChannelId = privateChannelId;
+        this.eventMessageTypes = eventMessageTypes;
         this.eventType = eventType;
     }
 
@@ -56,11 +59,10 @@ public class PrivateChannelEventListener extends AbstractListener<EventHandler> 
     protected Map<String, Object> buildSubscribeRequest() {
         Map<String, Object> request = new HashMap<>();
         Map<String, Object> payload = new HashMap<>();
-        payload.put("privateChannelId", channelId);
+        payload.put("privateChannelId", privateChannelId);
         PrivateChannelEventType pcEventType = toPrivateChannelEventType(eventType);
-        if (pcEventType != null) {
-            payload.put("listenerType", pcEventType.toValue());
-        }
+        // Explicitly set listenerType to null if eventType is null, otherwise use the enum value
+        payload.put("listenerType", pcEventType != null ? pcEventType.toValue() : null);
         request.put("payload", payload);
         return request;
     }
@@ -69,7 +71,7 @@ public class PrivateChannelEventListener extends AbstractListener<EventHandler> 
     @SuppressWarnings("unchecked")
     public boolean filter(Map<String, Object> message) {
         String type = (String) message.get("type");
-        if (!getExpectedMessageType().equals(type)) {
+        if (!eventMessageTypes.contains(type)) {
             return false;
         }
 
@@ -79,43 +81,11 @@ public class PrivateChannelEventListener extends AbstractListener<EventHandler> 
         }
 
         String msgChannelId = (String) payload.get("privateChannelId");
-        return channelId.equals(msgChannelId);
-    }
-
-    private String getExpectedMessageType() {
-        if (eventType == null) {
-            return "privateChannelOnEvent";
-        }
-        switch (eventType) {
-            case "addContextListener":
-                return "privateChannelOnAddContextListenerEvent";
-            case "unsubscribe":
-                return "privateChannelOnUnsubscribeEvent";
-            case "disconnect":
-                return "privateChannelOnDisconnectEvent";
-            default:
-                return "privateChannelOnEvent";
-        }
+        return privateChannelId.equals(msgChannelId);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public void action(Map<String, Object> message) {
-        Map<String, Object> payload = (Map<String, Object>) message.get("payload");
-        FDC3Event<Map<String, Object>> event = new FDC3Event<>(eventType, payload);
-        handler.handleEvent(event);
-    }
-
-    /**
-     * Register synchronously.
-     */
-    public void registerSync() {
-        try {
-            register().toCompletableFuture().get();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to register listener", e);
-        }
-    }
+    public abstract void action(Map<String, Object> message);
 
     private PrivateChannelEventType toPrivateChannelEventType(String eventType) {
         if (eventType == null) {
@@ -129,7 +99,8 @@ public class PrivateChannelEventListener extends AbstractListener<EventHandler> 
             case "disconnect":
                 return PrivateChannelEventType.DISCONNECT;
             default:
-                return null;
+                throw new RuntimeException("Unsupported event type: " + eventType);
         }
     }
 }
+

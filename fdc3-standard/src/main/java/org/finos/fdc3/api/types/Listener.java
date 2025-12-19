@@ -16,9 +16,11 @@
 
 package org.finos.fdc3.api.types;
 
+import java.util.concurrent.CompletionStage;
+
 public interface Listener {
   /**
    * Unsubscribe the listener object.
    */
-  public void unsubscribe();
+  CompletionStage<Void> unsubscribe();
 }

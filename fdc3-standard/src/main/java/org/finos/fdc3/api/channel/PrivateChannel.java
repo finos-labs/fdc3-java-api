@@ -16,9 +16,9 @@
 
 package org.finos.fdc3.api.channel;
 
-import java.util.Optional;
-import java.util.function.Consumer;
+import java.util.concurrent.CompletionStage;
 
+import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.Listener;
 
 /**
@@ -32,24 +32,57 @@ import org.finos.fdc3.api.types.Listener;
  */
 public interface PrivateChannel extends Channel {
     /**
+     * Register a handler for events from the PrivateChannel. Whenever the handler function
+     * is called it will be passed an event object with details related to the event.
+     * 
+     * <pre>
+     * // any event type
+     * Listener listener = await myPrivateChannel.addEventListener(null, event -> {
+     *   System.out.println("Received event " + event.getType() + "\n\tDetails: " + event.getDetails());
+     * }).toCompletableFuture().join();
+     * 
+     * // listener for a specific event type
+     * Listener channelChangedListener = await myPrivateChannel.addEventListener(
+     *    "addContextListener",
+     *    event -> { ... }
+     * ).toCompletableFuture().join();
+     * </pre>
+     * 
+     * @param type If non-null, only events of the specified type will be received by the handler.
+     *             Valid types are: "addContextListener", "unsubscribe", "disconnect", or null for all events.
+     * @param handler A function that events received will be passed to.
+     * @return A CompletionStage that resolves to a Listener object when the listener is successfully registered.
+     */
+    CompletionStage<Listener> addEventListener(String type, EventHandler handler);
+
+    /**
      * Adds a listener that will be called each time that the remote app invokes addContextListener on this channel. Desktop Agents
      * MUST call this for each invocation of addContextListener on this channel, including those that occurred before this handler
      * was registered (to prevent race conditions).
+     * 
+     * @deprecated Use {@link #addEventListener(String, EventHandler)} instead
      */
-    Listener onAddContextListener(Consumer<Optional<String>> handler);
+    @Deprecated
+    Listener onAddContextListener(EventHandler handler);
 
     /**
      * Adds a listener that will be called whenever the remote app invokes Listener.unsubscribe() on a context listener that it
      * previously added. Desktop Agents MUST call this when disconnect() is called by the other party, for each listener that they
      * have added.
+     * 
+     * @deprecated Use {@link #addEventListener(String, EventHandler)} instead
      */
-    Listener onUnsubsrcibe(Consumer<Optional<String>> handler);
+    @Deprecated
+    Listener onUnsubscribe(EventHandler handler);
 
     /**
      * Adds a listener that will be called when the remote app terminates, for example when its window is closed or because
      * disconnect was called. This is in addition to calls that will be made to onUnsubscribe listeners.
+     * 
+     * @deprecated Use {@link #addEventListener(String, EventHandler)} instead
      */
-    Listener onDisconnect(Runnable handler);
+    @Deprecated
+    Listener onDisconnect(EventHandler handler);
 
     /**
      * May be called to indicate that a participant will no longer interact with this channel. After this function has been called,

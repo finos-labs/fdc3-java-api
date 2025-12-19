@@ -43,6 +43,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.finos.fdc3.api.types.EventHandler;
+import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.testing.world.PropsWorld;
 
 import com.networknt.schema.JsonSchema;
@@ -288,11 +290,16 @@ public class GenericSteps {
     @Given("{string} is a invocation counter into {string}")
     public void isAnInvocationCounter(String handlerName, String counterField) {
         world.set(counterField, 0);
-        world.set(handlerName, (Runnable) () -> {
-            int amount = (Integer) world.get(counterField);
-            amount++;
-            world.set(counterField, amount);
-        });
+        EventHandler eh = new EventHandler() {
+			
+			@Override
+			public void handleEvent(FDC3Event event) {
+				int amount = (Integer) world.get(counterField);
+		        amount++;
+		        world.set(counterField, amount);				
+			}
+		};
+        world.set(handlerName, eh);
     }
 
     // ========== Function Creation ==========

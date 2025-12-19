@@ -297,8 +297,4 @@ public class DefaultChannelSupport implements ChannelSupport {
     Channel getCurrentChannelInternal() {
         return currentChannel;
     }
-
-    // ============ Helper methods ============
-
-    // Schema now uses fdc3-standard DisplayMetadata directly, no conversion needed
 }

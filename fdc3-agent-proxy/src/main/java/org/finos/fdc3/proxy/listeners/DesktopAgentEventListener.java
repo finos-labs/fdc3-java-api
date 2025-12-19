@@ -72,7 +72,7 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
     protected Map<String, Object> buildSubscribeRequest() {
         Map<String, Object> request = new HashMap<>();
         Map<String, Object> payload = new HashMap<>();
-        FDC3EventType fdc3EventType = toFDC3EventType(eventType);
+        FDC3EventType fdc3EventType = toFDC3SchemaEventType(eventType);
         // Explicitly set type to null if eventType is null, otherwise use the enum value
         payload.put("type", fdc3EventType != null ? fdc3EventType.toValue() : null);
         request.put("payload", payload);
@@ -97,17 +97,30 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
     @SuppressWarnings("unchecked")
     public void action(Map<String, Object> message) {
         Map<String, Object> payload = (Map<String, Object>) message.get("payload");
-        FDC3Event<Map<String, Object>> event = new FDC3Event<>(eventType, payload);
+        FDC3Event.Type fdc3EventType = toFDC3EventType(eventType);
+        FDC3Event event = new FDC3Event(fdc3EventType, payload);
         handler.handleEvent(event);
     }
 
-    private FDC3EventType toFDC3EventType(String eventType) {
+    private FDC3EventType toFDC3SchemaEventType(String eventType) {
         if (eventType == null) {
             return null;
         }
         switch (eventType) {
             case "userChannelChanged":
                 return FDC3EventType.USER_CHANNEL_CHANGED;
+            default:
+                throw new RuntimeException("UnknownEventType");
+        }
+    }
+
+    private FDC3Event.Type toFDC3EventType(String eventType) {
+        if (eventType == null) {
+            return null;
+        }
+        switch (eventType) {
+            case "userChannelChanged":
+                return FDC3Event.Type.USER_CHANNEL_CHANGED;
             default:
                 throw new RuntimeException("UnknownEventType");
         }

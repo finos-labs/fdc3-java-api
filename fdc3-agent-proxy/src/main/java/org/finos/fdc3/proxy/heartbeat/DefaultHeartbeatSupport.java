@@ -86,8 +86,9 @@ public class DefaultHeartbeatSupport implements HeartbeatSupport {
             }
 
             @Override
-            public void unsubscribe() {
+            public CompletionStage<Void> unsubscribe() {
                 messaging.unregister(id);
+                return CompletableFuture.completedFuture(null);
             }
         };
 

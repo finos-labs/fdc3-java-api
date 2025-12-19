@@ -29,6 +29,6 @@ public interface EventHandler {
      * 
      * @param event the event object containing type and details
      */
-    void handleEvent(FDC3Event<?> event);
+    void handleEvent(FDC3Event event);
 
 }

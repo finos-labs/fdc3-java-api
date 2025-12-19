@@ -57,7 +57,9 @@ public interface RegisterableListener {
 
     /**
      * Unsubscribe this listener from the messaging system.
+     * 
+     * @return a CompletionStage that completes when unsubscribed
      */
-    void unsubscribe();
+    CompletionStage<Void> unsubscribe();
 }
 
