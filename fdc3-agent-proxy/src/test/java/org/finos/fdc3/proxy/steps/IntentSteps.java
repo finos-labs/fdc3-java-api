@@ -266,8 +266,8 @@ public class IntentSteps {
 					}
 
 					@Override
-					public Optional<DisplayMetadata> displayMetadata() {
-						return Optional.of(dm);
+					public DisplayMetadata getDisplayMetadata() {
+						return dm;
 					}
 
 					@Override

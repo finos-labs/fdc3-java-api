@@ -66,7 +66,7 @@ public interface Channel extends IntentResult {
    * Channels may be visualized and selectable by users. DisplayMetadata may be used to provide hints on how to see them.
    * For App channels, displayMetadata would typically not be present.
    */
-  Optional<DisplayMetadata> displayMetadata();
+  DisplayMetadata getDisplayMetadata();
 
   /**
    * Broadcasts a context on the channel. This function can be used without first joining the channel, allowing applications to broadcast on both App Channels and User Channels that they aren't a member of.

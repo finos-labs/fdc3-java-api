@@ -44,7 +44,7 @@ public class DefaultChannel implements Channel {
     private final String id;
     private final Type type;
     @JsonIgnore
-    private final DisplayMetadata displayMetadataValue;
+    private final DisplayMetadata displayMetadata;
 
     public DefaultChannel(
             Messaging messaging,
@@ -56,7 +56,7 @@ public class DefaultChannel implements Channel {
         this.messageExchangeTimeout = messageExchangeTimeout;
         this.id = id;
         this.type = type;
-        this.displayMetadataValue = displayMetadata;
+        this.displayMetadata = displayMetadata;
     }
 
     @Override
@@ -76,8 +76,8 @@ public class DefaultChannel implements Channel {
     }
 
     @Override
-    public Optional<DisplayMetadata> displayMetadata() {
-        return Optional.ofNullable(displayMetadataValue);
+    public DisplayMetadata getDisplayMetadata() {
+        return displayMetadata;
     }
 
     @Override
