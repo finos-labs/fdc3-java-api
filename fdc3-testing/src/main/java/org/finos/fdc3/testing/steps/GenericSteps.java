@@ -184,8 +184,8 @@ public class GenericSteps {
     public void isAnArrayOfObjectsWithLength(String field, String lengthField) {
         Object resolved = handleResolve(field, world);
         List<Object> data = toList(resolved);
-        int expectedLength = ((Number) handleResolve(lengthField, world)).intValue();
-        assertEquals(expectedLength, data.size());
+        String amt = (String) handleResolve(lengthField, world);
+        assertEquals(Integer.parseInt(amt), data.size());
     }
 
     @Then("{string} is an array of strings with the following values")

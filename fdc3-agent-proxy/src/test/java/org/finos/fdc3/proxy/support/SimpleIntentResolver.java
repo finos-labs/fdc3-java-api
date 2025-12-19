@@ -62,8 +62,8 @@ public class SimpleIntentResolver implements IntentResolver {
 
         // Create an AppIdentifier from the AppMetadata
         AppIdentifier appIdentifier = new AppIdentifier(
-                firstApp.getAppID(),
-                firstApp.getInstanceID(),
+                firstApp.getAppId(),
+                firstApp.getInstanceId(),
                 firstApp.getDesktopAgent()
         );
 

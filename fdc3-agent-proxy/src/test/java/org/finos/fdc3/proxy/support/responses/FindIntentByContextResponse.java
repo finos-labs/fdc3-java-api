@@ -9,6 +9,8 @@ import static org.finos.fdc3.proxy.support.responses.ResponseSupport.scheduleRec
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,7 +48,7 @@ public class FindIntentByContextResponse implements AutomaticResponse {
         }
         
         // Get unique intent names
-        Set<String> uniqueIntents = new HashSet<>();
+        Set<String> uniqueIntents = new LinkedHashSet<>();
         for (IntentDetail detail : matching) {
             if (detail.getIntent() != null) {
                 uniqueIntents.add(detail.getIntent());
@@ -56,16 +58,16 @@ public class FindIntentByContextResponse implements AutomaticResponse {
         // Build appIntents
         List<Map<String, Object>> appIntents = new ArrayList<>();
         for (String intentName : uniqueIntents) {
-            Map<String, Object> intentInfo = new HashMap<>();
+            Map<String, Object> intentInfo = new LinkedHashMap<>();
             intentInfo.put("name", intentName);
             intentInfo.put("displayName", intentName);
             
             List<Map<String, String>> apps = new ArrayList<>();
             for (IntentDetail detail : matching) {
                 if (intentName.equals(detail.getIntent()) && detail.getApp() != null) {
-                    Map<String, String> app = new HashMap<>();
-                    app.put("appId", detail.getApp().getAppID());
-                    if (detail.getApp().getInstanceID() != null) { app.put("instanceId", detail.getApp().getInstanceID()); }
+                    Map<String, String> app = new LinkedHashMap<>();
+                    app.put("appId", detail.getApp().getAppId());
+                    if (detail.getApp().getInstanceId() != null) { app.put("instanceId", detail.getApp().getInstanceId()); }
                     apps.add(app);
                 }
             }

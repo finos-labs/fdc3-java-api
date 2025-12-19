@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -53,24 +55,28 @@ public final class MatchingUtils {
     private static Object extractFromWorld(Object world, String expression) {
         // Use JXPath to resolve the value from props
         try {
-            // For non-Map objects, convert to Map first using Jackson
-            // This ensures enums with @JsonValue are properly serialized
-            Object navigable = world;
-            if (!(world instanceof Map)) {
-                try {
-                    navigable = objectMapper.convertValue(world, Map.class);
-                } catch (Exception e) {
-                    // If conversion fails, try using JXPath directly on the object
-                }
-            }
-            
-            JXPathContext context = JXPathContext.newContext(navigable);
+            JXPathContext context = JXPathContext.newContext(world);
             context.setLenient(true);
             String xpathName = "/" + expression.replaceAll("\\.", "/");
+            // Convert .length to count(/path) for XPath
+            xpathName = xpathName.replaceAll("(/[^/]+)/length$", "count($1)");
+            // Convert 0-based array indexes to 1-based for JXPath (e.g., [0] -> [1])
+            Matcher matcher = Pattern.compile("\\[(\\d+)\\]").matcher(xpathName);
+            StringBuffer sb = new StringBuffer();
+            while (matcher.find()) {
+                int index = Integer.parseInt(matcher.group(1));
+                matcher.appendReplacement(sb, "[" + (index + 1) + "]");
+            }
+            matcher.appendTail(sb);
+            xpathName = sb.toString();
             Object result = context.getValue(xpathName);
             // Unwrap Optional if needed
             if (result instanceof java.util.Optional) {
-                return ((java.util.Optional<?>) result).orElse(null);
+                result = ((java.util.Optional<?>) result).orElse(null);
+            }
+            // Convert numbers to rounded strings with 0 decimal places
+            if (result instanceof Number) {
+                return String.valueOf(Math.round(((Number) result).doubleValue()));
             }
             return result;
         } catch (JXPathNotFoundException e) {

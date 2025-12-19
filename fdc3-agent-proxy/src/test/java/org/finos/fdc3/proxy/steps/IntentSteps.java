@@ -21,16 +21,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.ContextMetadata;
+import org.finos.fdc3.api.metadata.DisplayMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
+import org.finos.fdc3.api.types.ContextHandler;
+import org.finos.fdc3.api.types.IntentHandler;
+import org.finos.fdc3.api.types.IntentResult;
+import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.channels.DefaultChannel;
 import org.finos.fdc3.proxy.channels.DefaultPrivateChannel;
 import org.finos.fdc3.proxy.support.TestMessaging;
 import org.finos.fdc3.proxy.world.CustomWorld;
+import org.finos.fdc3.api.channel.Channel;
 
 import io.cucumber.java.en.Given;
 
@@ -205,41 +213,106 @@ public class IntentSteps {
     public void pipesIntentTo(String intentHandlerName, String field) {
         List<Map<String, Object>> intents = new ArrayList<>();
         world.set(field, intents);
-        world.set(intentHandlerName, (BiConsumer<Context, ContextMetadata>) (context, metadata) -> {
-            Map<String, Object> item = new HashMap<>();
-            item.put("context", context);
-            item.put("metadata", metadata);
-            intents.add(item);
-        });
+        
+        IntentHandler ih = new IntentHandler() {
+			
+			@Override
+			public CompletionStage<Optional<IntentResult>> handleIntent(Context context, ContextMetadata contextMetadata) {
+				Map<String, Object> item = new HashMap<>();
+	            item.put("context", context);
+	            item.put("metadata", contextMetadata);
+	            intents.add(item);
+                return CompletableFuture.completedFuture(Optional.empty());
+			}
+		};
+        
+        world.set(intentHandlerName, ih);
     }
 
     @Given("{string} returns a context item")
     public void returnsAContextItem(String intentHandlerName) {
-        world.set(intentHandlerName, (Supplier<Context>) () -> {
-            Map<String, Object> id = new HashMap<>();
-            id.put("in", "one");
-            id.put("out", "two");
-            return new Context("fdc3.returned-intent", null, id);
-        });
+    	IntentHandler ih = new IntentHandler() {
+			
+			@Override
+			public CompletionStage<Optional<IntentResult>> handleIntent(Context context, ContextMetadata contextMetadata) {
+				Map<String, Object> id = new HashMap<>();
+	            id.put("in", "one");
+	            id.put("out", "two");
+	            return CompletableFuture.completedFuture(Optional.of(new Context("fdc3.returned-intent", null, id)));
+			}
+		};
+    	
+        world.set(intentHandlerName, ih);
     }
 
     @Given("{string} returns a channel")
     public void returnsAChannel(String intentHandlerName) {
-        world.set(intentHandlerName, (Supplier<Map<String, Object>>) () -> {
-            Map<String, Object> channel = new HashMap<>();
-            channel.put("type", "private");
-            channel.put("id", "some-channel-id");
-            Map<String, Object> displayMetadata = new HashMap<>();
-            displayMetadata.put("color", "ochre");
-            displayMetadata.put("name", "Some Channel");
-            channel.put("displayMetadata", displayMetadata);
-            return channel;
-        });
+    	IntentHandler ih = new IntentHandler() {
+    		
+    		@Override
+    		public CompletionStage<Optional<IntentResult>> handleIntent(Context context,
+    				ContextMetadata contextMetadata) {
+                DisplayMetadata dm = new DisplayMetadata("Some Channel", "ochre","b;");
+                Channel c = new Channel() {
+
+					@Override
+					public String getId() {
+						return "some-channel-id";
+					}
+
+					@Override
+					public Type getType() {
+						return Type.Private;
+					}
+
+					@Override
+					public Optional<DisplayMetadata> displayMetadata() {
+						return Optional.of(dm);
+					}
+
+					@Override
+					public CompletionStage<Void> broadcast(Context context) {
+						return null;
+					}
+
+					@Override
+					public CompletionStage<Optional<Context>> getCurrentContext() {
+						return null;
+					}
+
+					@Override
+					public CompletionStage<Optional<Context>> getCurrentContext(String contextType) {
+						return null;
+					}
+
+					@Override
+					public CompletionStage<Listener> addContextListener(String contextType, ContextHandler handler) {
+						return null;
+					}
+
+					@Override
+					public CompletionStage<Listener> addContextListener(ContextHandler handler) {
+						return null;
+					}
+                	
+                };
+                return CompletableFuture.completedFuture(Optional.of(c));
+    		}	
+    		
+    	};
+        world.set(intentHandlerName, ih);
     }
 
     @Given("{string} returns a void promise")
     public void returnsAVoidPromise(String intentHandlerName) {
-        world.set(intentHandlerName, (Supplier<Object>) () -> null);
+    	IntentHandler ih = new IntentHandler() {
+			
+			@Override
+			public CompletionStage<Optional<IntentResult>> handleIntent(Context context, ContextMetadata contextMetadata) {
+				return CompletableFuture.completedFuture(Optional.ofNullable(null));
+			}
+		};
+        world.set(intentHandlerName, ih);
     }
 
     private AppIdentifier createAppIdentifier(String appId, String instanceId) {

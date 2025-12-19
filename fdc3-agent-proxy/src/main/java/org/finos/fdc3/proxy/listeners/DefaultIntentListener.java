@@ -16,14 +16,24 @@
 
 package org.finos.fdc3.proxy.listeners;
 
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletionStage;
 
+import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.ContextMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.IntentHandler;
 import org.finos.fdc3.proxy.Messaging;
+import org.finos.fdc3.schema.IntentEvent;
+import org.finos.fdc3.schema.IntentResult;
+import org.finos.fdc3.schema.IntentResultRequest;
+import org.finos.fdc3.schema.IntentResultRequestPayload;
+import org.finos.fdc3.schema.IntentResultRequestType;
+import org.finos.fdc3.schema.IntentResultResponse;
 
 /**
  * Default implementation of an intent listener.
@@ -79,28 +89,118 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
     @Override
     @SuppressWarnings("unchecked")
     public void action(Map<String, Object> message) {
-        Map<String, Object> payload = (Map<String, Object>) message.get("payload");
-        Map<String, Object> contextMap = (Map<String, Object>) payload.get("context");
-        Context context = Context.fromMap(contextMap);
+        // Convert the message to typed IntentEvent
+        IntentEvent intentEvent = messaging.getConverter().convertValue(message, IntentEvent.class);
+        
+        Context context = intentEvent.getPayload().getContext();
+        AppIdentifier originatingApp = intentEvent.getPayload().getOriginatingApp();
 
-        // Create context metadata from the message
-        Map<String, Object> meta = (Map<String, Object>) message.get("meta");
-        Map<String, Object> sourceMap = (Map<String, Object>) meta.get("source");
+        ContextMetadata contextMetadata = new ContextMetadata();
+        contextMetadata.setSource(originatingApp);
 
-        ContextMetadata contextMetadata = null;
-        if (sourceMap != null) {
-            String sourceAppId = (String) sourceMap.get("appId");
-            String sourceInstanceId = (String) sourceMap.get("instanceId");
-            String sourceDesktopAgent = (String) sourceMap.get("desktopAgent");
-            AppIdentifier source = new AppIdentifier(sourceAppId, sourceInstanceId, sourceDesktopAgent);
-            contextMetadata = new ContextMetadata() {
-                @Override
-                public AppIdentifier getSource() {
-                    return source;
-                }
-            };
+        // Call the handler and get the result
+        CompletionStage<Optional<org.finos.fdc3.api.types.IntentResult>> resultFuture = 
+            handler.handleIntent(context, contextMetadata);
+
+        // Handle the intent result
+        handleIntentResult(resultFuture, intentEvent);
+    }
+
+    private void handleIntentResult(
+            CompletionStage<Optional<org.finos.fdc3.api.types.IntentResult>> resultFuture, 
+            IntentEvent intentEvent) {
+        
+        resultFuture.thenAccept(optionalResult -> {
+            IntentResultRequest request = createIntentResultRequest(optionalResult.orElse(null), intentEvent);
+            
+            // Convert to Map and send
+            Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+            
+            messaging.<Map<String, Object>>exchange(
+                requestMap, 
+                "intentResultResponse", 
+                messageExchangeTimeout
+            ).exceptionally(ex -> {
+                // Log error but don't fail
+                System.err.println("Failed to send intent result: " + ex.getMessage());
+                return null;
+            });
+        }).exceptionally(ex -> {
+            // Handler threw an exception, send empty result
+            IntentResultRequest request = createIntentResultRequest(null, intentEvent);
+            Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+            
+            messaging.<Map<String, Object>>exchange(
+                requestMap, 
+                "intentResultResponse", 
+                messageExchangeTimeout
+            ).exceptionally(ex2 -> {
+                System.err.println("Failed to send intent result after error: " + ex2.getMessage());
+                return null;
+            });
+            return null;
+        });
+    }
+
+    private IntentResultRequest createIntentResultRequest(
+            org.finos.fdc3.api.types.IntentResult apiResult, 
+            IntentEvent intentEvent) {
+        
+        IntentResultRequest request = new IntentResultRequest();
+        request.setType(IntentResultRequestType.INTENT_RESULT_REQUEST);
+        
+        org.finos.fdc3.schema.AddContextListenerRequestMeta meta = 
+            new org.finos.fdc3.schema.AddContextListenerRequestMeta();
+        meta.setRequestUUID(intentEvent.getMeta().getEventUUID());
+        meta.setTimestamp(OffsetDateTime.now());
+        request.setMeta(meta);
+        
+        IntentResultRequestPayload payload = new IntentResultRequestPayload();
+        payload.setIntentEventUUID(intentEvent.getMeta().getEventUUID());
+        payload.setRaiseIntentRequestUUID(intentEvent.getPayload().getRaiseIntentRequestUUID());
+        payload.setIntentResult(convertIntentResult(apiResult));
+        request.setPayload(payload);
+        
+        return request;
+    }
+
+    private IntentResult convertIntentResult(org.finos.fdc3.api.types.IntentResult apiResult) {
+        IntentResult schemaResult = new IntentResult();
+        
+        if (apiResult == null) {
+            // Void result - return empty IntentResult
+            return schemaResult;
         }
+        
+        if (apiResult instanceof Context) {
+            schemaResult.setContext((Context) apiResult);
+        } else if (apiResult instanceof Channel) {
+            Channel channel = (Channel) apiResult;
+            org.finos.fdc3.schema.Channel schemaChannel = new org.finos.fdc3.schema.Channel();
+            schemaChannel.setID(channel.getId());
+            schemaChannel.setType(convertChannelType(channel.getType()));
+            // DisplayMetadata is not part of the Channel API interface,
+            // only available on UserChannel/PrivateChannel implementations
+            schemaChannel.setDisplayMetadata(null);
+            schemaResult.setChannel(schemaChannel);
+        }
+        
+        return schemaResult;
+    }
 
-        handler.handleIntent(context, contextMetadata);
+    private org.finos.fdc3.schema.Type convertChannelType(Channel.Type type) {
+        if (type == null) {
+            return null;
+        }
+        switch (type) {
+            case User:
+                return org.finos.fdc3.schema.Type.USER;
+            case App:
+                return org.finos.fdc3.schema.Type.APP;
+            case Private:
+                return org.finos.fdc3.schema.Type.PRIVATE;
+            default:
+                return null;
+        }
     }
 }

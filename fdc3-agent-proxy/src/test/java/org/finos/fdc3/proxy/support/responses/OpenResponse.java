@@ -39,7 +39,7 @@ public class OpenResponse implements AutomaticResponse {
         IntentDetail found = null;
         for (IntentDetail detail : messaging.getIntentDetails()) {
             if (detail.getApp() != null && appId != null && 
-                appId.equals(detail.getApp().getAppID())) {
+                appId.equals(detail.getApp().getAppId())) {
                 found = detail;
                 break;
             }
@@ -47,7 +47,7 @@ public class OpenResponse implements AutomaticResponse {
         
         if (found != null && found.getApp() != null) {
             Map<String, Object> appIdentifier = new HashMap<>();
-            appIdentifier.put("appId", found.getApp().getAppID());
+            appIdentifier.put("appId", found.getApp().getAppId());
             appIdentifier.put("instanceId", "abc123");
             payload.put("appIdentifier", appIdentifier);
         } else {

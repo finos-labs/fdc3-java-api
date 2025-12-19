@@ -20,6 +20,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Map;
+
 /**
  * Identifies an application, or instance of an application, and is used to target FDC3 API calls,
  * such as `fdc3.open` or `fdc3.raiseIntent` at specific applications or application instances.
@@ -65,11 +67,11 @@ public class AppIdentifier {
      * An example of an appId might be 'app@sub.root'.
      */
     @JsonProperty("appId")
-    public String getAppID() {
+    public String getAppId() {
         return appID;
     }
 
-    public void setAppID(String appID) {
+    public void setAppId(String appID) {
         this.appID = appID;
     }
 
@@ -79,11 +81,11 @@ public class AppIdentifier {
      */
     @JsonProperty("instanceId")
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public String getInstanceID() {
+    public String getInstanceId() {
         return instanceID;
     }
 
-    public void setInstanceID(String instanceID) {
+    public void setInstanceId(String instanceID) {
         this.instanceID = instanceID;
     }
 
@@ -98,5 +100,23 @@ public class AppIdentifier {
 
     public void setDesktopAgent(String desktopAgent) {
         this.desktopAgent = desktopAgent;
+    }
+
+    /**
+     * Creates an AppIdentifier from a Map representation.
+     *
+     * @param map the map containing appId, instanceId, and/or desktopAgent keys
+     * @return a new AppIdentifier instance, or null if the map is null
+     */
+    public static AppIdentifier fromMap(Map<String, Object> map) {
+        if (map == null) {
+            return null;
+        }
+        
+        String appID = (String) map.get("appId");
+        String instanceID = (String) map.get("instanceId");
+        String desktopAgent = (String) map.get("desktopAgent");
+        
+        return new AppIdentifier(appID, instanceID, desktopAgent);
     }
 }

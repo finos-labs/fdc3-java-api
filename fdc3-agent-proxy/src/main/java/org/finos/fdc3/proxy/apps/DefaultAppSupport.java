@@ -182,8 +182,8 @@ public class DefaultAppSupport implements AppSupport {
         result.setProvider("unknown");
 
         AppMetadata appMetadata = new AppMetadata();
-        appMetadata.setAppID("unknown");
-        appMetadata.setInstanceID("unknown");
+        appMetadata.setAppId("unknown");
+        appMetadata.setInstanceId("unknown");
         result.setAppMetadata(appMetadata);
 
         ImplementationMetadata.OptionalFeatures optFeatures = new ImplementationMetadata.OptionalFeatures();

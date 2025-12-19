@@ -70,8 +70,8 @@ public abstract class AbstractMessaging implements Messaging {
         if (appIdentifier != null) {
             // Create a copy with desktopAgent set
             AppIdentifier source = new AppIdentifier(
-                    appIdentifier.getAppID(),
-                    appIdentifier.getInstanceID(),
+                    appIdentifier.getAppId(),
+                    appIdentifier.getInstanceId(),
                     "testing-da"
             );
             meta.setSource(source);

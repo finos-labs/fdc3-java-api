@@ -34,9 +34,9 @@ public interface IntentHandler {
      * 
      * @param context the context event
      * @param contextMetadata optional metadata
-     * @return {@link Optional#empty()} if not result is required, or a {@link CompletionStage} that will be used to publish the
+     * @return A {@link CompletionStage} that will be used to publish the
      *         intent result
      */
-    Optional<CompletionStage<IntentResult>> handleIntent(Context context, ContextMetadata contextMetadata);
+    CompletionStage<Optional<IntentResult>> handleIntent(Context context, ContextMetadata contextMetadata);
 
 }

@@ -44,6 +44,7 @@ public final class ContextMap {
 
         // fdc3.unsupported
         Context unsupported = new Context("fdc3.unsupported");
+        unsupported.put("bogus", true);
         CONTEXTS.put("fdc3.unsupported", unsupported);
 
         // fdc3.cancel-me

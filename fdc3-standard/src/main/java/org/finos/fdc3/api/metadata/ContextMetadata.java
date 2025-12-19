@@ -16,30 +16,27 @@
 
 package org.finos.fdc3.api.metadata;
 
+import java.util.HashMap;
+
 import org.finos.fdc3.api.types.AppIdentifier;
 
 /**
- * Metadata relating to a context or intent and context received through the
- * `addContextListener` and `addIntentListener` functions.
- *
- * @experimental Introduced in FDC3 2.0 and may be refined by further changes outside the normal FDC3 versioning policy.
+ * Metadata introduced in FDC3 2.0
+ * 
  */
-public interface ContextMetadata {
-  /** Identifier for the app instance that sent the context and/or intent.
-   *
-   *  @experimental
-   */
-  AppIdentifier getSource();
+public class ContextMetadata extends HashMap<String, Object> {
 
-  /** Get the source app ID. Convenience method. */
-  default String getSourceAppId() {
-    AppIdentifier source = getSource();
-    return source != null ? source.getAppID() : null;
-  }
+    public ContextMetadata() {
+    }
 
-  /** Get the source instance ID. Convenience method. */
-  default String getSourceInstanceId() {
-    AppIdentifier source = getSource();
-    return source != null ? source.getInstanceID() : null;
-  }
+
+    public AppIdentifier getSource() {
+    	AppIdentifier source = (AppIdentifier) this.get("source"); 
+    	return source;
+    }
+    
+    public void setSource(AppIdentifier source) {
+    	this.put("source", source);
+    }
+    
 }

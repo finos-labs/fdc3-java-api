@@ -162,9 +162,9 @@ public class TestMessaging extends AbstractMessaging {
         meta.put("responseUuid", createUUID());
         meta.put("timestamp", Instant.now().toString());
         Map<String, String> source = new HashMap<>();
-        source.put("appId", getAppIdentifier().getAppID());
-        if (getAppIdentifier().getInstanceID() != null) {
-            source.put("instanceId", getAppIdentifier().getInstanceID());
+        source.put("appId", getAppIdentifier().getAppId());
+        if (getAppIdentifier().getInstanceId() != null) {
+            source.put("instanceId", getAppIdentifier().getInstanceId());
         }
         meta.put("source", source);
         return meta;
@@ -179,9 +179,9 @@ public class TestMessaging extends AbstractMessaging {
         meta.put("eventUuid", createUUID());
         meta.put("timestamp", Instant.now().toString());
         Map<String, String> source = new HashMap<>();
-        source.put("appId", getAppIdentifier().getAppID());
-        if (getAppIdentifier().getInstanceID() != null) {
-            source.put("instanceId", getAppIdentifier().getInstanceID());
+        source.put("appId", getAppIdentifier().getAppId());
+        if (getAppIdentifier().getInstanceId() != null) {
+            source.put("instanceId", getAppIdentifier().getInstanceId());
         }
         meta.put("source", source);
         return meta;
