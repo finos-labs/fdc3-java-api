@@ -56,7 +56,7 @@ public class DefaultAppSupport implements AppSupport {
         request.setMeta(messaging.createMeta());
         
         FindInstancesRequestPayload payload = new FindInstancesRequestPayload();
-        payload.setApp(toSchemaAppIdentifier(app));
+        payload.setApp(app);
         request.setPayload(payload);
 
         // Convert to Map for messaging
@@ -87,7 +87,7 @@ public class DefaultAppSupport implements AppSupport {
         request.setMeta(messaging.createMeta());
         
         GetAppMetadataRequestPayload payload = new GetAppMetadataRequestPayload();
-        payload.setApp(toSchemaAppIdentifier(app));
+        payload.setApp(app);
         request.setPayload(payload);
 
         // Convert to Map for messaging
@@ -116,7 +116,7 @@ public class DefaultAppSupport implements AppSupport {
         request.setMeta(messaging.createMeta());
         
         OpenRequestPayload payload = new OpenRequestPayload();
-        payload.setApp(toSchemaAppIdentifier(app));
+        payload.setApp(app);
         if (context != null) {
             payload.setContext(context);
         }
@@ -135,7 +135,7 @@ public class DefaultAppSupport implements AppSupport {
                         throw new RuntimeException(OpenError.AppNotFound.toString());
                     }
 
-                    return toApiAppIdentifier(typedResponse.getPayload().getAppIdentifier());
+                    return typedResponse.getPayload().getAppIdentifier();
                 });
     }
 
@@ -174,23 +174,7 @@ public class DefaultAppSupport implements AppSupport {
     }
 
     // ============ Conversion helpers ============
-
-    private org.finos.fdc3.schema.AppIdentifier toSchemaAppIdentifier(AppIdentifier app) {
-        org.finos.fdc3.schema.AppIdentifier schemaApp = new org.finos.fdc3.schema.AppIdentifier();
-        schemaApp.setAppID(app.getAppID());
-        if (app.getInstanceID() != null) {
-            schemaApp.setInstanceID(app.getInstanceID());
-        }
-        return schemaApp;
-    }
-
-    private AppIdentifier toApiAppIdentifier(org.finos.fdc3.schema.AppIdentifier schemaApp) {
-        return new AppIdentifier(
-                schemaApp.getAppID(),
-                schemaApp.getInstanceID(),
-                schemaApp.getDesktopAgent()
-        );
-    }
+    // Schema now uses fdc3-standard AppIdentifier directly, no conversion needed
 
     private ImplementationMetadata createUnknownImplementationMetadata() {
         ImplementationMetadata result = new ImplementationMetadata();

@@ -133,7 +133,7 @@ public class DefaultIntentSupport implements IntentSupport {
         payload.setIntent(intent);
         payload.setContext(context);
         if (app != null) {
-            payload.setApp(toSchemaAppIdentifier(app));
+            payload.setApp(app);
         }
         request.setPayload(payload);
 
@@ -166,7 +166,7 @@ public class DefaultIntentSupport implements IntentSupport {
                                     return raiseIntent(intent, context, choice.getAppId());
                                 });
                     } else {
-                        AppIdentifier source = toApiAppIdentifier(schemaIntentResolution.getSource());
+                        AppIdentifier source = schemaIntentResolution.getSource();
                         String resolvedIntent = schemaIntentResolution.getIntent();
 
                         return java.util.concurrent.CompletableFuture.completedFuture(
@@ -187,7 +187,7 @@ public class DefaultIntentSupport implements IntentSupport {
         RaiseIntentForContextRequestPayload payload = new RaiseIntentForContextRequestPayload();
         payload.setContext(context);
         if (app != null) {
-            payload.setApp(toSchemaAppIdentifier(app));
+            payload.setApp(app);
         }
         request.setPayload(payload);
 
@@ -222,7 +222,7 @@ public class DefaultIntentSupport implements IntentSupport {
                                     return raiseIntent(choice.getIntent(), context, choice.getAppId());
                                 });
                     } else {
-                        AppIdentifier source = toApiAppIdentifier(schemaIntentResolution.getSource());
+                        AppIdentifier source = schemaIntentResolution.getSource();
                         String resolvedIntent = schemaIntentResolution.getIntent();
 
                         return java.util.concurrent.CompletableFuture.completedFuture(
@@ -238,23 +238,7 @@ public class DefaultIntentSupport implements IntentSupport {
     }
 
     // ============ Helper methods ============
-
-    private org.finos.fdc3.schema.AppIdentifier toSchemaAppIdentifier(AppIdentifier app) {
-        org.finos.fdc3.schema.AppIdentifier schemaApp = new org.finos.fdc3.schema.AppIdentifier();
-        schemaApp.setAppID(app.getAppID());
-        if (app.getInstanceID() != null) {
-            schemaApp.setInstanceID(app.getInstanceID());
-        }
-        return schemaApp;
-    }
-
-    private AppIdentifier toApiAppIdentifier(org.finos.fdc3.schema.AppIdentifier schemaApp) {
-        return new AppIdentifier(
-                schemaApp.getAppID(),
-                schemaApp.getInstanceID(),
-                schemaApp.getDesktopAgent()
-        );
-    }
+    // Schema now uses fdc3-standard AppIdentifier directly, no conversion needed
 
     @SuppressWarnings("unchecked")
     private CompletionStage<Object> createResultPromise(String requestUuid) {

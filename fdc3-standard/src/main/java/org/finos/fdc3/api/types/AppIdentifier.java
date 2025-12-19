@@ -78,6 +78,7 @@ public class AppIdentifier {
      * of the application described.
      */
     @JsonProperty("instanceId")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public String getInstanceID() {
         return instanceID;
     }
@@ -90,6 +91,7 @@ public class AppIdentifier {
      * Identifier of the desktop agent, used in bridging.
      */
     @JsonProperty("desktopAgent")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public String getDesktopAgent() {
         return desktopAgent;
     }

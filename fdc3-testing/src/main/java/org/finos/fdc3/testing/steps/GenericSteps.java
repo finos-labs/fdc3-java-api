@@ -32,6 +32,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
+import java.util.ArrayList;
+import java.lang.reflect.Array;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -148,25 +151,47 @@ public class GenericSteps {
 
     // ========== Array Matching Steps ==========
 
+    /**
+     * Convert an object to a List. Handles both arrays and Lists.
+     */
+    private List<Object> toList(Object obj) {
+        if (obj == null) {
+            return Collections.emptyList();
+        }
+        if (obj instanceof List) {
+            return (List<Object>) obj;
+        }
+        if (obj.getClass().isArray()) {
+            // Convert array to list
+            int length = Array.getLength(obj);
+            List<Object> list = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                list.add(Array.get(obj, i));
+            }
+            return list;
+        }
+        throw new IllegalArgumentException("Expected array or List, but got: " + obj.getClass().getName());
+    }
+
     @Then("{string} is an array of objects with the following contents")
     public void isAnArrayOfObjectsWithContents(String field, DataTable dt) {
-        @SuppressWarnings("unchecked")
-        List<Object> data = (List<Object>) handleResolve(field, world);
+        Object resolved = handleResolve(field, world);
+        List<Object> data = toList(resolved);
         matchData(world, data, dt);
     }
 
     @Then("{string} is an array of objects with length {string}")
     public void isAnArrayOfObjectsWithLength(String field, String lengthField) {
-        @SuppressWarnings("unchecked")
-        List<Object> data = (List<Object>) handleResolve(field, world);
+        Object resolved = handleResolve(field, world);
+        List<Object> data = toList(resolved);
         int expectedLength = ((Number) handleResolve(lengthField, world)).intValue();
         assertEquals(expectedLength, data.size());
     }
 
     @Then("{string} is an array of strings with the following values")
     public void isAnArrayOfStringsWithValues(String field, DataTable dt) {
-        @SuppressWarnings("unchecked")
-        List<String> data = (List<String>) handleResolve(field, world);
+        Object resolved = handleResolve(field, world);
+        List<Object> data = toList(resolved);
         List<Map<String, Object>> values = data.stream()
                 .map(s -> Map.<String, Object>of("value", s))
                 .collect(Collectors.toList());

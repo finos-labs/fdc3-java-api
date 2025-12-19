@@ -68,12 +68,12 @@ public abstract class AbstractMessaging implements Messaging {
         meta.setTimestamp(OffsetDateTime.now());
 
         if (appIdentifier != null) {
-            org.finos.fdc3.schema.AppIdentifier source = new org.finos.fdc3.schema.AppIdentifier();
-            source.setAppID(appIdentifier.getAppID());
-            source.setDesktopAgent("testing-da");
-            if (appIdentifier.getInstanceID() != null) {
-                source.setInstanceID(appIdentifier.getInstanceID());
-            }
+            // Create a copy with desktopAgent set
+            AppIdentifier source = new AppIdentifier(
+                    appIdentifier.getAppID(),
+                    appIdentifier.getInstanceID(),
+                    "testing-da"
+            );
             meta.setSource(source);
         }
         return meta;

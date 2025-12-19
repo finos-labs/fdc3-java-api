@@ -202,6 +202,7 @@
                                 <argument>OptionalFeatures.java</argument>
                                 <argument>AppMetadata.java</argument>
                                 <argument>AppIntent.java</argument>
+                                <argument>AppIdentifier.java</argument>
                             </arguments>
                             <successCodes>
                                 <successCode>0</successCode>
@@ -235,7 +236,8 @@
                                     <value>package org.finos.fdc3.schema;
 
 import org.finos.fdc3.api.context.Context;
-import org.finos.fdc3.api.metadata.*;</value>
+import org.finos.fdc3.api.metadata.*;
+import org.finos.fdc3.api.types.AppIdentifier;</value>
                                 </replacement>
                             </replacements>
                             <regex>true</regex>
