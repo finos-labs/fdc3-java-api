@@ -46,7 +46,26 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
             "eventListenerUnsubscribeRequest",
             "eventListenerUnsubscribeResponse"
         );
+        validateEventType(eventType);
         this.eventType = eventType;
+    }
+
+    /**
+     * Validates that the event type is supported.
+     * Throws RuntimeException with "UnknownEventType" if not supported.
+     */
+    private static void validateEventType(String eventType) {
+        if (eventType == null) {
+            // null is allowed (listen to all events)
+            return;
+        }
+        switch (eventType) {
+            case "userChannelChanged":
+                // Valid event type
+                return;
+            default:
+                throw new RuntimeException("UnknownEventType");
+        }
     }
 
     @Override
@@ -54,9 +73,8 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
         Map<String, Object> request = new HashMap<>();
         Map<String, Object> payload = new HashMap<>();
         FDC3EventType fdc3EventType = toFDC3EventType(eventType);
-        if (fdc3EventType != null) {
-            payload.put("type", fdc3EventType.toValue());
-        }
+        // Explicitly set type to null if eventType is null, otherwise use the enum value
+        payload.put("type", fdc3EventType != null ? fdc3EventType.toValue() : null);
         request.put("payload", payload);
         return request;
     }
@@ -91,7 +109,7 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
             case "userChannelChanged":
                 return FDC3EventType.USER_CHANNEL_CHANGED;
             default:
-                return null;
+                throw new RuntimeException("UnknownEventType");
         }
     }
 }
