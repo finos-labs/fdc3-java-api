@@ -16,11 +16,13 @@
 
 package org.finos.fdc3.proxy.steps;
 
+import static org.finos.fdc3.testing.support.MatchingUtils.handleResolve;
+import static org.finos.fdc3.testing.support.MatchingUtils.matchData;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.ContextMetadata;
@@ -28,17 +30,12 @@ import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.proxy.support.ContextMap;
-import org.finos.fdc3.proxy.support.TestMessaging;
 import org.finos.fdc3.proxy.world.CustomWorld;
-import org.finos.fdc3.proxy.support.SimpleChannelSelector;
 
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-
-import static org.finos.fdc3.testing.support.MatchingUtils.handleResolve;
-import static org.finos.fdc3.testing.support.MatchingUtils.matchData;
 
 /**
  * Cucumber step definitions for channel-related tests.

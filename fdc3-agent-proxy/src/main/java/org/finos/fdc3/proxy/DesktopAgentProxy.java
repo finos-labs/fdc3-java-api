@@ -157,7 +157,6 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
 
     @Override
     @Deprecated
-    @SuppressWarnings("deprecation")
     public CompletionStage<AppIdentifier> open(String name, Context context) {
         return apps.open(name, context);
     }

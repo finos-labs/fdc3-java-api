@@ -16,11 +16,13 @@
 
 package org.finos.fdc3.proxy.steps;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import org.finos.fdc3.proxy.world.CustomWorld;
 
 import io.cucumber.java.en.When;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Cucumber step definitions for utility tests.

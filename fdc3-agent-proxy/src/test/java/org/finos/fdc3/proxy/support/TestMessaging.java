@@ -27,14 +27,30 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.listeners.RegisterableListener;
 import org.finos.fdc3.proxy.messaging.AbstractMessaging;
-import org.finos.fdc3.proxy.support.responses.*;
+import org.finos.fdc3.proxy.support.responses.AddEventListenerResponse;
+import org.finos.fdc3.proxy.support.responses.AutomaticResponse;
+import org.finos.fdc3.proxy.support.responses.ChannelStateResponse;
+import org.finos.fdc3.proxy.support.responses.CreatePrivateChannelResponse;
+import org.finos.fdc3.proxy.support.responses.DisconnectPrivateChannelResponse;
+import org.finos.fdc3.proxy.support.responses.FindInstancesResponse;
+import org.finos.fdc3.proxy.support.responses.FindIntentByContextResponse;
+import org.finos.fdc3.proxy.support.responses.FindIntentResponse;
+import org.finos.fdc3.proxy.support.responses.GetAppMetadataResponse;
+import org.finos.fdc3.proxy.support.responses.GetInfoResponse;
+import org.finos.fdc3.proxy.support.responses.GetOrCreateChannelResponse;
+import org.finos.fdc3.proxy.support.responses.GetUserChannelsResponse;
+import org.finos.fdc3.proxy.support.responses.IntentResultResponse;
+import org.finos.fdc3.proxy.support.responses.OpenResponse;
+import org.finos.fdc3.proxy.support.responses.RaiseIntentForContextResponse;
+import org.finos.fdc3.proxy.support.responses.RaiseIntentResponse;
+import org.finos.fdc3.proxy.support.responses.RegisterListenersResponse;
+import org.finos.fdc3.proxy.support.responses.UnsubscribeListenersResponse;
 
 /**
  * Test implementation of messaging for Cucumber tests.

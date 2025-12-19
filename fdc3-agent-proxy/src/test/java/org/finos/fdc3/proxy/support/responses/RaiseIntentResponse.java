@@ -3,6 +3,9 @@
  */
 package org.finos.fdc3.proxy.support.responses;
 
+import static org.finos.fdc3.proxy.support.responses.ResponseSupport.createResponseMeta;
+import static org.finos.fdc3.proxy.support.responses.ResponseSupport.scheduleReceive;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,8 +19,6 @@ import java.util.concurrent.TimeUnit;
 import org.finos.fdc3.proxy.support.TestMessaging;
 import org.finos.fdc3.proxy.support.TestMessaging.IntentDetail;
 import org.finos.fdc3.proxy.support.TestMessaging.PossibleIntentResult;
-
-import static org.finos.fdc3.proxy.support.responses.ResponseSupport.*;
 
 /**
  * Responds to raiseIntent requests.

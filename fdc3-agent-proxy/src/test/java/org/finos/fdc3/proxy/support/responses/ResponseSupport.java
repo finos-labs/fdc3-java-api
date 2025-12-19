@@ -23,7 +23,6 @@ public class ResponseSupport {
     /**
      * Creates response metadata from request metadata.
      */
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> createResponseMeta(Map<String, Object> requestMeta) {
         Map<String, Object> meta = new HashMap<>();
         meta.put("requestUuid", requestMeta.get("requestUuid"));

@@ -26,7 +26,10 @@ import java.util.concurrent.ScheduledFuture;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.RegisterableListener;
 import org.finos.fdc3.proxy.util.Logger;
-import org.finos.fdc3.schema.*;
+import org.finos.fdc3.schema.AddContextListenerRequestMeta;
+import org.finos.fdc3.schema.HeartbeatAcknowledgementRequest;
+import org.finos.fdc3.schema.HeartbeatAcknowledgementRequestPayload;
+import org.finos.fdc3.schema.HeartbeatAcknowledgementRequestType;
 
 /**
  * Default implementation of HeartbeatSupport.

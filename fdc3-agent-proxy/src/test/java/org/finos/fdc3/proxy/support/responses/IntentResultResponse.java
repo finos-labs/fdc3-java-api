@@ -3,17 +3,17 @@
  */
 package org.finos.fdc3.proxy.support.responses;
 
+import static org.finos.fdc3.proxy.support.responses.ResponseSupport.createResponseMeta;
+import static org.finos.fdc3.proxy.support.responses.ResponseSupport.scheduleReceive;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.proxy.support.TestMessaging;
 import org.finos.fdc3.proxy.support.TestMessaging.PossibleIntentResult;
-
-import static org.finos.fdc3.proxy.support.responses.ResponseSupport.*;
 
 /**
  * Responds to intentResult requests.

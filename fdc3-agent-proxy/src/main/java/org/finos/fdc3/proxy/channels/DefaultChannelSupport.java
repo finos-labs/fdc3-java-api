@@ -27,14 +27,34 @@ import java.util.stream.Collectors;
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.channel.PrivateChannel;
 import org.finos.fdc3.api.errors.ChannelError;
-import org.finos.fdc3.api.metadata.DisplayMetadata;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.DesktopAgentEventListener;
 import org.finos.fdc3.proxy.util.Logger;
-import org.finos.fdc3.schema.*;
+import org.finos.fdc3.schema.CreatePrivateChannelRequest;
+import org.finos.fdc3.schema.CreatePrivateChannelRequestPayload;
+import org.finos.fdc3.schema.CreatePrivateChannelRequestType;
+import org.finos.fdc3.schema.CreatePrivateChannelResponse;
+import org.finos.fdc3.schema.GetCurrentChannelRequest;
+import org.finos.fdc3.schema.GetCurrentChannelRequestPayload;
+import org.finos.fdc3.schema.GetCurrentChannelRequestType;
+import org.finos.fdc3.schema.GetCurrentChannelResponse;
+import org.finos.fdc3.schema.GetOrCreateChannelRequest;
+import org.finos.fdc3.schema.GetOrCreateChannelRequestPayload;
+import org.finos.fdc3.schema.GetOrCreateChannelRequestType;
+import org.finos.fdc3.schema.GetOrCreateChannelResponse;
+import org.finos.fdc3.schema.GetUserChannelsRequest;
+import org.finos.fdc3.schema.GetUserChannelsRequestPayload;
+import org.finos.fdc3.schema.GetUserChannelsRequestType;
+import org.finos.fdc3.schema.GetUserChannelsResponse;
+import org.finos.fdc3.schema.JoinUserChannelRequest;
+import org.finos.fdc3.schema.JoinUserChannelRequestPayload;
+import org.finos.fdc3.schema.JoinUserChannelRequestType;
+import org.finos.fdc3.schema.LeaveCurrentChannelRequest;
+import org.finos.fdc3.schema.LeaveCurrentChannelRequestPayload;
+import org.finos.fdc3.schema.LeaveCurrentChannelRequestType;
 
 /**
  * Default implementation of ChannelSupport.
