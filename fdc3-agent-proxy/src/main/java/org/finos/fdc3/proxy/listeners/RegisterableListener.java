@@ -18,13 +18,13 @@ package org.finos.fdc3.proxy.listeners;
 
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
+
+import org.finos.fdc3.api.types.Listener;
 
 /**
  * A listener that can be registered with the messaging system.
  */
-public interface RegisterableListener {
+public interface RegisterableListener extends Listener {
 
     /**
      * Get the unique identifier for this listener.

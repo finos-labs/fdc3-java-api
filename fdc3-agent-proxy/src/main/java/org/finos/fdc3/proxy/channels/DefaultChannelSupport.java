@@ -90,8 +90,10 @@ public class DefaultChannelSupport implements ChannelSupport {
             String newChannelId = details != null ? (String) details.get("currentChannelId") : null;
             Logger.debug("Desktop Agent reports channel changed: {}", newChannelId);
 
-            getUserChannelsCached().thenAccept(channels -> {
+            getUserChannelsCached().thenCompose(channels -> {
                 Channel theChannel = null;
+                
+                // If there's a newChannelId, retrieve details of the channel
                 if (newChannelId != null) {
                     theChannel = channels.stream()
                             .filter(c -> newChannelId.equals(c.getId()))
@@ -99,23 +101,29 @@ public class DefaultChannelSupport implements ChannelSupport {
                             .orElse(null);
 
                     if (theChannel == null) {
-                        Logger.debug("Unknown user channel, querying Desktop Agent: {}", newChannelId);
-                        getUserChannels().thenAccept(updatedChannels -> {
+                        // Channel not found - query user channels in case they have changed
+                        Logger.debug("Unknown user channel, querying Desktop Agent for updated user channels: {}", newChannelId);
+                        return getUserChannels().thenApply(updatedChannels -> {
                             Channel foundChannel = updatedChannels.stream()
                                     .filter(c -> newChannelId.equals(c.getId()))
                                     .findFirst()
                                     .orElse(null);
+                            
                             if (foundChannel == null) {
-                                Logger.warn("Received user channel update with unknown user channel: {}", newChannelId);
+                                Logger.warn("Received user channel update with unknown user channel (user channel listeners will not work): {}", newChannelId);
                             }
+                            
                             currentChannel = foundChannel;
-                            channelSelector.updateChannel(newChannelId, updatedChannels);
+                            channelSelector.updateChannel(foundChannel != null ? foundChannel.getId() : null, updatedChannels);
+                            return null;
                         });
-                        return;
                     }
                 }
+                
+                // Channel found in cache or newChannelId is null
                 currentChannel = theChannel;
                 channelSelector.updateChannel(theChannel != null ? theChannel.getId() : null, channels);
+                return CompletableFuture.completedFuture(null);
             });
         }, "userChannelChanged");
     }
