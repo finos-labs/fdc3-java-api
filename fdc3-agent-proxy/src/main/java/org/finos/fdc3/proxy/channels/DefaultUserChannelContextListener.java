@@ -46,29 +46,31 @@ public class DefaultUserChannelContextListener extends DefaultContextListener im
 
     @Override
     public CompletionStage<Void> register() {
-        return super.register().thenCompose(v -> notifyChannelChange());
+        return super.register().thenCompose(v -> {
+            changeChannel();
+            return CompletableFuture.completedFuture(null);
+        });
     }
 
     /**
-     * Called when the user channel changes.
+     * Called when the user channel changes. Gets the current context from the
+     * current channel and notifies the handler if there is one.
      */
     @Override
-    public void changeChannel(Channel channel) {
-        super.changeChannel(channel);
-    }
-
-    /**
-     * Notify the handler of current context after channel change.
-     */
-    private CompletionStage<Void> notifyChannelChange() {
+    public void changeChannel() {
         Channel currentChannel = channelSupport.getCurrentChannelInternal();
         if (currentChannel != null) {
-            return currentChannel.getCurrentContext(contextType)
+            currentChannel.getCurrentContext(contextType)
                     .thenAccept(contextOpt -> {
                         contextOpt.ifPresent(context -> handler.handleContext(context, null));
                     });
         }
-        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletionStage<Void> unsubscribe() {
+        channelSupport.removeUserChannelListener(this);
+        return super.unsubscribe();
     }
 
     @Override

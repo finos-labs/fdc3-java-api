@@ -66,6 +66,7 @@ public class DefaultChannelSupport implements ChannelSupport {
     private final long messageExchangeTimeout;
     private List<Channel> userChannels = null;
     private Channel currentChannel = null;
+    private final List<UserChannelContextListener> userChannelListeners = new ArrayList<>();
 
     public DefaultChannelSupport(Messaging messaging, ChannelSelector channelSelector, long messageExchangeTimeout) {
         this.messaging = messaging;
@@ -284,17 +285,28 @@ public class DefaultChannelSupport implements ChannelSupport {
                     }
 
                     channelSelector.updateChannel(id, channels);
+                    
+                    // Notify all user channel listeners of the channel change
+                    for (UserChannelContextListener listener : userChannelListeners) {
+                        listener.changeChannel();
+                    }
                 });
     }
 
     @Override
     public CompletionStage<Listener> addContextListener(ContextHandler handler, String type) {
         DefaultUserChannelContextListener listener = new DefaultUserChannelContextListener(this, messaging, messageExchangeTimeout, type, handler);
+        userChannelListeners.add(listener);
         return listener.register().thenApply(v -> listener);
     }
 
     // Package-private for UserChannelContextListener access
     Channel getCurrentChannelInternal() {
         return currentChannel;
+    }
+
+    // Package-private for UserChannelContextListener to remove itself on unsubscribe
+    void removeUserChannelListener(UserChannelContextListener listener) {
+        userChannelListeners.remove(listener);
     }
 }

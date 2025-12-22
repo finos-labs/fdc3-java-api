@@ -31,8 +31,6 @@ public interface UserChannelContextListener extends Listener, RegisterableListen
      * This method is called when the user channel changes. The listener should then
      * call its handler with the latest piece of relevant channel state and start responding to
      * events on the new channelId.
-     *
-     * @param channel the new channel, or null if leaving channel
      */
-    void changeChannel(Channel channel);
+    void changeChannel();
 }

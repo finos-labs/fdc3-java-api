@@ -23,13 +23,12 @@ import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.proxy.Messaging;
-import org.finos.fdc3.proxy.channels.UserChannelContextListener;
 
 /**
  * Default implementation of a context listener.
  * Extends AbstractListener to handle registration/unregistration.
  */
-public class DefaultContextListener extends AbstractListener<ContextHandler> implements UserChannelContextListener {
+public class DefaultContextListener extends AbstractListener<ContextHandler> {
 
     protected String channelId;
     protected final String contextType;
@@ -65,7 +64,12 @@ public class DefaultContextListener extends AbstractListener<ContextHandler> imp
         this.messageType = messageType;
     }
 
-    @Override
+    /**
+     * Update the channel this listener is listening to. This is used for non-user
+     * channel listeners (e.g., app channels, private channels).
+     * 
+     * @param channel the new channel to listen to
+     */
     public void changeChannel(Channel channel) {
         if (channel == null) {
             this.channelId = null;

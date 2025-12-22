@@ -331,9 +331,9 @@ public class ChannelSteps {
                 paramTypes[i] = args[i] != null ? args[i].getClass() : Object.class;
             }
 
-            java.lang.reflect.Method method = findMethod(target.getClass(), methodName, args.length);
+            java.lang.reflect.Method method = findMethod(target.getClass(), methodName, paramTypes);
             if (method == null) {
-                throw new NoSuchMethodException("Method not found: " + methodName);
+                throw new NoSuchMethodException("Method not found: " + methodName + " with parameter types: " + java.util.Arrays.toString(paramTypes));
             }
 
             method.setAccessible(true);
@@ -346,13 +346,18 @@ public class ChannelSteps {
             return result;
         }
 
-        private java.lang.reflect.Method findMethod(Class<?> clazz, String name, int paramCount) {
-            for (java.lang.reflect.Method m : clazz.getMethods()) {
-                if (m.getName().equals(name) && m.getParameterCount() == paramCount) {
-                    return m;
+        private java.lang.reflect.Method findMethod(Class<?> clazz, String name, Class<?>[] paramTypes) {
+            // Try public methods first (including inherited)
+            try {
+                return clazz.getMethod(name, paramTypes);
+            } catch (NoSuchMethodException e) {
+                // Try declared methods (including private/protected)
+                try {
+                    return clazz.getDeclaredMethod(name, paramTypes);
+                } catch (NoSuchMethodException e2) {
+                    return null;
                 }
             }
-            return null;
         }
     }
 }
