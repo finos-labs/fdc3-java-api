@@ -161,15 +161,22 @@ public class ChannelSteps {
         List<String> types = new ArrayList<>();
         world.set(field, types);
         
-        ContextHandler ch = new ContextHandler() {
-			
+        class MyHandler implements ContextHandler, EventHandler {
+        		
 			@Override
 			public void handleContext(Context context, ContextMetadata metadata) {
 				types.add(context.getType());
 				
 			}
+
+			@Override
+			public void handleEvent(FDC3Event event) {
+				types.add(event.getType().toString());
+			}
 		};
         
+		MyHandler ch = new MyHandler();
+		
         world.set(typeHandlerName, ch);
     }
 
