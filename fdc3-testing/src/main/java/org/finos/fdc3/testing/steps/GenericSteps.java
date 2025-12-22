@@ -464,7 +464,7 @@ public class GenericSteps {
      * Invoke a method on an object by name.
      */
     private Object invokeMethod(Object target, String methodName, Object... args) throws Exception {
-        Method method = findMethod(target.getClass(), methodName, args.length, args);
+        Method method = findMethod(target.getClass(), methodName, args);
         if (method == null) {
             throw new NoSuchMethodException("Method not found: " + methodName);
         }
@@ -476,39 +476,66 @@ public class GenericSteps {
         return resolvePromise(result);
     }
 
-    /**
-     * Find a method by name and parameter types.
-     * First tries to find an exact match, then falls back to compatible types.
-     */
-    private Method findMethod(Class<?> clazz, String name, int paramCount, Object... args) {
-        Method fallback = null;
-        for (Method method : clazz.getMethods()) {
-            if (method.getName().equals(name) && method.getParameterCount() == paramCount) {
-                // Check if parameter types are compatible
-                Class<?>[] paramTypes = method.getParameterTypes();
-                boolean matches = true;
-                for (int i = 0; i < paramCount; i++) {
-                    if (args[i] != null && !paramTypes[i].isAssignableFrom(args[i].getClass())) {
-                        matches = false;
-                        break;
-                    }
-                }
-                if (matches) {
-                    return method;
-                }
-                if (fallback == null) {
-                    fallback = method;
+  
+    public static Method findMethod(
+            Class<?> targetClass,
+            String name,
+            Object... args
+    ) {
+        Method bestMatch = null;
+
+        for (Method method : targetClass.getMethods()) {
+            if (!method.getName().equals(name)) continue;
+
+            Class<?>[] paramTypes = method.getParameterTypes();
+            if (paramTypes.length != args.length) continue;
+
+            if (isCompatible(paramTypes, args)) {
+                if (bestMatch == null ||
+                        isMoreSpecific(paramTypes, bestMatch.getParameterTypes())) {
+                    bestMatch = method;
                 }
             }
         }
-        return fallback;
+
+        return bestMatch;
     }
 
-    /**
-     * Find a method by name and parameter count (for backwards compatibility).
-     */
-    private Method findMethod(Class<?> clazz, String name, int paramCount) {
-        return findMethod(clazz, name, paramCount, new Object[paramCount]);
+    private static boolean isCompatible(Class<?>[] paramTypes, Object[] args) {
+        for (int i = 0; i < paramTypes.length; i++) {
+            if (args[i] == null) {
+                if (paramTypes[i].isPrimitive()) return false;
+                continue;
+            }
+
+            Class<?> argType = args[i].getClass();
+            if (!wrap(paramTypes[i]).isAssignableFrom(argType)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isMoreSpecific(Class<?>[] a, Class<?>[] b) {
+        for (int i = 0; i < a.length; i++) {
+            if (a[i] != b[i] && b[i].isAssignableFrom(a[i])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Class<?> wrap(Class<?> type) {
+        if (!type.isPrimitive()) return type;
+        if (type == int.class) return Integer.class;
+        if (type == long.class) return Long.class;
+        if (type == boolean.class) return Boolean.class;
+        if (type == double.class) return Double.class;
+        if (type == float.class) return Float.class;
+        if (type == char.class) return Character.class;
+        if (type == byte.class) return Byte.class;
+        if (type == short.class) return Short.class;
+        return type;
     }
 
     /**

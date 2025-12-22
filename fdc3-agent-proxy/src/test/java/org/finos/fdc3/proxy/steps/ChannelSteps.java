@@ -19,6 +19,7 @@ package org.finos.fdc3.proxy.steps;
 import static org.finos.fdc3.testing.support.MatchingUtils.handleResolve;
 import static org.finos.fdc3.testing.support.MatchingUtils.matchData;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,7 @@ import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.proxy.support.ContextMap;
 import org.finos.fdc3.proxy.world.CustomWorld;
+import org.finos.fdc3.testing.steps.GenericSteps;
 
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;
@@ -326,14 +328,9 @@ public class ChannelSteps {
         }
 
         public Object invoke(Object... args) throws Exception {
-            Class<?>[] paramTypes = new Class<?>[args.length];
-            for (int i = 0; i < args.length; i++) {
-                paramTypes[i] = args[i] != null ? args[i].getClass() : Object.class;
-            }
-
-            java.lang.reflect.Method method = findMethod(target.getClass(), methodName, paramTypes);
+            java.lang.reflect.Method method = GenericSteps.findMethod(target.getClass(), methodName, args);
             if (method == null) {
-                throw new NoSuchMethodException("Method not found: " + methodName + " with parameter types: " + java.util.Arrays.toString(paramTypes));
+                throw new NoSuchMethodException("Method not found: " + methodName);
             }
 
             method.setAccessible(true);
@@ -346,19 +343,6 @@ public class ChannelSteps {
             return result;
         }
 
-        private java.lang.reflect.Method findMethod(Class<?> clazz, String name, Class<?>[] paramTypes) {
-            // Try public methods first (including inherited)
-            try {
-                return clazz.getMethod(name, paramTypes);
-            } catch (NoSuchMethodException e) {
-                // Try declared methods (including private/protected)
-                try {
-                    return clazz.getDeclaredMethod(name, paramTypes);
-                } catch (NoSuchMethodException e2) {
-                    return null;
-                }
-            }
-        }
     }
 }
 
