@@ -769,4 +769,13 @@ public interface DesktopAgent {
      * ```
      */
     CompletionStage<AppMetadata> getAppMetadata(AppIdentifier app);
+    
+    @Deprecated
+    public CompletionStage<List<Channel>> getSystemChannels();
+    
+    @Deprecated
+    public CompletionStage<Void> joinChannel(String channelId);
+    
+    @Deprecated
+    public CompletionStage<Listener> addContextListener(ContextHandler ch);
 }

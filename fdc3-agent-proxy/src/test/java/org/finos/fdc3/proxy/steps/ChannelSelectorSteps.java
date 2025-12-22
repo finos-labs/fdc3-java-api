@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.proxy.Connectable;
 import org.finos.fdc3.proxy.DesktopAgentProxy;
@@ -73,6 +74,10 @@ public class ChannelSelectorSteps {
         
         world.set(daField, da);
         world.set("result", null);
+        
+        // populate the channel selector
+        List<Channel> userChannels = cs.getUserChannels().toCompletableFuture().get();
+        ts.updateChannel(null, userChannels);
     }
 
     @When("The first channel is selected via the channel selector in {string}")

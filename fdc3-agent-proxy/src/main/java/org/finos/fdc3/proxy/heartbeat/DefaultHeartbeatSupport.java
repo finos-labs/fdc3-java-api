@@ -132,7 +132,8 @@ public class DefaultHeartbeatSupport implements HeartbeatSupport {
         if (heartbeatListener != null) {
             messaging.unregister(heartbeatListener.getId());
         }
+        
         scheduler.shutdown();
-        return CompletableFuture.completedFuture(null);
+        return messaging.disconnect();
     }
 }
