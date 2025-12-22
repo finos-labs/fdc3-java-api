@@ -171,7 +171,9 @@ public class ChannelSteps {
 
 			@Override
 			public void handleEvent(FDC3Event event) {
-				types.add(event.getType().toString());
+				@SuppressWarnings("unchecked")
+				Map<String, Object> details = (Map<String, Object>) event.getDetails();
+				types.add((String) details.get("contextType"));
 			}
 		};
         
