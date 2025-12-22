@@ -71,7 +71,7 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
     }
 
     @Override
-    public Listener onAddContextListener(EventHandler handler) {
+    public CompletionStage<Listener> onAddContextListener(EventHandler handler) {
         // Adapt handler type for differences between addEventListener and onAddContextListener handler types
         PrivateChannelAddContextEventListener listener = new PrivateChannelAddContextEventListener(
                 messaging, messageExchangeTimeout, getId(), 
@@ -82,12 +82,11 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
                     handler.handleEvent(new FDC3Event(FDC3Event.Type.ADD_CONTEXT_LISTENER, details));
                 });
         // Register asynchronously (fire and forget) like TypeScript
-        listener.register();
-        return listener;
+        return listener.register().thenApply(v -> listener);
     }
 
     @Override
-    public Listener onUnsubscribe(EventHandler handler) {
+    public CompletionStage<Listener> onUnsubscribe(EventHandler handler) {
         // Adapt handler type for differences between addEventListener and onUnsubscribe handler types
         PrivateChannelUnsubscribeEventListener listener = new PrivateChannelUnsubscribeEventListener(
                 messaging, messageExchangeTimeout, getId(),
@@ -98,18 +97,16 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
                     handler.handleEvent(new FDC3Event(FDC3Event.Type.ON_UNSUBSCRIBE, details));
                 });
         // Register asynchronously (fire and forget) like TypeScript
-        listener.register();
-        return listener;
+        return listener.register().thenApply(v -> listener);
     }
 
     @Override
-    public Listener onDisconnect(EventHandler handler) {
+    public CompletionStage<Listener> onDisconnect(EventHandler handler) {
         // Adapt handler type for differences between addEventListener and onDisconnect handler types
         PrivateChannelDisconnectEventListener listener = new PrivateChannelDisconnectEventListener(
                 messaging, messageExchangeTimeout, getId(),
                 event -> handler.handleEvent(new FDC3Event(FDC3Event.Type.ON_DISCONNECT, null)));
-        listener.register();
-        return listener;
+        return listener.register().thenApply(v -> listener);
     }
 
     @Override

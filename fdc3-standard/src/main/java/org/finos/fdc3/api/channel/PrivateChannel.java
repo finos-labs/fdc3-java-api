@@ -63,7 +63,7 @@ public interface PrivateChannel extends Channel {
      * @deprecated Use {@link #addEventListener(String, EventHandler)} instead
      */
     @Deprecated
-    Listener onAddContextListener(EventHandler handler);
+    CompletionStage<Listener> onAddContextListener(EventHandler handler);
 
     /**
      * Adds a listener that will be called whenever the remote app invokes Listener.unsubscribe() on a context listener that it
@@ -73,7 +73,7 @@ public interface PrivateChannel extends Channel {
      * @deprecated Use {@link #addEventListener(String, EventHandler)} instead
      */
     @Deprecated
-    Listener onUnsubscribe(EventHandler handler);
+    CompletionStage<Listener> onUnsubscribe(EventHandler handler);
 
     /**
      * Adds a listener that will be called when the remote app terminates, for example when its window is closed or because
@@ -82,7 +82,7 @@ public interface PrivateChannel extends Channel {
      * @deprecated Use {@link #addEventListener(String, EventHandler)} instead
      */
     @Deprecated
-    Listener onDisconnect(EventHandler handler);
+    CompletionStage<Listener> onDisconnect(EventHandler handler);
 
     /**
      * May be called to indicate that a participant will no longer interact with this channel. After this function has been called,

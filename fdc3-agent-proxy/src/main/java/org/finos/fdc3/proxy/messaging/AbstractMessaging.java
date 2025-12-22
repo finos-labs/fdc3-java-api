@@ -159,9 +159,9 @@ public abstract class AbstractMessaging implements Messaging {
         );
 
         Logger.debug("Sending to DesktopAgent: {}", message);
-        post(message);
-
-        return promise.thenApply(response -> {
+        
+        // Wait for post to complete before proceeding to ensure message is recorded
+        return post(message).thenCompose(v -> promise).thenApply(response -> {
             Map<String, Object> resp = (Map<String, Object>) response;
             Map<String, Object> payload = (Map<String, Object>) resp.get("payload");
             if (payload != null && payload.get("error") != null) {
