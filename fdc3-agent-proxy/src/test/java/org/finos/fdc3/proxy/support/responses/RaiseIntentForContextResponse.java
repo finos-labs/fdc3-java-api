@@ -9,6 +9,8 @@ import static org.finos.fdc3.proxy.support.responses.ResponseSupport.scheduleRec
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,9 +78,10 @@ public class RaiseIntentForContextResponse implements AutomaticResponse {
         for (IntentDetail detail : messaging.getIntentDetails()) {
             boolean matches = true;
             
-            // Match context type
+            // Match context type - null is a wildcard that matches anything
+            // If either contextType (from request) or detail.getContext() is null, it matches
             if (contextType != null && detail.getContext() != null && !contextType.equals(detail.getContext())) {
-                // Context type matching is optional
+                matches = false;
             }
             
             // Match target app if specified
@@ -121,7 +124,7 @@ public class RaiseIntentForContextResponse implements AutomaticResponse {
             payload.put("intentResolution", resolution);
         } else {
             // Multiple intents found - return appIntents for disambiguation
-            Set<String> uniqueIntents = new HashSet<>();
+            Set<String> uniqueIntents = new LinkedHashSet<>();
             for (IntentDetail detail : relevant) {
                 if (detail.getIntent() != null) {
                     uniqueIntents.add(detail.getIntent());
@@ -130,21 +133,21 @@ public class RaiseIntentForContextResponse implements AutomaticResponse {
             
             List<Map<String, Object>> appIntents = new ArrayList<>();
             for (String intentName : uniqueIntents) {
-                Map<String, Object> intentInfo = new HashMap<>();
+                Map<String, Object> intentInfo = new LinkedHashMap<>();
                 intentInfo.put("name", intentName);
                 intentInfo.put("displayName", intentName);
                 
                 List<Map<String, String>> apps = new ArrayList<>();
                 for (IntentDetail detail : relevant) {
                     if (intentName.equals(detail.getIntent()) && detail.getApp() != null) {
-                        Map<String, String> app = new HashMap<>();
+                        Map<String, String> app = new LinkedHashMap<>();
                         app.put("appId", detail.getApp().getAppId());
                         if (detail.getApp().getInstanceId() != null) { app.put("instanceId", detail.getApp().getInstanceId()); }
                         apps.add(app);
                     }
                 }
                 
-                Map<String, Object> appIntent = new HashMap<>();
+                Map<String, Object> appIntent = new LinkedHashMap<>();
                 appIntent.put("intent", intentInfo);
                 appIntent.put("apps", apps);
                 appIntents.add(appIntent);
