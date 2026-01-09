@@ -72,6 +72,28 @@ GetAgentParams params = GetAgentParams.builder()
 
 DesktopAgent agent = GetAgent.getAgent(params).toCompletableFuture().get();
 
+### Configuration via System Properties
+
+The following system properties can be used to provide default values for `GetAgentParams`.
+Values set via the builder will override these defaults.
+
+| System Property       | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `FDC3_WEBSOCKET_URL`  | Default WebSocket URL for the Desktop Agent      |
+| `FDC3_IDENTITY_URL`   | Default identity URL for the application         |
+| `FDC3_INSTANCE_ID`    | Default instance ID for the application instance |
+| `FDC3_INSTANCE_UUID`  | Default instance UUID (shared secret)            |
+
+This allows for simplified configuration when these values are provided externally:
+
+```java
+// If system properties are set, the builder can be used with minimal configuration
+// e.g., java -DFDC3_WEBSOCKET_URL=ws://localhost:4475 -DFDC3_IDENTITY_URL=https://myapp.example.com ...
+GetAgentParams params = GetAgentParams.builder()
+    .channelSelector(myChannelSelector)  // Only set optional overrides
+    .build();
+```
+
 ### Broadcasting Context
 
 ```java
@@ -111,6 +133,8 @@ _NOTE:_ Commits and pull requests to FINOS repositories will only be accepted fr
 _Need an ICLA? Unsure if you are covered under an existing CCLA? Email [help@finos.org](mailto:help@finos.org)_
 
 ## License
+
+Copyright 2026 Fintech Open Source Foundation (FINOS)
 
 Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
