@@ -22,3 +22,4 @@ target/
 .project
 .settings/*
 */.settings
+fdc3-java-api.code-workspace

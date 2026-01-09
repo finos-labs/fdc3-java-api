@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Wellington Management Company LLP
+ * Copyright FINOS and its Contributors
  */
 package org.finos.fdc3.proxy.support.responses;
 

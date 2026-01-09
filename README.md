@@ -54,23 +54,23 @@ Once published, add to your `pom.xml`:
 
 ### Connecting to a Desktop Agent
 
-```java
+````java
 import org.finos.fdc3.getagent.GetAgent;
 import org.finos.fdc3.getagent.GetAgentParams;
 import org.finos.fdc3.api.DesktopAgent;
+import java.util.UUID;
 
 // Connect to a Desktop Agent via WebSocket
-GetAgentParams params = new GetAgentParams.Builder()
-    .identityUrl("https://myapp.example.com")
-    .channelSelector(true)
-    .intentResolver(true)
+GetAgentParams params = GetAgentParams.builder()
+    .webSocketUrl("ws://localhost:4475")           // Desktop Agent WebSocket URL (required)
+    .identityUrl("https://myapp.example.com")      // App identity URL (required)
+    .instanceId(desktopAgentProvidedInstanceId)    // Unique instance ID (required)
+    .instanceUuid(desktopAgentProvidedInstanceUuid)// Shared secret UUID (required)
+    .channelSelector(myChannelSelector)            // Optional: custom ChannelSelector
+    .intentResolver(myIntentResolver)              // Optional: custom IntentResolver
     .build();
 
-DesktopAgent agent = GetAgent.getAgent(params);
-
-// Now use the agent
-agent.broadcast(new Contact("john.doe@example.com", "John Doe"));
-```
+DesktopAgent agent = GetAgent.getAgent(params).toCompletableFuture().get();
 
 ### Broadcasting Context
 
@@ -78,7 +78,7 @@ agent.broadcast(new Contact("john.doe@example.com", "John Doe"));
 // Create and broadcast a context
 Context contact = new Contact("jane@example.com", "Jane Smith");
 agent.broadcast(contact);
-```
+````
 
 ### Listening for Context
 
@@ -92,55 +92,10 @@ agent.addContextListener("fdc3.contact", context -> {
 ### Raising Intents
 
 ```java
-// Raise an intent
-IntentResolution resolution = agent.raiseIntent("ViewChart", instrument);
+// Raise an intent (null app lets the resolver choose)
+IntentResolution resolution = agent.raiseIntent("ViewChart", instrument, null)
+    .toCompletableFuture().get();
 ```
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Java Application                        │
-├─────────────────────────────────────────────────────────────┤
-│  GetAgent  →  DesktopAgentProxy  →  WebSocketMessaging      │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ WebSocket (DACP)
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     Desktop Agent                            │
-│              (e.g., FDC3 Sail, Finsemble)                   │
-└─────────────────────────────────────────────────────────────┘
-```
-
-The Java API communicates with a Desktop Agent using the FDC3 Desktop Agent Communication Protocol (DACP) over WebSocket, enabling interoperability with any DACP-compliant agent.
-
-## Testing
-
-### Running Tests
-
-```sh
-mvn test
-```
-
-### Conformance Testing
-
-The `fdc3-agent-proxy` module reuses Cucumber feature files from the official [FDC3 TypeScript repository](https://github.com/finos/FDC3) to ensure conformance with the specification.
-
-Feature files are copied from:
-
-```
-FDC3/packages/fdc3-agent-proxy/test/features/
-```
-
-## Project Status
-
-This project is under active development. Current focus areas:
-
-- [ ] Complete implementation of `DesktopAgentProxy` messaging
-- [ ] Full coverage of FDC3 2.2 API
-- [ ] Conformance test suite passing
-- [ ] Channel selector and intent resolver UI components
-- [ ] Published Maven artifacts
 
 ## Contributing
 
@@ -156,8 +111,6 @@ _NOTE:_ Commits and pull requests to FINOS repositories will only be accepted fr
 _Need an ICLA? Unsure if you are covered under an existing CCLA? Email [help@finos.org](mailto:help@finos.org)_
 
 ## License
-
-Copyright 2023 Wellington Management Company LLP
 
 Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
