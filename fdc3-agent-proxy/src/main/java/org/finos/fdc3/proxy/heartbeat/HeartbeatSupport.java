@@ -16,7 +16,7 @@
 
 package org.finos.fdc3.proxy.heartbeat;
 
-import org.finos.fdc3.proxy.Connectable;
+import org.finos.fdc3.api.ui.Connectable;
 
 /**
  * Interface for heartbeat support.

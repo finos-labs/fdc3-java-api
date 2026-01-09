@@ -14,29 +14,47 @@
  * limitations under the License.
  */
 
-package org.finos.fdc3.proxy.intents;
+package org.finos.fdc3.api.ui;
 
 import org.finos.fdc3.api.types.AppIdentifier;
 
 /**
  * Represents the user's choice from an intent resolver.
+ * <p>
+ * This is returned by {@link IntentResolver#chooseIntent} when the user
+ * selects an application to handle an intent.
  */
 public class IntentResolutionChoice {
 
     private final String intent;
     private final AppIdentifier appId;
 
+    /**
+     * Creates a new IntentResolutionChoice.
+     *
+     * @param intent the intent that was chosen
+     * @param appId the application identifier chosen to handle the intent
+     */
     public IntentResolutionChoice(String intent, AppIdentifier appId) {
         this.intent = intent;
         this.appId = appId;
     }
 
+    /**
+     * Gets the intent that was chosen.
+     *
+     * @return the intent name
+     */
     public String getIntent() {
         return intent;
     }
 
+    /**
+     * Gets the application identifier chosen to handle the intent.
+     *
+     * @return the app identifier
+     */
     public AppIdentifier getAppId() {
         return appId;
     }
 }
-

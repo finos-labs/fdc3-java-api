@@ -18,10 +18,12 @@ package org.finos.fdc3.proxy.support;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 
 import org.finos.fdc3.api.channel.Channel;
-import org.finos.fdc3.proxy.channels.ChannelSelector;
+import org.finos.fdc3.api.ui.ChannelSelector;
 import org.finos.fdc3.testing.world.PropsWorld;
 
 /**
@@ -93,6 +95,16 @@ public class SimpleChannelSelector implements ChannelSelector {
 
     public List<Channel> getChannels() {
         return channels;
+    }
+
+    @Override
+    public CompletionStage<Void> connect() {
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletionStage<Void> disconnect() {
+        return CompletableFuture.completedFuture(null);
     }
 }
 

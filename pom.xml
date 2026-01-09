@@ -30,6 +30,7 @@
         <module>fdc3-context</module>
         <module>fdc3-testing</module>
         <module>fdc3-agent-proxy</module>
+        <module>fdc3-get-agent</module>
     </modules>
     <properties>
         <maven.compiler.source>11</maven.compiler.source>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.finos.fdc3</groupId>
+        <artifactId>fdc3-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>fdc3-get-agent</artifactId>
+    <name>FDC3 Get Agent</name>
+    <description>Factory for obtaining a DesktopAgent connection via WebSocket</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <jdk.source.version>11</jdk.source.version>
+        <jdk.target.version>11</jdk.target.version>
+    </properties>
+
+    <dependencies>
+        <!-- FDC3 API -->
+        <dependency>
+            <groupId>org.finos.fdc3</groupId>
+            <artifactId>fdc3-standard</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- FDC3 Agent Proxy (provides DesktopAgentProxy and support classes) -->
+        <dependency>
+            <groupId>org.finos.fdc3</groupId>
+            <artifactId>fdc3-agent-proxy</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- FDC3 Schema Types -->
+        <dependency>
+            <groupId>org.finos.fdc3</groupId>
+            <artifactId>fdc3-schema</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Java WebSocket API -->
+        <dependency>
+            <groupId>jakarta.websocket</groupId>
+            <artifactId>jakarta.websocket-client-api</artifactId>
+            <version>2.1.1</version>
+        </dependency>
+
+        <!-- Tyrus WebSocket client implementation -->
+        <dependency>
+            <groupId>org.glassfish.tyrus.bundles</groupId>
+            <artifactId>tyrus-standalone-client</artifactId>
+            <version>2.1.5</version>
+        </dependency>
+
+        <!-- SLF4J for logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.9</version>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.1</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${jdk.source.version}</source>
+                    <target>${jdk.target.version}</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

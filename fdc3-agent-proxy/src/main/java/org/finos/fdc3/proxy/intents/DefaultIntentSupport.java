@@ -29,6 +29,7 @@ import org.finos.fdc3.api.metadata.IntentResolution;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.IntentHandler;
 import org.finos.fdc3.api.types.Listener;
+import org.finos.fdc3.api.ui.IntentResolver;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.DefaultIntentListener;
 import org.finos.fdc3.schema.*;

@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-package org.finos.fdc3.proxy;
+package org.finos.fdc3.api.ui;
 
 import java.util.concurrent.CompletionStage;
 
 /**
  * Interface for objects that support connection lifecycle.
+ * <p>
+ * This is used by UI components like {@link ChannelSelector} and {@link IntentResolver}
+ * that may need to connect to external resources.
  */
 public interface Connectable {
 
@@ -37,4 +40,3 @@ public interface Connectable {
      */
     CompletionStage<Void> disconnect();
 }
-

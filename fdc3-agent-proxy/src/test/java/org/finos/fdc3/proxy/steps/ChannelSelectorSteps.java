@@ -23,7 +23,7 @@ import java.util.Map;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
-import org.finos.fdc3.proxy.Connectable;
+import org.finos.fdc3.api.ui.Connectable;
 import org.finos.fdc3.proxy.DesktopAgentProxy;
 import org.finos.fdc3.proxy.apps.DefaultAppSupport;
 import org.finos.fdc3.proxy.channels.DefaultChannelSupport;

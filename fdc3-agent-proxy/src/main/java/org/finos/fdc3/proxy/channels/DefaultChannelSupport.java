@@ -30,6 +30,7 @@ import org.finos.fdc3.api.errors.ChannelError;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.Listener;
+import org.finos.fdc3.api.ui.ChannelSelector;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.DesktopAgentEventListener;
 import org.finos.fdc3.proxy.util.Logger;
@@ -92,7 +93,7 @@ public class DefaultChannelSupport implements ChannelSupport {
 
             getUserChannelsCached().thenCompose(channels -> {
                 Channel theChannel = null;
-                
+
                 // If there's a newChannelId, retrieve details of the channel
                 if (newChannelId != null) {
                     theChannel = channels.stream()
@@ -102,24 +103,28 @@ public class DefaultChannelSupport implements ChannelSupport {
 
                     if (theChannel == null) {
                         // Channel not found - query user channels in case they have changed
-                        Logger.debug("Unknown user channel, querying Desktop Agent for updated user channels: {}", newChannelId);
+                        Logger.debug("Unknown user channel, querying Desktop Agent for updated user channels: {}",
+                                newChannelId);
                         return getUserChannels().thenApply(updatedChannels -> {
                             Channel foundChannel = updatedChannels.stream()
                                     .filter(c -> newChannelId.equals(c.getId()))
                                     .findFirst()
                                     .orElse(null);
-                            
+
                             if (foundChannel == null) {
-                                Logger.warn("Received user channel update with unknown user channel (user channel listeners will not work): {}", newChannelId);
+                                Logger.warn(
+                                        "Received user channel update with unknown user channel (user channel listeners will not work): {}",
+                                        newChannelId);
                             }
-                            
+
                             currentChannel = foundChannel;
-                            channelSelector.updateChannel(foundChannel != null ? foundChannel.getId() : null, updatedChannels);
+                            channelSelector.updateChannel(foundChannel != null ? foundChannel.getId() : null,
+                                    updatedChannels);
                             return null;
                         });
                     }
                 }
-                
+
                 // Channel found in cache or newChannelId is null
                 currentChannel = theChannel;
                 channelSelector.updateChannel(theChannel != null ? theChannel.getId() : null, channels);
@@ -150,13 +155,13 @@ public class DefaultChannelSupport implements ChannelSupport {
                             .convertValue(response, GetCurrentChannelResponse.class);
 
                     if (typedResponse.getPayload() == null ||
-                        typedResponse.getPayload().getChannel() == null) {
+                            typedResponse.getPayload().getChannel() == null) {
                         return null;
                     }
 
                     org.finos.fdc3.schema.Channel schemaChannel = typedResponse.getPayload().getChannel();
                     // Schema now uses fdc3-standard DisplayMetadata directly
-                    return new DefaultChannel(messaging, messageExchangeTimeout, 
+                    return new DefaultChannel(messaging, messageExchangeTimeout,
                             schemaChannel.getID(), Channel.Type.User, schemaChannel.getDisplayMetadata());
                 });
     }
@@ -183,7 +188,7 @@ public class DefaultChannelSupport implements ChannelSupport {
                             .convertValue(response, GetUserChannelsResponse.class);
 
                     if (typedResponse.getPayload() == null ||
-                        typedResponse.getPayload().getUserChannels() == null) {
+                            typedResponse.getPayload().getUserChannels() == null) {
                         userChannels = new ArrayList<>();
                         return userChannels;
                     }
@@ -191,7 +196,8 @@ public class DefaultChannelSupport implements ChannelSupport {
                     // Schema now uses fdc3-standard DisplayMetadata directly
                     userChannels = Arrays.stream(typedResponse.getPayload().getUserChannels())
                             .map(c -> (Channel) new DefaultChannel(
-                                        messaging, messageExchangeTimeout, c.getID(), Channel.Type.User, c.getDisplayMetadata()))
+                                    messaging, messageExchangeTimeout, c.getID(), Channel.Type.User,
+                                    c.getDisplayMetadata()))
                             .collect(Collectors.toList());
 
                     return userChannels;
@@ -216,13 +222,14 @@ public class DefaultChannelSupport implements ChannelSupport {
                             .convertValue(response, GetOrCreateChannelResponse.class);
 
                     if (typedResponse.getPayload() == null ||
-                        typedResponse.getPayload().getChannel() == null) {
+                            typedResponse.getPayload().getChannel() == null) {
                         throw new RuntimeException(ChannelError.CreationFailed.toString());
                     }
 
                     org.finos.fdc3.schema.Channel schemaChannel = typedResponse.getPayload().getChannel();
                     // Schema now uses fdc3-standard DisplayMetadata directly
-                    return new DefaultChannel(messaging, messageExchangeTimeout, id, Channel.Type.App, schemaChannel.getDisplayMetadata());
+                    return new DefaultChannel(messaging, messageExchangeTimeout, id, Channel.Type.App,
+                            schemaChannel.getDisplayMetadata());
                 });
     }
 
@@ -235,13 +242,14 @@ public class DefaultChannelSupport implements ChannelSupport {
 
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
 
-        return messaging.<Map<String, Object>>exchange(requestMap, "createPrivateChannelResponse", messageExchangeTimeout)
+        return messaging
+                .<Map<String, Object>>exchange(requestMap, "createPrivateChannelResponse", messageExchangeTimeout)
                 .thenApply(response -> {
                     CreatePrivateChannelResponse typedResponse = messaging.getConverter()
                             .convertValue(response, CreatePrivateChannelResponse.class);
 
                     if (typedResponse.getPayload() == null ||
-                        typedResponse.getPayload().getPrivateChannel() == null) {
+                            typedResponse.getPayload().getPrivateChannel() == null) {
                         throw new RuntimeException(ChannelError.CreationFailed.toString());
                     }
 
@@ -259,7 +267,8 @@ public class DefaultChannelSupport implements ChannelSupport {
 
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
 
-        return messaging.<Map<String, Object>>exchange(requestMap, "leaveCurrentChannelResponse", messageExchangeTimeout)
+        return messaging
+                .<Map<String, Object>>exchange(requestMap, "leaveCurrentChannelResponse", messageExchangeTimeout)
                 .thenCompose(response -> {
                     currentChannel = null;
                     return getUserChannelsCached().thenAccept(channels -> {
@@ -293,7 +302,7 @@ public class DefaultChannelSupport implements ChannelSupport {
                     }
 
                     channelSelector.updateChannel(id, channels);
-                    
+
                     // Notify all user channel listeners of the channel change
                     for (UserChannelContextListener listener : userChannelListeners) {
                         listener.changeChannel();
@@ -303,7 +312,8 @@ public class DefaultChannelSupport implements ChannelSupport {
 
     @Override
     public CompletionStage<Listener> addContextListener(ContextHandler handler, String type) {
-        DefaultUserChannelContextListener listener = new DefaultUserChannelContextListener(this, messaging, messageExchangeTimeout, type, handler);
+        DefaultUserChannelContextListener listener = new DefaultUserChannelContextListener(this, messaging,
+                messageExchangeTimeout, type, handler);
         userChannelListeners.add(listener);
         return listener.register().thenApply(v -> listener);
     }
@@ -313,7 +323,8 @@ public class DefaultChannelSupport implements ChannelSupport {
         return currentChannel;
     }
 
-    // Package-private for UserChannelContextListener to remove itself on unsubscribe
+    // Package-private for UserChannelContextListener to remove itself on
+    // unsubscribe
     void removeUserChannelListener(UserChannelContextListener listener) {
         userChannelListeners.remove(listener);
     }

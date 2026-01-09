@@ -26,8 +26,8 @@ import org.finos.fdc3.api.metadata.AppIntent;
 import org.finos.fdc3.api.metadata.AppMetadata;
 import org.finos.fdc3.api.metadata.IntentMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
-import org.finos.fdc3.proxy.intents.IntentResolutionChoice;
-import org.finos.fdc3.proxy.intents.IntentResolver;
+import org.finos.fdc3.api.ui.IntentResolutionChoice;
+import org.finos.fdc3.api.ui.IntentResolver;
 import org.finos.fdc3.testing.world.PropsWorld;
 
 /**
@@ -77,6 +77,16 @@ public class SimpleIntentResolver implements IntentResolver {
         world.set("intent-resolution", resolution);
 
         return CompletableFuture.completedFuture(resolution);
+    }
+
+    @Override
+    public CompletionStage<Void> connect() {
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletionStage<Void> disconnect() {
+        return CompletableFuture.completedFuture(null);
     }
 }
 

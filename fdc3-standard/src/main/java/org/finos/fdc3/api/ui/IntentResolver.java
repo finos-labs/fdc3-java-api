@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.finos.fdc3.proxy.intents;
+package org.finos.fdc3.api.ui;
 
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -23,17 +23,22 @@ import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.AppIntent;
 
 /**
- * Interface for intent resolution UI components.
+ * Interface used by the desktop agent proxy to handle the intent resolution process.
+ * <p>
+ * Implementations of this interface provide a UI for users to choose which application
+ * should handle an intent when multiple applications are available.
  */
-public interface IntentResolver {
+public interface IntentResolver extends Connectable {
 
     /**
-     * Display a UI to let the user choose an intent and app.
+     * Called when the user needs to resolve an intent.
+     * <p>
+     * The implementation should display a UI allowing the user to select from the
+     * available applications that can handle the intent(s).
      *
-     * @param appIntents the available intents and apps
-     * @param context    the context being passed
-     * @return a CompletionStage containing the user's choice, or null if cancelled
+     * @param appIntents the available intents and apps that can handle them
+     * @param context the context being passed to the intent
+     * @return a CompletionStage containing the user's choice, or null if the operation was cancelled
      */
     CompletionStage<IntentResolutionChoice> chooseIntent(List<AppIntent> appIntents, Context context);
 }
-

@@ -35,6 +35,7 @@ import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.IntentHandler;
 import org.finos.fdc3.api.types.Listener;
+import org.finos.fdc3.api.ui.Connectable;
 import org.finos.fdc3.proxy.apps.AppSupport;
 import org.finos.fdc3.proxy.channels.ChannelSupport;
 import org.finos.fdc3.proxy.heartbeat.HeartbeatSupport;
@@ -93,7 +94,7 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
     public CompletionStage<Listener> addContextListener(String contextType, ContextHandler handler) {
         return channels.addContextListener(handler, contextType);
     }
-    
+
     @Override
     public CompletionStage<Listener> addContextListener(ContextHandler handler) {
         return channels.addContextListener(handler, null);
@@ -103,7 +104,7 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
     public CompletionStage<List<Channel>> getUserChannels() {
         return channels.getUserChannels();
     }
-    
+
     @Deprecated
     public CompletionStage<List<Channel>> getSystemChannels() {
         return channels.getUserChannels();
@@ -128,7 +129,7 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
     public CompletionStage<Void> joinUserChannel(String channelId) {
         return channels.joinUserChannel(channelId);
     }
-    
+
     public CompletionStage<Void> joinChannel(String channelId) {
         return channels.joinUserChannel(channelId);
     }
@@ -221,4 +222,3 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
         return apps;
     }
 }
-
