@@ -1,108 +1,150 @@
-![badge-labs](https://user-images.githubusercontent.com/327285/230928932-7c75f8ed-e57b-41db-9fb7-a292a13a1e58.svg)
+[![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://community.finos.org/docs/governance/Software-Projects/stages/incubating)
 
 # FDC3 Java API
 
-Standardized Java API to enable integration of FDC3 for Java Desktop Applications.
+A Java implementation of the [FDC3 Standard](https://fdc3.finos.org/) enabling Java desktop applications to interoperate with other FDC3-enabled applications via the [Desktop Agent Communication Protocol (DACP)](https://fdc3.finos.org/docs/api/specs/desktopAgentCommunicationProtocol).
 
-## Installation & Development Setup
+## Overview
 
-Prerequisite: Java 11
+This project provides:
 
-#### FDC3 Java API
+- **FDC3 Standard API interfaces** — Java equivalents of the FDC3 TypeScript API
+- **Desktop Agent Proxy** — Client-side implementation that communicates with a Desktop Agent over WebSocket
+- **GetAgent factory** — Simple entry point for connecting to a Desktop Agent
+- **Cucumber testing framework** — Shared step definitions for conformance testing against the official FDC3 feature files
 
-In a new terminal, navigate to the `fdc3api` directory
+## Modules
 
-Build Project
+| Module             | Description                                                                     |
+| ------------------ | ------------------------------------------------------------------------------- |
+| `fdc3-standard`    | Core FDC3 API interfaces (`DesktopAgent`, `Channel`, `Context`, `Intent`, etc.) |
+| `fdc3-schema`      | Generated schema types and JSON conversion utilities                            |
+| `fdc3-context`     | Context type conversion utilities                                               |
+| `fdc3-agent-proxy` | `DesktopAgentProxy` implementation using DACP messaging                         |
+| `fdc3-get-agent`   | `GetAgent` factory for obtaining a `DesktopAgent` connection via WebSocket      |
+| `fdc3-testing`     | Cucumber step definitions and test utilities for FDC3 conformance testing       |
+
+## Requirements
+
+- Java 11 or later
+- Maven 3.6+
+- A running FDC3 Desktop Agent that supports the [Desktop Agent Communication Protocol](https://fdc3.finos.org/docs/api/specs/desktopAgentCommunicationProtocol) (e.g., [FDC3 Sail](https://github.com/finos/FDC3-Sail))
+
+## Installation
+
+### Building from Source
 
 ```sh
-mvn clean compile
+mvn clean install
 ```
 
-#### FDC3 Container
+### Maven Dependency
 
-In a new terminal, navigate to the `fdc3container` directory
+Once published, add to your `pom.xml`:
 
-Install Dependencies
-
-```sh
-npm i
+```xml
+<dependency>
+    <groupId>org.finos.fdc3</groupId>
+    <artifactId>fdc3-get-agent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+</dependency>
 ```
 
-Run Application
+## Usage
 
-```sh
-npm start
+### Connecting to a Desktop Agent
+
+```java
+import org.finos.fdc3.getagent.GetAgent;
+import org.finos.fdc3.getagent.GetAgentParams;
+import org.finos.fdc3.api.DesktopAgent;
+
+// Connect to a Desktop Agent via WebSocket
+GetAgentParams params = new GetAgentParams.Builder()
+    .identityUrl("https://myapp.example.com")
+    .channelSelector(true)
+    .intentResolver(true)
+    .build();
+
+DesktopAgent agent = GetAgent.getAgent(params);
+
+// Now use the agent
+agent.broadcast(new Contact("john.doe@example.com", "John Doe"));
 ```
 
-Runs on <localhost:8080>
+### Broadcasting Context
 
-#### Client
-
-In a new terminal, navigate to the `client` directory
-
-Build Project:
-
-```sh
-mvn clean compile package
+```java
+// Create and broadcast a context
+Context contact = new Contact("jane@example.com", "Jane Smith");
+agent.broadcast(contact);
 ```
 
-Run the executable from Target directory
+### Listening for Context
 
-```sh
-java -jar <Project.baseDirectory>\client\target\client-1.0.0-SNAPSHOT.jar
-  ```
-
-#### Stock Search React Receiver Application
-
-In a new terminal, navigate to the `fdcreceiver-react-trade-app` directory
-
-Install Dependencies
-
-```sh
-npm i
+```java
+// Add a context listener
+agent.addContextListener("fdc3.contact", context -> {
+    System.out.println("Received contact: " + context);
+});
 ```
 
-Run Application
+### Raising Intents
 
-```sh
-npm start
+```java
+// Raise an intent
+IntentResolution resolution = agent.raiseIntent("ViewChart", instrument);
 ```
 
-Runs on <localhost:3000>
+## Architecture
 
-## Usage with the Current State of this Repo
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Java Application                        │
+├─────────────────────────────────────────────────────────────┤
+│  GetAgent  →  DesktopAgentProxy  →  WebSocketMessaging      │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ WebSocket (DACP)
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Desktop Agent                            │
+│              (e.g., FDC3 Sail, Finsemble)                   │
+└─────────────────────────────────────────────────────────────┘
+```
 
-With the goal of our use case being to enable integration of FDC3 for Java Desktop Applications, we developed the Java API in addition to several simple applications that demonstrate its functionality and potential. The components we developed are as follows:
+The Java API communicates with a Desktop Agent using the FDC3 Desktop Agent Communication Protocol (DACP) over WebSocket, enabling interoperability with any DACP-compliant agent.
 
-* Java API - Our implementation of the Java API. Located in `fdc3api`
-* Java Swing Sender - Client application to place orders. Located in `client`
-* Adapter - the OpenFin Adapter. Located in `openfin-fdc3-adapter`
-* Trade App - React based application enabled for receiving trade context from the sender. Located in `fdcreceiver-react-trade-app`
-* FDC3 Container - OpenFin based container hosting the receiver environment. Located in `fdc3container`
+## Testing
 
-As you interact with these applications, you will see our API in action. For example, say the user were to send the instruments from the Java Swing blotter, this action would then be reflected across the receiving web applications. In addition, we implemented a feature to allow the user to select what channel they are listening on to demonstrate the potential of our API.
+### Running Tests
 
-![Demo Screenshot](readme-images/demo_screenshot.png)
+```sh
+mvn test
+```
 
-## Usage in a Business Environment
+### Conformance Testing
 
-Some firms have existing Java desktop applications, and they want to use FDC3 to integrate with other apps that use JavaScript or other technologies.
+The `fdc3-agent-proxy` module reuses Cucumber feature files from the official [FDC3 TypeScript repository](https://github.com/finos/FDC3) to ensure conformance with the specification.
 
-For example, a buy-side trader using an internal Java order management system selects an order on their blotter and wants to view related analytics in an external JavaScript app provided by a broker.
+Feature files are copied from:
 
-This API will provide a standardized API for Java app developers to use, making it easier to switch the underlying technology that provides the FDC3 communication if required. By leveraging our FDC3 Java API in existing apps, developers will be able to create a user friendly workflow that favors shared context between applications as opposed to manual repetition by the user.
+```
+FDC3/packages/fdc3-agent-proxy/test/features/
+```
 
-## Roadmap
+## Project Status
 
-1. Robust testing
-2. Acceptance as a FINOS standard
-3. The FDC3 Java API is leveraged in a production environment
-4. Review with OpenFin the FDC3 features not currently supported by their Java API. Discuss if they would be willing to implement this FDC3 Java API directly instead of using an adapter.
-5. If possible, write a fully open-source implementation of the API without any dependency on a specific desktop agent vendor. This may be possible using websocket with the new desktop agent bridging spec.
+This project is under active development. Current focus areas:
+
+- [ ] Complete implementation of `DesktopAgentProxy` messaging
+- [ ] Full coverage of FDC3 2.2 API
+- [ ] Conformance test suite passing
+- [ ] Channel selector and intent resolver UI components
+- [ ] Published Maven artifacts
 
 ## Contributing
 
-1. Fork it (<https://github.com/finos-labs/fdc3-java-api/fork>)
+1. Fork the repository (<https://github.com/finos/fdc3-java-api/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
 3. Read our [contribution guidelines](.github/CONTRIBUTING.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
 4. Commit your changes (`git commit -am 'Add some fooBar'`)
@@ -111,7 +153,7 @@ This API will provide a standardized API for Java app developers to use, making 
 
 _NOTE:_ Commits and pull requests to FINOS repositories will only be accepted from those contributors with an active, executed Individual Contributor License Agreement (ICLA) with FINOS OR who are covered under an existing and active Corporate Contribution License Agreement (CCLA) executed with FINOS. Commits from individuals not covered under an ICLA or CCLA will be flagged and blocked by the FINOS Clabot tool. Please note that some CCLAs require individuals/employees to be explicitly named on the CCLA.
 
-*Need an ICLA? Unsure if you are covered under an existing CCLA? Email [help@finos.org](mailto:help@finos.org)*
+_Need an ICLA? Unsure if you are covered under an existing CCLA? Email [help@finos.org](mailto:help@finos.org)_
 
 ## License
 
