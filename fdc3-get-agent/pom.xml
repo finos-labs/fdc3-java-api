@@ -63,11 +63,11 @@
             <version>2.0.9</version>
         </dependency>
 
-        <!-- Test dependencies -->
+        <!-- FDC3 Testing Framework -->
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>5.10.1</version>
+            <groupId>org.finos.fdc3</groupId>
+            <artifactId>fdc3-testing</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -81,6 +81,21 @@
                 <configuration>
                     <source>${jdk.source.version}</source>
                     <target>${jdk.target.version}</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.2</version>
+                <configuration>
+                    <properties>
+                        <configurationParameters>
+                            cucumber.junit-platform.naming-strategy=long
+                            cucumber.plugin=pretty,html:target/cucumber-reports/cucumber.html
+                            cucumber.glue=org.finos.fdc3.getagent,org.finos.fdc3.getagent.steps,org.finos.fdc3.testing.steps
+                            cucumber.features=classpath:features
+                        </configurationParameters>
+                    </properties>
                 </configuration>
             </plugin>
         </plugins>
