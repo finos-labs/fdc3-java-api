@@ -63,7 +63,6 @@ import java.util.UUID;
 // Connect to a Desktop Agent via WebSocket
 GetAgentParams params = GetAgentParams.builder()
     .webSocketUrl("ws://localhost:4475")           // Desktop Agent WebSocket URL (required)
-    .identityUrl("https://myapp.example.com")      // App identity URL (required)
     .instanceId(desktopAgentProvidedInstanceId)    // Unique instance ID (required)
     .instanceUuid(desktopAgentProvidedInstanceUuid)// Shared secret UUID (required)
     .channelSelector(myChannelSelector)            // Optional: custom ChannelSelector
@@ -80,15 +79,14 @@ Values set via the builder will override these defaults.
 | System Property       | Description                                      |
 | --------------------- | ------------------------------------------------ |
 | `FDC3_WEBSOCKET_URL`  | Default WebSocket URL for the Desktop Agent      |
-| `FDC3_IDENTITY_URL`   | Default identity URL for the application         |
-| `FDC3_INSTANCE_ID`    | Default instance ID for the application instance |
-| `FDC3_INSTANCE_UUID`  | Default instance UUID (shared secret)            |
+| `FDC3_INSTANCE_ID`    | Instance ID for the application instance (if reconnecting)|
+| `FDC3_INSTANCE_UUID`  | Instance ID UUID (shared secret) (if reconnecting)            |
 
 This allows for simplified configuration when these values are provided externally:
 
 ```java
 // If system properties are set, the builder can be used with minimal configuration
-// e.g., java -DFDC3_WEBSOCKET_URL=ws://localhost:4475 -DFDC3_IDENTITY_URL=https://myapp.example.com ...
+// e.g., java -DFDC3_WEBSOCKET_URL=ws://localhost:4475 -DFDC3_INSTANCE_ID=my-app ...
 GetAgentParams params = GetAgentParams.builder()
     .channelSelector(myChannelSelector)  // Only set optional overrides
     .build();

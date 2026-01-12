@@ -18,7 +18,6 @@ package org.finos.fdc3.getagent;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -38,6 +37,10 @@ import org.finos.fdc3.proxy.channels.DefaultChannelSupport;
 import org.finos.fdc3.proxy.heartbeat.DefaultHeartbeatSupport;
 import org.finos.fdc3.proxy.intents.DefaultIntentSupport;
 import org.finos.fdc3.proxy.util.Logger;
+import org.finos.fdc3.schema.WebConnectionProtocol1HelloMeta;
+import org.finos.fdc3.schema.WebConnectionProtocol4ValidateAppIdentity;
+import org.finos.fdc3.schema.WebConnectionProtocol4ValidateAppIdentityPayload;
+import org.finos.fdc3.schema.WebConnectionProtocol4ValidateAppIdentityType;
 
 /**
  * Factory for obtaining a DesktopAgent connection via WebSocket.
@@ -49,7 +52,8 @@ import org.finos.fdc3.proxy.util.Logger;
  * <pre>{@code
  * GetAgentParams params = GetAgentParams.builder()
  *     .webSocketUrl("ws://localhost:8080/fdc3")
- *     .identityUrl("https://myapp.example.com/")
+ *     .instanceId("my-app-instance-1")
+ *     .instanceUuid("550e8400-e29b-41d4-a716-446655440000")
  *     .channelSelector(myChannelSelector)
  *     .intentResolver(myIntentResolver)
  *     .build();
@@ -59,7 +63,6 @@ import org.finos.fdc3.proxy.util.Logger;
  */
 public class GetAgent {
 
-    private static final String WCP4_VALIDATE_APP_IDENTITY = "WCP4ValidateAppIdentity";
     private static final String WCP5_VALIDATE_APP_IDENTITY_RESPONSE = "WCP5ValidateAppIdentityResponse";
     private static final String WCP5_VALIDATE_APP_IDENTITY_FAILED_RESPONSE = "WCP5ValidateAppIdentityFailedResponse";
 
@@ -116,27 +119,27 @@ public class GetAgent {
         
         String connectionAttemptUuid = UUID.randomUUID().toString();
 
-        // Build WCP4ValidateAppIdentity message
-        Map<String, Object> validateMessage = new HashMap<>();
-        validateMessage.put("type", WCP4_VALIDATE_APP_IDENTITY);
+        // Build WCP4ValidateAppIdentity message using schema classes
+        WebConnectionProtocol4ValidateAppIdentity validateMsg = new WebConnectionProtocol4ValidateAppIdentity();
+        validateMsg.setType(WebConnectionProtocol4ValidateAppIdentityType.WCP4_VALIDATE_APP_IDENTITY);
 
-        Map<String, Object> meta = new HashMap<>();
-        meta.put("connectionAttemptUuid", connectionAttemptUuid);
-        meta.put("timestamp", OffsetDateTime.now().toString());
-        validateMessage.put("meta", meta);
+        WebConnectionProtocol1HelloMeta meta = new WebConnectionProtocol1HelloMeta();
+        meta.setConnectionAttemptUUID(connectionAttemptUuid);
+        meta.setTimestamp(OffsetDateTime.now());
+        validateMsg.setMeta(meta);
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("identityUrl", params.getIdentityUrl());
-        payload.put("actualUrl", params.getIdentityUrl()); // In Java, these are typically the same
+        WebConnectionProtocol4ValidateAppIdentityPayload payload = new WebConnectionProtocol4ValidateAppIdentityPayload();
+        // For native apps, use "native" as the identity and actual URLs
+        payload.setIdentityURL("native");
+        payload.setActualURL("native");
 
-        // Include instanceId and instanceUuid if provided (for reconnection)
-        if (params.getInstanceId() != null) {
-            payload.put("instanceId", params.getInstanceId());
-        }
-        if (params.getInstanceUuid() != null) {
-            payload.put("instanceUuid", params.getInstanceUuid());
-        }
-        validateMessage.put("payload", payload);
+        // Include instanceId and instanceUuid (required for native apps)
+        payload.setInstanceID(params.getInstanceId());
+        payload.setInstanceUUID(params.getInstanceUuid());
+        validateMsg.setPayload(payload);
+
+        // Convert to Map for sending
+        Map<String, Object> validateMessage = messaging.getConverter().toMap(validateMsg);
 
         // Set up response listener
         CompletableFuture<ValidationResult> responseFuture = new CompletableFuture<>();
