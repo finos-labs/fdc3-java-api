@@ -5,7 +5,11 @@
             "type": "java",
             "name": "Current File",
             "request": "launch",
-            "mainClass": "${file}"
+            "mainClass": "${file}",
+            "vmArgs": [
+                "-Dfdc3.log.level=DEBUG",
+                "-DFDC3_WEBSOCKET_URL=http://localhost:8090/remote/user-fce30a8d-95eb-4fb4-b34d-27ce9fdb10df/87664652dcaedaa4"
+            ]
         },
         {
             "type": "java",

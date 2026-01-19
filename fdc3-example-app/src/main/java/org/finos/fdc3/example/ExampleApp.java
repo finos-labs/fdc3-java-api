@@ -28,11 +28,14 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
+import java.awt.GridLayout;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Example Java Swing application demonstrating FDC3 Desktop Agent connectivity.
@@ -66,18 +69,77 @@ public class ExampleApp extends JFrame {
     private JButton removeListenerButton;
     private JLabel statusLabel;
     private JLabel listenerStatusLabel;
+    
+    // Broadcast buttons
+    private JButton broadcastInstrumentButton;
+    private JButton broadcastCurrencyButton;
+    private JButton broadcastContactButton;
+    
+    // WebSocket URL (set from environment or user prompt)
+    private String websocketUrl;
 
     public ExampleApp() {
         super("FDC3 Example App");
         initUI();
         
-        // Connect to Desktop Agent on startup
-        SwingUtilities.invokeLater(this::connectToAgent);
+        // Check for WebSocket URL and prompt if needed
+        SwingUtilities.invokeLater(this::initializeConnection);
+    }
+    
+    /**
+     * Initialize the connection by checking for FDC3_WEBSOCKET_URL.
+     * If not set, prompt the user for the URL.
+     */
+    private void initializeConnection() {
+        // Check environment variable first
+        websocketUrl = System.getenv("FDC3_WEBSOCKET_URL");
+        
+        // Also check system property as fallback
+        if (websocketUrl == null || websocketUrl.isEmpty()) {
+            websocketUrl = System.getProperty("FDC3_WEBSOCKET_URL");
+        }
+        
+        if (websocketUrl == null || websocketUrl.isEmpty()) {
+            // Prompt user for the URL
+            promptForWebSocketUrl();
+        } else {
+            // URL is set, proceed with connection
+            log("Using FDC3_WEBSOCKET_URL: " + websocketUrl);
+            connectToAgent();
+        }
+    }
+    
+    /**
+     * Show a dialog prompting the user for the WebSocket URL.
+     */
+    private void promptForWebSocketUrl() {
+        String message = "FDC3_WEBSOCKET_URL environment variable is not set.\n\n" +
+                "Please enter the WebSocket URL to connect to the Desktop Agent.\n" +
+                "You can find this URL in the Sail app directory for native apps.\n\n" +
+                "Example: ws://localhost:8090/remote/user-abc123/1a2b3c4d5e6f";
+        
+        String url = JOptionPane.showInputDialog(
+                this,
+                message,
+                "Enter WebSocket URL",
+                JOptionPane.QUESTION_MESSAGE);
+        
+        if (url != null && !url.trim().isEmpty()) {
+            websocketUrl = url.trim();
+            log("Using user-provided WebSocket URL: " + websocketUrl);
+            connectToAgent();
+        } else {
+            // User cancelled or entered empty string
+            statusLabel.setText("Not Connected");
+            statusLabel.setForeground(Color.RED);
+            log("No WebSocket URL provided. Cannot connect to Desktop Agent.");
+            log("Set FDC3_WEBSOCKET_URL environment variable or restart and enter URL.");
+        }
     }
 
     private void initUI() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(600, 500);
+        setSize(650, 600);
         setLocationRelativeTo(null);
 
         // Main panel with padding
@@ -132,7 +194,10 @@ public class ExampleApp extends JFrame {
 
         mainPanel.add(logPanel, BorderLayout.CENTER);
 
-        // Bottom panel - Listener controls
+        // Bottom panel - contains listener controls and broadcast controls
+        JPanel bottomPanel = new JPanel(new GridLayout(2, 1, 5, 5));
+        
+        // Listener controls
         JPanel listenerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         listenerPanel.setBorder(new TitledBorder("Context Listener"));
         
@@ -149,8 +214,34 @@ public class ExampleApp extends JFrame {
         removeListenerButton.setEnabled(false);
         removeListenerButton.addActionListener(e -> removeContextListener());
         listenerPanel.add(removeListenerButton);
+        
+        bottomPanel.add(listenerPanel);
+        
+        // Broadcast controls
+        JPanel broadcastPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        broadcastPanel.setBorder(new TitledBorder("Broadcast Context (requires channel)"));
+        
+        broadcastInstrumentButton = new JButton("Instrument (MSFT)");
+        broadcastInstrumentButton.setEnabled(false);
+        broadcastInstrumentButton.setToolTipText("Broadcast Microsoft stock instrument context");
+        broadcastInstrumentButton.addActionListener(e -> broadcastInstrument());
+        broadcastPanel.add(broadcastInstrumentButton);
+        
+        broadcastCurrencyButton = new JButton("Currency (USD)");
+        broadcastCurrencyButton.setEnabled(false);
+        broadcastCurrencyButton.setToolTipText("Broadcast US Dollar currency context");
+        broadcastCurrencyButton.addActionListener(e -> broadcastCurrency());
+        broadcastPanel.add(broadcastCurrencyButton);
+        
+        broadcastContactButton = new JButton("Contact (Jane Doe)");
+        broadcastContactButton.setEnabled(false);
+        broadcastContactButton.setToolTipText("Broadcast sample contact context");
+        broadcastContactButton.addActionListener(e -> broadcastContact());
+        broadcastPanel.add(broadcastContactButton);
+        
+        bottomPanel.add(broadcastPanel);
 
-        mainPanel.add(listenerPanel, BorderLayout.SOUTH);
+        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
 
         add(mainPanel);
 
@@ -164,11 +255,17 @@ public class ExampleApp extends JFrame {
     }
 
     private void connectToAgent() {
-        log("Connecting to Desktop Agent...");
+        if (websocketUrl == null || websocketUrl.isEmpty()) {
+            log("ERROR: No WebSocket URL configured");
+            return;
+        }
+        
+        log("Connecting to Desktop Agent at: " + websocketUrl);
         
         try {
             GetAgentParams params = GetAgentParams.builder()
                     .timeoutMs(30000)
+                    .webSocketUrl(websocketUrl)
                     .build();
 
             GetAgent.getAgent(params)
@@ -199,15 +296,22 @@ public class ExampleApp extends JFrame {
         statusLabel.setForeground(Color.RED);
         log("ERROR: Failed to connect - " + error.getMessage());
         
-        // Show error dialog
-        JOptionPane.showMessageDialog(this,
+        // Show error dialog with option to retry
+        int result = JOptionPane.showOptionDialog(this,
                 "Failed to connect to Desktop Agent:\n" + error.getMessage() +
-                "\n\nMake sure the following system properties are set:\n" +
-                "- FDC3_WEBSOCKET_URL\n" +
-                "- FDC3_INSTANCE_ID\n" +
-                "- FDC3_INSTANCE_UUID",
+                "\n\nURL: " + websocketUrl +
+                "\n\nWould you like to enter a different URL?",
                 "Connection Error",
-                JOptionPane.ERROR_MESSAGE);
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.ERROR_MESSAGE,
+                null,
+                new String[]{"Enter New URL", "Close"},
+                "Enter New URL");
+        
+        if (result == 0) {
+            // User wants to try a different URL
+            promptForWebSocketUrl();
+        }
     }
 
     private void loadUserChannels() {
@@ -261,6 +365,7 @@ public class ExampleApp extends JFrame {
                             channelComboBox.setSelectedIndex(0);
                             log("Not currently joined to any channel");
                         }
+                        updateBroadcastButtonsState();
                     });
                 })
                 .exceptionally(error -> {
@@ -295,8 +400,10 @@ public class ExampleApp extends JFrame {
         agent.joinUserChannel(channel.getId())
                 .thenRun(() -> {
                     currentChannel = channel;
-                    SwingUtilities.invokeLater(() -> 
-                        log("Joined channel: " + channel.getId()));
+                    SwingUtilities.invokeLater(() -> {
+                        log("Joined channel: " + channel.getId());
+                        updateBroadcastButtonsState();
+                    });
                 })
                 .exceptionally(error -> {
                     SwingUtilities.invokeLater(() -> {
@@ -317,6 +424,7 @@ public class ExampleApp extends JFrame {
                     SwingUtilities.invokeLater(() -> {
                         channelComboBox.setSelectedIndex(0);
                         log("Left channel");
+                        updateBroadcastButtonsState();
                     });
                 })
                 .exceptionally(error -> {
@@ -366,6 +474,83 @@ public class ExampleApp extends JFrame {
                 .exceptionally(error -> {
                     SwingUtilities.invokeLater(() ->
                         log("ERROR: Failed to remove listener - " + error.getMessage()));
+                    return null;
+                });
+    }
+
+    /**
+     * Update the enabled state of broadcast buttons based on channel membership.
+     */
+    private void updateBroadcastButtonsState() {
+        boolean canBroadcast = currentChannel != null && agent != null;
+        broadcastInstrumentButton.setEnabled(canBroadcast);
+        broadcastCurrencyButton.setEnabled(canBroadcast);
+        broadcastContactButton.setEnabled(canBroadcast);
+    }
+
+    /**
+     * Broadcast a sample instrument context (Microsoft stock).
+     */
+    private void broadcastInstrument() {
+        if (agent == null || currentChannel == null) return;
+        
+        Map<String, Object> id = new HashMap<>();
+        id.put("ticker", "MSFT");
+        id.put("ISIN", "US5949181045");
+        
+        Context instrumentContext = new Context("fdc3.instrument", "Microsoft", id);
+        
+        log("Broadcasting instrument context: Microsoft (MSFT)");
+        agent.broadcast(instrumentContext)
+                .thenRun(() -> SwingUtilities.invokeLater(() -> 
+                    log("Successfully broadcast instrument context")))
+                .exceptionally(error -> {
+                    SwingUtilities.invokeLater(() ->
+                        log("ERROR: Failed to broadcast - " + error.getMessage()));
+                    return null;
+                });
+    }
+
+    /**
+     * Broadcast a sample currency context (US Dollar).
+     */
+    private void broadcastCurrency() {
+        if (agent == null || currentChannel == null) return;
+        
+        Map<String, Object> id = new HashMap<>();
+        id.put("CURRENCY_ISOCODE", "USD");
+        
+        Context currencyContext = new Context("fdc3.currency", "US Dollar", id);
+        
+        log("Broadcasting currency context: US Dollar (USD)");
+        agent.broadcast(currencyContext)
+                .thenRun(() -> SwingUtilities.invokeLater(() -> 
+                    log("Successfully broadcast currency context")))
+                .exceptionally(error -> {
+                    SwingUtilities.invokeLater(() ->
+                        log("ERROR: Failed to broadcast - " + error.getMessage()));
+                    return null;
+                });
+    }
+
+    /**
+     * Broadcast a sample contact context (Jane Doe).
+     */
+    private void broadcastContact() {
+        if (agent == null || currentChannel == null) return;
+        
+        Map<String, Object> id = new HashMap<>();
+        id.put("email", "jane.doe@mail.com");
+        
+        Context contactContext = new Context("fdc3.contact", "Jane Doe", id);
+        
+        log("Broadcasting contact context: Jane Doe");
+        agent.broadcast(contactContext)
+                .thenRun(() -> SwingUtilities.invokeLater(() -> 
+                    log("Successfully broadcast contact context")))
+                .exceptionally(error -> {
+                    SwingUtilities.invokeLater(() ->
+                        log("ERROR: Failed to broadcast - " + error.getMessage()));
                     return null;
                 });
     }
