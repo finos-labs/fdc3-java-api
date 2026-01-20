@@ -299,22 +299,22 @@ public class GetAgent {
                 null // desktopAgent is not set on the app's own identifier
         );
 
-        // Create a Messaging wrapper with the correct AppIdentifier
-        org.finos.fdc3.proxy.Messaging finalMessaging = new WebSocketMessagingWrapper(messaging, appIdentifier);
+        // Update the messaging with the validated identity
+        messaging.setIdentifier(appIdentifier, validationResult.instanceUuid);
 
         // Create support components
         DefaultHeartbeatSupport heartbeatSupport = new DefaultHeartbeatSupport(
-                finalMessaging, params.getHeartbeatIntervalMs());
+                messaging, params.getHeartbeatIntervalMs());
 
         DefaultChannelSupport channelSupport = new DefaultChannelSupport(
-                finalMessaging, params.getChannelSelector(), params.getMessageExchangeTimeout());
+                messaging, params.getChannelSelector(), params.getMessageExchangeTimeout());
 
         DefaultIntentSupport intentSupport = new DefaultIntentSupport(
-                finalMessaging, params.getIntentResolver(),
+                messaging, params.getIntentResolver(),
                 params.getMessageExchangeTimeout(), params.getAppLaunchTimeout());
 
         DefaultAppSupport appSupport = new DefaultAppSupport(
-                finalMessaging, params.getMessageExchangeTimeout(), params.getAppLaunchTimeout());
+                messaging, params.getMessageExchangeTimeout(), params.getAppLaunchTimeout());
 
         // Build list of connectables (for connect/disconnect lifecycle)
         List<Connectable> connectables = new ArrayList<>();
@@ -343,77 +343,5 @@ public class GetAgent {
         String instanceId;
         String instanceUuid;
         ImplementationMetadata implementationMetadata;
-    }
-
-    /**
-     * Wrapper around WebSocketMessaging to provide the correct AppIdentifier
-     * after identity validation while delegating all other operations.
-     */
-    private static class WebSocketMessagingWrapper implements org.finos.fdc3.proxy.Messaging {
-        private final WebSocketMessaging delegate;
-        private final AppIdentifier appIdentifier;
-
-        WebSocketMessagingWrapper(WebSocketMessaging delegate, AppIdentifier appIdentifier) {
-            this.delegate = delegate;
-            this.appIdentifier = appIdentifier;
-        }
-
-        @Override
-        public String createUUID() {
-            return delegate.createUUID();
-        }
-
-        @Override
-        public CompletionStage<Void> post(Map<String, Object> message) {
-            return delegate.post(message);
-        }
-
-        @Override
-        public void register(org.finos.fdc3.proxy.listeners.RegisterableListener listener) {
-            delegate.register(listener);
-        }
-
-        @Override
-        public void unregister(String id) {
-            delegate.unregister(id);
-        }
-
-        @Override
-        public org.finos.fdc3.schema.AddContextListenerRequestMeta createMeta() {
-            // Create meta with the correct AppIdentifier
-            org.finos.fdc3.schema.AddContextListenerRequestMeta meta = 
-                    new org.finos.fdc3.schema.AddContextListenerRequestMeta();
-            meta.setRequestUUID(createUUID());
-            meta.setTimestamp(OffsetDateTime.now());
-            meta.setSource(appIdentifier);
-            return meta;
-        }
-
-        @Override
-        public <X> CompletionStage<X> waitFor(
-                java.util.function.Predicate<X> filter, long timeoutMs, String timeoutErrorMessage) {
-            return delegate.waitFor(filter, timeoutMs, timeoutErrorMessage);
-        }
-
-        @Override
-        public <X> CompletionStage<X> exchange(
-                Map<String, Object> message, String expectedTypeName, long timeoutMs) {
-            return delegate.exchange(message, expectedTypeName, timeoutMs);
-        }
-
-        @Override
-        public AppIdentifier getAppIdentifier() {
-            return appIdentifier;
-        }
-
-        @Override
-        public CompletionStage<Void> disconnect() {
-            return delegate.disconnect();
-        }
-
-        @Override
-        public org.finos.fdc3.schema.SchemaConverter getConverter() {
-            return delegate.getConverter();
-        }
     }
 }

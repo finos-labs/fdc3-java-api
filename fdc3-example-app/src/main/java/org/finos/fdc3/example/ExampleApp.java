@@ -77,6 +77,14 @@ public class ExampleApp extends JFrame {
     
     // WebSocket URL (set from environment or user prompt)
     private String websocketUrl;
+    
+    // Stored connection info for reconnection
+    private String lastInstanceId;
+    private String lastInstanceUuid;
+    
+    // Connection buttons
+    private JButton disconnectButton;
+    private JButton reconnectButton;
 
     public ExampleApp() {
         super("FDC3 Example App");
@@ -155,6 +163,18 @@ public class ExampleApp extends JFrame {
         statusLabel = new JLabel("Connecting...");
         statusLabel.setForeground(Color.ORANGE);
         statusPanel.add(statusLabel);
+        
+        disconnectButton = new JButton("Disconnect");
+        disconnectButton.setEnabled(false);
+        disconnectButton.addActionListener(e -> disconnect());
+        statusPanel.add(disconnectButton);
+        
+        reconnectButton = new JButton("Reconnect");
+        reconnectButton.setEnabled(false);
+        reconnectButton.setToolTipText("Reconnect using the same instanceId/instanceUuid");
+        reconnectButton.addActionListener(e -> reconnect());
+        statusPanel.add(reconnectButton);
+        
         topPanel.add(statusPanel, BorderLayout.NORTH);
 
         // Channel selection panel
@@ -284,16 +304,54 @@ public class ExampleApp extends JFrame {
         SwingUtilities.invokeLater(() -> {
             statusLabel.setText("Connected");
             statusLabel.setForeground(new Color(0, 128, 0));
+            disconnectButton.setEnabled(true);
+            reconnectButton.setEnabled(false);
             log("Successfully connected to Desktop Agent");
+            
+            // Store connection info for potential reconnection
+            storeConnectionInfo();
             
             // Load user channels
             loadUserChannels();
         });
     }
+    
+    /**
+     * Store instanceId and instanceUuid for potential reconnection.
+     */
+    private void storeConnectionInfo() {
+        if (agent == null) return;
+        
+        // Get instanceId and instanceUuid from getInfo()
+        agent.getInfo()
+                .thenAccept(info -> {
+                    if (info != null && info.getAppMetadata() != null) {
+                        lastInstanceId = info.getAppMetadata().getInstanceId();
+                        lastInstanceUuid = info.getAppMetadata().getInstanceUuid();
+                        
+                        SwingUtilities.invokeLater(() -> {
+                            if (lastInstanceId != null) {
+                                log("Stored instanceId for reconnection: " + lastInstanceId);
+                            }
+                            if (lastInstanceUuid != null) {
+                                log("Stored instanceUuid for reconnection");
+                            }
+                        });
+                    }
+                })
+                .exceptionally(error -> {
+                    SwingUtilities.invokeLater(() -> 
+                        log("Warning: Could not retrieve connection info - " + error.getMessage()));
+                    return null;
+                });
+    }
 
     private void onConnectionError(Throwable error) {
         statusLabel.setText("Connection Failed");
         statusLabel.setForeground(Color.RED);
+        disconnectButton.setEnabled(false);
+        // Enable reconnect if we have stored credentials
+        reconnectButton.setEnabled(lastInstanceId != null && lastInstanceUuid != null);
         log("ERROR: Failed to connect - " + error.getMessage());
         
         // Show error dialog with option to retry
@@ -311,6 +369,94 @@ public class ExampleApp extends JFrame {
         if (result == 0) {
             // User wants to try a different URL
             promptForWebSocketUrl();
+        }
+    }
+    
+    /**
+     * Disconnect from the Desktop Agent.
+     */
+    private void disconnect() {
+        if (agent == null) return;
+        
+        log("Disconnecting from Desktop Agent...");
+        
+        // Clean up listener
+        if (contextListener != null) {
+            try {
+                contextListener.unsubscribe().toCompletableFuture().join();
+                contextListener = null;
+            } catch (Exception e) {
+                log("Warning: Error unsubscribing listener - " + e.getMessage());
+            }
+        }
+        
+        // Disconnect the agent proxy
+        if (agent instanceof org.finos.fdc3.proxy.DesktopAgentProxy) {
+            try {
+                ((org.finos.fdc3.proxy.DesktopAgentProxy) agent).disconnect().toCompletableFuture().join();
+            } catch (Exception e) {
+                log("Warning: Error during disconnect - " + e.getMessage());
+            }
+        }
+        
+        agent = null;
+        currentChannel = null;
+        
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText("Disconnected");
+            statusLabel.setForeground(Color.GRAY);
+            disconnectButton.setEnabled(false);
+            // Enable reconnect if we have stored credentials
+            reconnectButton.setEnabled(lastInstanceId != null && lastInstanceUuid != null);
+            channelComboBox.setEnabled(false);
+            channelComboBox.removeAllItems();
+            addListenerButton.setEnabled(false);
+            removeListenerButton.setEnabled(false);
+            listenerStatusLabel.setText("Listener: Not Active");
+            listenerStatusLabel.setForeground(Color.GRAY);
+            updateBroadcastButtonsState();
+            log("Disconnected from Desktop Agent");
+        });
+    }
+    
+    /**
+     * Reconnect to the Desktop Agent using the stored instanceId and instanceUuid.
+     */
+    private void reconnect() {
+        if (websocketUrl == null || websocketUrl.isEmpty()) {
+            log("ERROR: No WebSocket URL configured for reconnection");
+            return;
+        }
+        
+        if (lastInstanceId == null || lastInstanceUuid == null) {
+            log("ERROR: No stored connection info for reconnection. Connect fresh first.");
+            return;
+        }
+        
+        log("Reconnecting to Desktop Agent...");
+        log("  Using instanceId: " + lastInstanceId);
+        log("  Using instanceUuid: [stored]");
+        
+        statusLabel.setText("Reconnecting...");
+        statusLabel.setForeground(Color.ORANGE);
+        reconnectButton.setEnabled(false);
+        
+        try {
+            GetAgentParams params = GetAgentParams.builder()
+                    .timeoutMs(30000)
+                    .webSocketUrl(websocketUrl)
+                    .instanceId(lastInstanceId)
+                    .instanceUuid(lastInstanceUuid)
+                    .build();
+
+            GetAgent.getAgent(params)
+                    .thenAccept(this::onAgentConnected)
+                    .exceptionally(error -> {
+                        SwingUtilities.invokeLater(() -> onConnectionError(error));
+                        return null;
+                    });
+        } catch (Exception e) {
+            onConnectionError(e);
         }
     }
 

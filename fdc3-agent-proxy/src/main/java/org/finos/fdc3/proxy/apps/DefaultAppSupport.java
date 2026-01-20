@@ -165,7 +165,14 @@ public class DefaultAppSupport implements AppSupport {
                     if (typedResponse.getPayload() != null && 
                         typedResponse.getPayload().getImplementationMetadata() != null) {
                         // Schema now uses fdc3-standard ImplementationMetadata directly
-                        return typedResponse.getPayload().getImplementationMetadata();
+                        ImplementationMetadata metadata = typedResponse.getPayload().getImplementationMetadata();
+                        
+                        // Populate instanceUuid from messaging layer (local extension for reconnection)
+                        if (metadata.getAppMetadata() != null && messaging.getInstanceUuid() != null) {
+                            metadata.getAppMetadata().setInstanceUuid(messaging.getInstanceUuid());
+                        }
+                        
+                        return metadata;
                     } else {
                         Logger.error("Invalid response from Desktop Agent to getInfo!");
                         return createUnknownImplementationMetadata();

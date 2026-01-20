@@ -1,5 +1,3 @@
 ## TODO
 
-- Documentation in the main FDC3 repo.
-- Channel Metadata (intent results)
-- Heartbeat interval
+- Download Proxy feature files from npm (once they are published there)

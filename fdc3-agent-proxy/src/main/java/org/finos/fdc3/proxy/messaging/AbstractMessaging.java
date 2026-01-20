@@ -41,12 +41,31 @@ public abstract class AbstractMessaging implements Messaging {
     private static final String API_TIMEOUT = "ApiTimeout";
     private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-    private final AppIdentifier appIdentifier;
+    private AppIdentifier appIdentifier;
+    private String instanceUuid;
     private final SchemaConverter converter;
 
     protected AbstractMessaging(AppIdentifier appIdentifier) {
         this.appIdentifier = appIdentifier;
         this.converter = new SchemaConverter();
+    }
+
+    /**
+     * Sets the identity for this messaging instance after validation.
+     * This is called after the handshake when the Desktop Agent provides
+     * the validated AppIdentifier and instanceUuid.
+     *
+     * @param appIdentifier the validated app identifier
+     * @param instanceUuid the instance UUID (shared secret for reconnection)
+     */
+    public void setIdentifier(AppIdentifier appIdentifier, String instanceUuid) {
+        this.appIdentifier = appIdentifier;
+        this.instanceUuid = instanceUuid;
+    }
+
+    @Override
+    public String getInstanceUuid() {
+        return instanceUuid;
     }
 
     @Override
