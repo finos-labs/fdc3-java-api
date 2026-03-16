@@ -5,45 +5,28 @@
 A Java implementation of the [FDC3 Standard](https://fdc3.finos.org/) enabling Java desktop applications to interoperate with other FDC3-enabled applications via the [Desktop Agent Communication Protocol (DACP)](https://fdc3.finos.org/docs/api/specs/desktopAgentCommunicationProtocol).
 
 ```mermaid
-flowchart TB
-    subgraph JavaApp["Java App"]
-        direction TB
-        A1[Build GetAgentParams: webSocketUrl<br/>+ instanceId/instanceUuid for reconnect]
-        A2[Open WebSocket to Sail]
-        A3[Send WCP4ValidateAppIdentity<br/>identityURL: native]
-        A4[Receive WCP5ValidateAppIdentityResponse]
-        A5[Store appId, instanceId, instanceUuid<br/>from getInfo for reconnection]
-        A6[DesktopAgentProxy ready]
-        A7[DACP: broadcastRequest, addContextListenerRequest, etc.]
-        A8[DACP: broadcastEvent, intentEvent, heartbeatEvent]
-    end
+sequenceDiagram
+    participant Sail as FDC3 Sail
+    participant App as Java App
 
-    subgraph Sail["FDC3 Sail (Desktop Agent)"]
-        direction TB
-        S1[Accept WebSocket connection]
-        S2[Receive WCP4ValidateAppIdentity]
-        S3[Match native identity to App Directory]
-        S4[Assign appId, generate instanceId & instanceUuid]
-        S5[Send WCP5ValidateAppIdentityResponse<br/>appId, instanceId, instanceUuid]
-        S6[Route DACP requests & events]
-    end
+    Note over Sail: Add connectionUrl to App Directory for native app
+    Note over Sail: Display WebSocket URL in UI
+    Sail-->>App: connectionUrl (advertised in UI for user to copy)
+    Note over App: Obtain webSocketUrl, build GetAgentParams
 
-    A1 --> A2
-    A2 --> S1
-    S1 --> A3
-    A3 --> S2
-    S2 --> S3
-    S3 --> S4
-    S4 --> S5
-    S5 --> A4
-    A4 --> A5
-    A5 --> A6
-    A6 --> A7
-    A7 <--> S6
-    S6 --> A8
+    App->>Sail: WebSocket connect
+    Sail->>App: Connection accepted
+    App->>Sail: WCP4ValidateAppIdentity (identityURL: native)
+    Sail->>App: WCP5ValidateAppIdentityResponse (appId, instanceId, instanceUuid)
+    Note over App: Store appId, instanceId, instanceUuid for reconnection
+
+    loop DACP message exchange
+        App->>Sail: broadcastRequest, addContextListenerRequest, etc.
+        Sail->>App: broadcastEvent, intentEvent, heartbeatEvent, etc.
+    end
 ```
 
-**App Identity flow:** For a new connection, the Java app sends `WCP4ValidateAppIdentity` with `identityURL: "native"`. FDC3 Sail looks up the app in its App Directory, assigns an `appId`, and generates `instanceId` and `instanceUuid` in the `WCP5ValidateAppIdentityResponse`. The app stores these (via `getInfo()`) for reconnection. On reconnect, the app includes the stored `instanceId` and `instanceUuid` in `WCP4`; Sail validates and returns the same `appId`. After handshake, all FDC3 API calls flow as DACP messages (requests, responses, events) over the WebSocket.
+**App Identity flow:** Sail adds a `connectionUrl` (WebSocket URL) to each native app's entry in the App Directory and displays it in the Sail UI so the user can copy it (or provide it via config/launch params). The Java app uses this URL in `GetAgentParams`. For a new connection, the app sends `WCP4ValidateAppIdentity` with `identityURL: "native"`. Sail matches this to the App Directory, assigns an `appId`, and returns `instanceId` and `instanceUuid` in `WCP5ValidateAppIdentityResponse`. The app stores these (via `getInfo()`) for reconnection. After handshake, all FDC3 API calls flow as DACP messages over the WebSocket.
 
 ## Overview
 
