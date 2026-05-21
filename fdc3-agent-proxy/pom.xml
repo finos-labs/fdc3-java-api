@@ -19,6 +19,9 @@
         <jdk.source.version>11</jdk.source.version>
         <jdk.target.version>11</jdk.target.version>
         <fdc3.features.source>src/test/resources/temporary-features</fdc3.features.source>
+        <cucumber.version>7.15.0</cucumber.version>
+        <spring.version>6.1.2</spring.version>
+
     </properties>
 
     <dependencies>
@@ -36,11 +39,54 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- FDC3 Testing Framework -->
         <dependency>
             <groupId>io.github.robmoffat</groupId>
             <artifactId>standard-cucumber-steps</artifactId>
             <version>1.1.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Spring integration for testing -->
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-spring</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>${spring.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <version>${spring.version}</version>
+            <scope>test</scope>
+        </dependency>
+            <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-junit-platform-engine</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-suite</artifactId>
+            <version>1.10.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.9</version>
             <scope>test</scope>
         </dependency>
 
@@ -49,6 +95,19 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>2.0.9</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.erosb</groupId>
+            <artifactId>everit-json-schema</artifactId>
+            <version>1.14.4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20240303</version>
+            <scope>test</scope>
         </dependency>
 
        
@@ -108,9 +167,7 @@
                     <properties>
                         <configurationParameters>
                             cucumber.junit-platform.naming-strategy=long
-                            cucumber.plugin=pretty,html:target/cucumber-reports/cucumber.html
-                            cucumber.glue=org.finos.fdc3.proxy,org.finos.fdc3.proxy.steps,org.finos.fdc3.proxy.world,org.finos.fdc3.testing.steps
-                            cucumber.features=classpath:features
+                            cucumber.junit-platform.discovery.as-root-engine=false
                         </configurationParameters>
                     </properties>
                 </configuration>

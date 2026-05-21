@@ -20,8 +20,10 @@ import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
 import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.DisplayMetadata;
 import org.finos.fdc3.api.types.ContextHandler;
+import org.finos.fdc3.api.types.ContextWithMetadata;
 import org.finos.fdc3.api.types.IntentResult;
 import org.finos.fdc3.api.types.Listener;
 
@@ -79,6 +81,8 @@ public interface Channel extends IntentResult {
    */
   CompletionStage<Void> broadcast(Context context);
 
+  CompletionStage<Void> broadcast(Context context, AppProvidableContextMetadata metadata);
+
   /**
    * When a `contextType`_` is provided, the most recent context matching the type will be returned, or `null` if no matching context is found.
    *
@@ -91,6 +95,15 @@ public interface Channel extends IntentResult {
   CompletionStage<Optional<Context>> getCurrentContext();
   
   CompletionStage<Optional<Context>> getCurrentContext(String contextType);
+
+  /**
+   * Returns the most recent context on the channel along with its metadata, or empty if none.
+   */
+  default CompletionStage<Optional<ContextWithMetadata>> getCurrentContextWithMetadata() {
+    return getCurrentContextWithMetadata(null);
+  }
+
+  CompletionStage<Optional<ContextWithMetadata>> getCurrentContextWithMetadata(String contextType);
 
   /**
    * Adds a listener for incoming contexts of the specified _context type_ whenever a broadcast happens on this channel.

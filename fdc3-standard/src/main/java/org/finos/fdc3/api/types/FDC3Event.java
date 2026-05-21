@@ -35,7 +35,9 @@ public class FDC3Event {
         ADD_CONTEXT_LISTENER("addContextListener"),
         ON_UNSUBSCRIBE("onUnsubscribe"),
         ON_DISCONNECT("onDisconnect"),
-        USER_CHANNEL_CHANGED("userChannelChanged");
+        USER_CHANNEL_CHANGED("userChannelChanged"),
+        CONTEXT_CLEARED("contextCleared");
+
 
         private final String value;
 

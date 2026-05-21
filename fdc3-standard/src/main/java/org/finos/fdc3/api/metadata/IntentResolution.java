@@ -82,4 +82,9 @@ public interface IntentResolution {
    * object of an invalid type.
    */
   CompletionStage<IntentResult> getResult();
+
+  /**
+   * Retrieves metadata about the intent result from the resolving application.
+   */
+  CompletionStage<ContextMetadata> getResultMetadata();
 }

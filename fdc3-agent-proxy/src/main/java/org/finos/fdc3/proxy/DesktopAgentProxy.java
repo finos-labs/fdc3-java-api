@@ -28,6 +28,7 @@ import org.finos.fdc3.api.channel.PrivateChannel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.AppIntent;
 import org.finos.fdc3.api.metadata.AppMetadata;
+import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.ImplementationMetadata;
 import org.finos.fdc3.api.metadata.IntentResolution;
 import org.finos.fdc3.api.types.AppIdentifier;
@@ -80,10 +81,15 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
 
     @Override
     public CompletionStage<Void> broadcast(Context context) {
+        return broadcast(context, null);
+    }
+
+    @Override
+    public CompletionStage<Void> broadcast(Context context, AppProvidableContextMetadata metadata) {
         return channels.getUserChannel()
                 .thenCompose(channel -> {
                     if (channel != null) {
-                        return channel.broadcast(context);
+                        return channel.broadcast(context, metadata);
                     } else {
                         return CompletableFuture.completedFuture(null);
                     }
@@ -156,6 +162,18 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
     }
 
     @Override
+    public CompletionStage<IntentResolution> raiseIntent(
+            String intent, Context context, AppIdentifier app, AppProvidableContextMetadata metadata) {
+        return intents.raiseIntent(intent, context, app, metadata);
+    }
+
+    @Override
+    public CompletionStage<IntentResolution> raiseIntent(
+            String intent, Context context, AppProvidableContextMetadata metadata) {
+        return intents.raiseIntent(intent, context, null, metadata);
+    }
+
+    @Override
     public CompletionStage<Listener> addIntentListener(String intent, IntentHandler handler) {
         return intents.addIntentListener(intent, handler);
     }
@@ -166,8 +184,25 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
     }
 
     @Override
+    public CompletionStage<IntentResolution> raiseIntentForContext(
+            Context context, AppIdentifier app, AppProvidableContextMetadata metadata) {
+        return intents.raiseIntentForContext(context, app, metadata);
+    }
+
+    @Override
+    public CompletionStage<IntentResolution> raiseIntentForContext(
+            Context context, AppProvidableContextMetadata metadata) {
+        return intents.raiseIntentForContext(context, null, metadata);
+    }
+
+    @Override
     public CompletionStage<AppIdentifier> open(AppIdentifier app, Context context) {
         return apps.open(app, context);
+    }
+
+    @Override
+    public CompletionStage<AppIdentifier> open(AppIdentifier app, Context context, AppProvidableContextMetadata metadata) {
+        return apps.open(app, context, metadata);
     }
 
     @Override

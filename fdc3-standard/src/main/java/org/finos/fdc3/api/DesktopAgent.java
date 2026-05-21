@@ -21,6 +21,7 @@ import org.finos.fdc3.api.channel.PrivateChannel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.AppIntent;
 import org.finos.fdc3.api.metadata.AppMetadata;
+import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.ImplementationMetadata;
 import org.finos.fdc3.api.metadata.IntentResolution;
 import org.finos.fdc3.api.types.AppIdentifier;
@@ -80,6 +81,8 @@ public interface DesktopAgent {
      * ```
      */
     CompletionStage<AppIdentifier> open(AppIdentifier app, Context context);
+
+    CompletionStage<AppIdentifier> open(AppIdentifier app, Context context, AppProvidableContextMetadata metadata);
 
     default CompletionStage<AppIdentifier> open(AppIdentifier app) {
         return open(app, null);
@@ -330,6 +333,8 @@ public interface DesktopAgent {
      */
     CompletionStage<Void> broadcast(Context context);
 
+    CompletionStage<Void> broadcast(Context context, AppProvidableContextMetadata metadata);
+
     /**
      * Raises a specific intent for resolution against apps registered with the
      * desktop agent.
@@ -402,8 +407,16 @@ public interface DesktopAgent {
      */
     CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app);
 
+    CompletionStage<IntentResolution> raiseIntent(
+            String intent, Context context, AppIdentifier app, AppProvidableContextMetadata metadata);
+
     default CompletionStage<IntentResolution> raiseIntent(String intent, Context context) {
-        return raiseIntent(intent, context, null);
+        return raiseIntent(intent, context, (AppIdentifier) null);
+    }
+
+    default CompletionStage<IntentResolution> raiseIntent(
+            String intent, Context context, AppProvidableContextMetadata metadata) {
+        return raiseIntent(intent, context, (AppIdentifier) null, metadata);
     }
 
     /**
@@ -447,8 +460,16 @@ public interface DesktopAgent {
      */
     CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app);
 
+    CompletionStage<IntentResolution> raiseIntentForContext(
+            Context context, AppIdentifier app, AppProvidableContextMetadata metadata);
+
     default CompletionStage<IntentResolution> raiseIntentForContext(Context context) {
-        return raiseIntentForContext(context, null);
+        return raiseIntentForContext(context, (AppIdentifier) null);
+    }
+
+    default CompletionStage<IntentResolution> raiseIntentForContext(
+            Context context, AppProvidableContextMetadata metadata) {
+        return raiseIntentForContext(context, (AppIdentifier) null, metadata);
     }
 
     /**

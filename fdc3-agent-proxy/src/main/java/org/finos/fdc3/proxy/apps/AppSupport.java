@@ -21,6 +21,7 @@ import java.util.concurrent.CompletionStage;
 
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.AppMetadata;
+import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.ImplementationMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
 
@@ -53,6 +54,8 @@ public interface AppSupport {
      * @return a CompletionStage containing the opened app identifier
      */
     CompletionStage<AppIdentifier> open(AppIdentifier app, Context context);
+
+    CompletionStage<AppIdentifier> open(AppIdentifier app, Context context, AppProvidableContextMetadata metadata);
 
     /**
      * Open an application by name.

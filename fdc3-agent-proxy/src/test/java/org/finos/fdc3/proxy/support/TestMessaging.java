@@ -30,6 +30,7 @@ import java.util.function.Consumer;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.ContextMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.listeners.RegisterableListener;
 import org.finos.fdc3.proxy.messaging.AbstractMessaging;
@@ -68,9 +69,13 @@ public class TestMessaging extends AbstractMessaging {
     private PossibleIntentResult intentResult;
 
     public TestMessaging(Map<String, List<Context>> channelState) {
+        this(channelState, null);
+    }
+
+    public TestMessaging(Map<String, List<Context>> channelState, String initialChannelId) {
         super(new AppIdentifier("cucumber-app", "cucumber-instance", "testing-da"));
         this.channelState = channelState != null ? channelState : new HashMap<>();
-        
+
         // Set up automatic responses for various message types
         this.automaticResponses = new ArrayList<>();
         this.automaticResponses.add(new FindIntentResponse());
@@ -83,13 +88,12 @@ public class TestMessaging extends AbstractMessaging {
         this.automaticResponses.add(new FindInstancesResponse());
         this.automaticResponses.add(new OpenResponse());
         this.automaticResponses.add(new GetOrCreateChannelResponse());
-        this.automaticResponses.add(new ChannelStateResponse(this.channelState));
+        this.automaticResponses.add(new ChannelStateResponse(this.channelState, initialChannelId));
         this.automaticResponses.add(new GetUserChannelsResponse());
         this.automaticResponses.add(new RegisterListenersResponse());
         this.automaticResponses.add(new UnsubscribeListenersResponse());
         this.automaticResponses.add(new CreatePrivateChannelResponse());
         this.automaticResponses.add(new DisconnectPrivateChannelResponse());
-        this.automaticResponses.add(new AddEventListenerResponse());
     }
 
     @Override
@@ -274,6 +278,7 @@ public class TestMessaging extends AbstractMessaging {
     public static class PossibleIntentResult {
         private Context context;
         private Channel channel;
+        private ContextMetadata resultMetadata;
         private String error;
         private boolean timeout;
 
@@ -291,6 +296,14 @@ public class TestMessaging extends AbstractMessaging {
 
         public void setChannel(Channel channel) {
             this.channel = channel;
+        }
+
+        public org.finos.fdc3.api.metadata.ContextMetadata getResultMetadata() {
+            return resultMetadata;
+        }
+
+        public void setResultMetadata(org.finos.fdc3.api.metadata.ContextMetadata resultMetadata) {
+            this.resultMetadata = resultMetadata;
         }
 
         public String getError() {

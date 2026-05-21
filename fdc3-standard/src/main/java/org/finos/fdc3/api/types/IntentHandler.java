@@ -37,6 +37,9 @@ public interface IntentHandler {
      * @return A {@link CompletionStage} that will be used to publish the
      *         intent result
      */
-    CompletionStage<Optional<IntentResult>> handleIntent(Context context, ContextMetadata contextMetadata);
+    /**
+     * @return context, channel, {@link org.finos.fdc3.api.types.ContextWithMetadata}, or empty for void
+     */
+    CompletionStage<Optional<Object>> handleIntent(Context context, ContextMetadata contextMetadata);
 
 }
