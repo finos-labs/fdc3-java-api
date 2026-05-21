@@ -42,7 +42,7 @@ import org.finos.fdc3.api.channel.Channel;
 
 import io.cucumber.java.en.Given;
 
-import static org.finos.fdc3.testing.support.MatchingUtils.handleResolve;
+import static io.github.robmoffat.support.MatchingUtils.handleResolve;
 
 /**
  * Cucumber step definitions for intent-related tests.

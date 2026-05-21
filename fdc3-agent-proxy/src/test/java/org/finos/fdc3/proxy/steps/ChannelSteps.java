@@ -16,8 +16,8 @@
 
 package org.finos.fdc3.proxy.steps;
 
-import static org.finos.fdc3.testing.support.MatchingUtils.handleResolve;
-import static org.finos.fdc3.testing.support.MatchingUtils.matchData;
+import static io.github.robmoffat.support.MatchingUtils.handleResolve;
+import static io.github.robmoffat.support.MatchingUtils.matchData;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -32,7 +32,7 @@ import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.proxy.support.ContextMap;
 import org.finos.fdc3.proxy.world.CustomWorld;
-import org.finos.fdc3.testing.steps.GenericSteps;
+import io.github.robmoffat.steps.GenericSteps;
 
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;
