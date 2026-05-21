@@ -46,7 +46,6 @@ This project provides:
 | `fdc3-context`     | Context type conversion utilities                                               |
 | `fdc3-agent-proxy` | `DesktopAgentProxy` implementation using DACP messaging                         |
 | `fdc3-get-agent`   | `GetAgent` factory for obtaining a `DesktopAgent` connection via WebSocket      |
-| `fdc3-testing`     | Cucumber step definitions and test utilities for FDC3 conformance testing       |
 
 ## Requirements
 

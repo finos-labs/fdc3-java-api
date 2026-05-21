@@ -28,7 +28,6 @@
         <module>fdc3-standard</module>
         <module>fdc3-schema</module>
         <module>fdc3-context</module>
-        <module>fdc3-testing</module>
         <module>fdc3-agent-proxy</module>
         <module>fdc3-get-agent</module>
         <module>fdc3-example-app</module>

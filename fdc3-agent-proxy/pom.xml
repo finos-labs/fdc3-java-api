@@ -18,9 +18,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jdk.source.version>11</jdk.source.version>
         <jdk.target.version>11</jdk.target.version>
-        <!-- Path to FDC3 TypeScript repo feature files 
-             @TODO: replace with npmjs download of fdc3-testing once published. -->
-        <fdc3.features.source>${project.basedir}/../../FDC3/packages/fdc3-agent-proxy/test/features</fdc3.features.source>
+        <fdc3.features.source>src/test/resources/temporary-features</fdc3.features.source>
     </properties>
 
     <dependencies>
@@ -40,9 +38,9 @@
 
         <!-- FDC3 Testing Framework -->
         <dependency>
-            <groupId>org.finos.fdc3</groupId>
-            <artifactId>fdc3-testing</artifactId>
-            <version>${project.version}</version>
+            <groupId>io.github.robmoffat</groupId>
+            <artifactId>standard-cucumber-steps</artifactId>
+            <version>1.1.0</version>
             <scope>test</scope>
         </dependency>
 

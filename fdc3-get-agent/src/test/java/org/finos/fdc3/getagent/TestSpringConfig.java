@@ -16,7 +16,7 @@
 
 package org.finos.fdc3.getagent;
 
-import org.finos.fdc3.testing.world.PropsWorld;
+import io.github.robmoffat.world.PropsWorld;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;

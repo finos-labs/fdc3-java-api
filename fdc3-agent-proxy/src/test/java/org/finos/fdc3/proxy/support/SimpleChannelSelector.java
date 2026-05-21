@@ -24,7 +24,8 @@ import java.util.function.Consumer;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.ui.ChannelSelector;
-import org.finos.fdc3.testing.world.PropsWorld;
+
+import io.github.robmoffat.world.PropsWorld;
 
 /**
  * A simple channel selector for testing purposes.

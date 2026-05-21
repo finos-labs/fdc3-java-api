@@ -17,7 +17,8 @@
 package org.finos.fdc3.proxy.world;
 
 import org.finos.fdc3.proxy.support.TestMessaging;
-import org.finos.fdc3.testing.world.PropsWorld;
+
+import io.github.robmoffat.world.PropsWorld;
 
 /**
  * Custom Cucumber World for agent-proxy tests.

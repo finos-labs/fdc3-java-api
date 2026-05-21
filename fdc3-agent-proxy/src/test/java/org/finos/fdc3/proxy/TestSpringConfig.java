@@ -17,7 +17,6 @@
 package org.finos.fdc3.proxy;
 
 import org.finos.fdc3.proxy.world.CustomWorld;
-import org.finos.fdc3.testing.world.PropsWorld;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +24,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.ScopedProxyMode;
 
 import io.cucumber.spring.ScenarioScope;
+import io.github.robmoffat.world.PropsWorld;
 
 /**
  * Spring configuration for Cucumber tests.

@@ -19,7 +19,7 @@
         <jdk.target.version>11</jdk.target.version>
         <node.version>v20.11.0</node.version>
         <npm.version>10.2.4</npm.version>
-        <fdc3.schema.version>2.2.0</fdc3.schema.version>
+        <fdc3.schema.version>2.2.3</fdc3.schema.version>
     </properties>
 
     <dependencies>

@@ -19,7 +19,7 @@
         <jdk.target.version>11</jdk.target.version>
         <node.version>v20.11.0</node.version>
         <npm.version>10.2.4</npm.version>
-        <fdc3.context.version>2.2.0</fdc3.context.version>
+        <fdc3.context.version>2.2.3</fdc3.context.version>
     </properties>
 
     <dependencies>
@@ -64,6 +64,8 @@
                 <configuration>
                     <source>${jdk.source.version}</source>
                     <target>${jdk.target.version}</target>
+                    <!-- Generated quicktype output is many files; avoid stale incremental compiles -->
+                    <useIncrementalCompilation>false</useIncrementalCompilation>
                 </configuration>
             </plugin>
 
@@ -82,6 +84,20 @@
                         <configuration>
                             <target>
                                 <mkdir dir="${project.build.directory}/npm-work"/>
+                                <mkdir dir="${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <!-- Remove stale quicktype output so helper types (ActionType, etc.) stay in sync -->
+                    <execution>
+                        <id>clean-generated-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <delete dir="${project.build.directory}/generated-sources/fdc3" includeemptydirs="true" quiet="true"/>
                                 <mkdir dir="${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context"/>
                             </target>
                         </configuration>
@@ -163,12 +179,29 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <executable>/bin/sh</executable>
-                            <workingDirectory>${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context</workingDirectory>
+                            <executable>sh</executable>
+                            <arguments>
+                                <argument>${project.basedir}/scripts/fix-context-imports.sh</argument>
+                                <argument>${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Fail fast if quicktype helper types were not compiled (e.g. ActionType.class) -->
+                    <execution>
+                        <id>verify-generated-classes</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>sh</executable>
                             <arguments>
                                 <argument>-c</argument>
-                                <argument>rm -f Context.java ContextElement.java 2>/dev/null; for f in *.java; do sed -i '' -e 's/ContextElement/Context/g' "$f"; grep -qE "(private|public) Context |Context get|Context\[\]|ContextFromJsonString" "$f" &amp;&amp; sed -i '' 's/^package org.finos.fdc3.context;$/package org.finos.fdc3.context;\
-import org.finos.fdc3.api.context.Context;/' "$f"; done || true</argument>
+                                <argument>missing=0; for c in ActionType NothingType EmailRecipients ChartStyle; do \
+                                  if [ ! -f "${project.build.directory}/classes/org/finos/fdc3/context/$c.class" ]; then \
+                                    echo "Missing compiled class: org.finos.fdc3.context.$c"; missing=1; \
+                                  fi; \
+                                done; exit $missing</argument>
                             </arguments>
                         </configuration>
                     </execution>
