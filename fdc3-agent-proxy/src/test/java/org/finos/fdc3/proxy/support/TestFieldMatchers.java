@@ -29,8 +29,6 @@ import org.finos.fdc3.api.metadata.AntiReplayClaims;
 import org.finos.fdc3.api.metadata.ContextMetadata;
 import org.finos.fdc3.api.metadata.DetachedSignature;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.github.robmoffat.support.RowFieldMatcher;
 import io.github.robmoffat.world.PropsWorld;
 
@@ -39,7 +37,6 @@ import io.github.robmoffat.world.PropsWorld;
  */
 public final class TestFieldMatchers {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String SIGNATURE_SUFFIX = ".signature";
     private static final String IAT_SUFFIX = ".iat";
 
@@ -100,12 +97,11 @@ public final class TestFieldMatchers {
         };
     }
 
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> metadataToAssertionMap(ContextMetadata metadata) {
         if (metadata == null) {
             return null;
         }
-        return MAPPER.convertValue(metadata, Map.class);
+        return metadata.toMap();
     }
 
     private static String signatureValue(Object found) {

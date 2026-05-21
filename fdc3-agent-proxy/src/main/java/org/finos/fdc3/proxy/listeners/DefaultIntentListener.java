@@ -24,12 +24,14 @@ import java.util.concurrent.CompletionStage;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.ContextMetadata;
-import org.finos.fdc3.api.types.AppIdentifier;
+import org.finos.fdc3.api.types.ContextWithMetadata;
 import org.finos.fdc3.api.types.IntentHandler;
+import org.finos.fdc3.api.types.IntentResult;
 import org.finos.fdc3.proxy.Messaging;
+import org.finos.fdc3.proxy.util.ContextMetadataMapper;
 import org.finos.fdc3.schema.IntentEvent;
-import org.finos.fdc3.schema.IntentResult;
 import org.finos.fdc3.schema.IntentResultRequest;
 import org.finos.fdc3.schema.IntentResultRequestPayload;
 import org.finos.fdc3.schema.IntentResultRequestType;
@@ -93,28 +95,37 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
         IntentEvent intentEvent = messaging.getConverter().convertValue(message, IntentEvent.class);
         
         Context context = intentEvent.getPayload().getContext();
-        AppIdentifier originatingApp = intentEvent.getPayload().getOriginatingApp();
+        Map<String, Object> messageMap = message;
+        Map<String, Object> payloadMap = (Map<String, Object>) messageMap.get("payload");
+        Map<String, Object> payloadMetadata = payloadMap != null
+                ? (Map<String, Object>) payloadMap.get("metadata")
+                : null;
+        Object messageTimestamp = messageMap.get("meta") != null
+                ? ((Map<String, Object>) messageMap.get("meta")).get("timestamp")
+                : null;
+        ContextMetadata contextMetadata = ContextMetadataMapper.fromWire(payloadMetadata, messageTimestamp);
 
-        ContextMetadata contextMetadata = new ContextMetadata();
-        contextMetadata.setSource(originatingApp);
-
-        // Call the handler and get the result
-        CompletionStage<Optional<org.finos.fdc3.api.types.IntentResult>> resultFuture = 
-            handler.handleIntent(context, contextMetadata);
-
-        // Handle the intent result
+        CompletionStage<Optional<Object>> resultFuture = handler.handleIntent(context, contextMetadata);
         handleIntentResult(resultFuture, intentEvent);
     }
 
     private void handleIntentResult(
-            CompletionStage<Optional<org.finos.fdc3.api.types.IntentResult>> resultFuture, 
+            CompletionStage<Optional<Object>> resultFuture,
             IntentEvent intentEvent) {
-        
+
         resultFuture.thenAccept(optionalResult -> {
-            IntentResultRequest request = createIntentResultRequest(optionalResult.orElse(null), intentEvent);
-            
-            // Convert to Map and send
+            UnwrappedIntentResult unwrapped = unwrapIntentResult(optionalResult.orElse(null));
+            IntentResultRequest request = createIntentResultRequest(
+                    unwrapped.result, unwrapped.appMetadata, intentEvent);
+
             Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+            if (unwrapped.appMetadata != null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> payload = (Map<String, Object>) requestMap.get("payload");
+                if (payload != null) {
+                    payload.put("metadata", ContextMetadataMapper.toWire(unwrapped.appMetadata));
+                }
+            }
             
             messaging.<Map<String, Object>>exchange(
                 requestMap, 
@@ -127,7 +138,7 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
             });
         }).exceptionally(ex -> {
             // Handler threw an exception, send empty result
-            IntentResultRequest request = createIntentResultRequest(null, intentEvent);
+            IntentResultRequest request = createIntentResultRequest(null, null, intentEvent);
             Map<String, Object> requestMap = messaging.getConverter().toMap(request);
             
             messaging.<Map<String, Object>>exchange(
@@ -142,8 +153,30 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
         });
     }
 
+    private static final class UnwrappedIntentResult {
+        final IntentResult result;
+        final AppProvidableContextMetadata appMetadata;
+
+        UnwrappedIntentResult(IntentResult result, AppProvidableContextMetadata appMetadata) {
+            this.result = result;
+            this.appMetadata = appMetadata;
+        }
+    }
+
+    private static UnwrappedIntentResult unwrapIntentResult(Object raw) {
+        if (raw instanceof ContextWithMetadata) {
+            ContextWithMetadata cwm = (ContextWithMetadata) raw;
+            return new UnwrappedIntentResult(cwm.getContext(), cwm.getMetadata());
+        }
+        if (raw instanceof IntentResult) {
+            return new UnwrappedIntentResult((IntentResult) raw, null);
+        }
+        return new UnwrappedIntentResult(null, null);
+    }
+
     private IntentResultRequest createIntentResultRequest(
-            org.finos.fdc3.api.types.IntentResult apiResult, 
+            IntentResult apiResult,
+            AppProvidableContextMetadata appMetadata,
             IntentEvent intentEvent) {
         
         IntentResultRequest request = new IntentResultRequest();
@@ -164,8 +197,8 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
         return request;
     }
 
-    private IntentResult convertIntentResult(org.finos.fdc3.api.types.IntentResult apiResult) {
-        IntentResult schemaResult = new IntentResult();
+    private org.finos.fdc3.schema.IntentResult convertIntentResult(IntentResult apiResult) {
+        org.finos.fdc3.schema.IntentResult schemaResult = new org.finos.fdc3.schema.IntentResult();
         
         if (apiResult == null) {
             // Void result - return empty IntentResult

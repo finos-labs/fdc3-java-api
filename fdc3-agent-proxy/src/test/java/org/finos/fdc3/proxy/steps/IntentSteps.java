@@ -27,8 +27,11 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
 import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.ContextMetadata;
+import org.finos.fdc3.api.metadata.DetachedSignature;
 import org.finos.fdc3.api.metadata.DisplayMetadata;
+import org.finos.fdc3.proxy.support.ParseAntiReplayClaims;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.IntentHandler;
@@ -130,6 +133,40 @@ public class IntentSteps {
         world.getMessaging().setIntentResult(intentResult);
     }
 
+    @Given("Raise Intent returns a context of {string} with traceId {string} and signature {string} and antiReplay claims {string}")
+    public void raiseIntentReturnsContextWithMetadata(
+            String result, String traceId, String signature, String antiReplayClaims) {
+        TestMessaging.PossibleIntentResult intentResult = new TestMessaging.PossibleIntentResult();
+        intentResult.setContext((Context) handleResolve(result, world));
+        ContextMetadata resultMetadata = new ContextMetadata();
+        resultMetadata.setSource(new AppIdentifier("some-app", "abc123"));
+        resultMetadata.setTimestamp(Instant.parse("2024-01-01T00:00:00Z"));
+        resultMetadata.setTraceId(traceId);
+        resultMetadata.setSignature(new DetachedSignature(
+                signature + " (protected part)",
+                signature + " (signature part)"));
+        resultMetadata.setAntiReplay(ParseAntiReplayClaims.parse(antiReplayClaims));
+        Map<String, Object> custom = new HashMap<>();
+        custom.put("priority", "high");
+        resultMetadata.setCustom(custom);
+        intentResult.setResultMetadata(resultMetadata);
+        world.getMessaging().setIntentResult(intentResult);
+    }
+
+    @Given("{string} is metadata with traceId {string} and signature {string} and antiReplay claims {string}")
+    public void isMetadataWithTraceId(String field, String traceId, String signature, String antiReplayClaims) {
+        AppProvidableContextMetadata metadata = ContextMetadata.appProvidable();
+        metadata.setTraceId(traceId);
+        metadata.setSignature(new DetachedSignature(
+                signature + " (protected part)",
+                signature + " (signature part)"));
+        metadata.setAntiReplay(ParseAntiReplayClaims.parse(antiReplayClaims));
+        Map<String, Object> custom = new HashMap<>();
+        custom.put("priority", "high");
+        metadata.setCustom(custom);
+        world.set(field, metadata);
+    }
+
     @Given("Raise Intent will throw a {string} error")
     public void raiseIntentWillThrowError(String error) {
         TestMessaging.PossibleIntentResult intentResult = new TestMessaging.PossibleIntentResult();
@@ -217,7 +254,7 @@ public class IntentSteps {
         IntentHandler ih = new IntentHandler() {
 			
 			@Override
-			public CompletionStage<Optional<IntentResult>> handleIntent(Context context, ContextMetadata contextMetadata) {
+			public CompletionStage<Optional<Object>> handleIntent(Context context, ContextMetadata contextMetadata) {
 				Map<String, Object> item = new HashMap<>();
 	            item.put("context", context);
 	            item.put("metadata", contextMetadata);
@@ -234,7 +271,7 @@ public class IntentSteps {
     	IntentHandler ih = new IntentHandler() {
 			
 			@Override
-			public CompletionStage<Optional<IntentResult>> handleIntent(Context context, ContextMetadata contextMetadata) {
+			public CompletionStage<Optional<Object>> handleIntent(Context context, ContextMetadata contextMetadata) {
 				Map<String, Object> id = new HashMap<>();
 	            id.put("in", "one");
 	            id.put("out", "two");
@@ -250,7 +287,7 @@ public class IntentSteps {
     	IntentHandler ih = new IntentHandler() {
     		
     		@Override
-    		public CompletionStage<Optional<IntentResult>> handleIntent(Context context,
+    		public CompletionStage<Optional<Object>> handleIntent(Context context,
     				ContextMetadata contextMetadata) {
                 DisplayMetadata dm = new DisplayMetadata("Some Channel", "ochre","b;");
                 Channel c = new Channel() {
@@ -294,6 +331,17 @@ public class IntentSteps {
 					public CompletionStage<Listener> addContextListener(ContextHandler handler) {
 						return null;
 					}
+
+					@Override
+					public CompletionStage<Optional<org.finos.fdc3.api.types.ContextWithMetadata>> getCurrentContextWithMetadata(
+							String contextType) {
+						return null;
+					}
+
+					@Override
+					public CompletionStage<Void> broadcast(Context context, AppProvidableContextMetadata metadata) {
+						return null;
+					}
                 	
                 };
                 return CompletableFuture.completedFuture(Optional.of(c));
@@ -308,7 +356,7 @@ public class IntentSteps {
     	IntentHandler ih = new IntentHandler() {
 			
 			@Override
-			public CompletionStage<Optional<IntentResult>> handleIntent(Context context, ContextMetadata contextMetadata) {
+			public CompletionStage<Optional<Object>> handleIntent(Context context, ContextMetadata contextMetadata) {
 				return CompletableFuture.completedFuture(Optional.ofNullable(null));
 			}
 		};

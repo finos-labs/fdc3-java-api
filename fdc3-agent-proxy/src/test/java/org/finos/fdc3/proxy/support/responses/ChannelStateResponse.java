@@ -30,7 +30,12 @@ public class ChannelStateResponse implements AutomaticResponse {
     private final Map<String, List<Context>> contextHistory;
     
     public ChannelStateResponse(Map<String, List<Context>> contextHistory) {
+        this(contextHistory, null);
+    }
+
+    public ChannelStateResponse(Map<String, List<Context>> contextHistory, String initialChannelId) {
         this.contextHistory = contextHistory != null ? contextHistory : new HashMap<>();
+        this.channelId = initialChannelId;
     }
     
     @Override
@@ -227,7 +232,21 @@ public class ChannelStateResponse implements AutomaticResponse {
         
         Map<String, Object> responsePayload = new HashMap<>();
         responsePayload.put("context", foundContext);
-        
+        if (foundContext != null) {
+            Map<String, Object> metadata = new HashMap<>();
+            Map<String, String> source = new HashMap<>();
+            source.put("appId", "test-app");
+            source.put("instanceId", "test-instance");
+            metadata.put("source", source);
+            metadata.put("timestamp", java.time.Instant.now().toString());
+            metadata.put("traceId", "test-trace-id");
+            metadata.put("signature", "test-signature");
+            Map<String, String> custom = new HashMap<>();
+            custom.put("key", "value");
+            metadata.put("custom", custom);
+            responsePayload.put("metadata", metadata);
+        }
+
         Map<String, Object> response = new HashMap<>();
         response.put("type", "getCurrentContextResponse");
         response.put("meta", createResponseMeta(meta));

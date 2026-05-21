@@ -19,19 +19,27 @@ package org.finos.fdc3.proxy.intents;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
+import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.errors.ResolveError;
 import org.finos.fdc3.api.metadata.AppIntent;
+import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
+import org.finos.fdc3.api.metadata.ContextMetadata;
 import org.finos.fdc3.api.metadata.IntentResolution;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.IntentHandler;
+import org.finos.fdc3.api.types.IntentResult;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.api.ui.IntentResolver;
 import org.finos.fdc3.proxy.Messaging;
+import org.finos.fdc3.proxy.channels.DefaultChannel;
+import org.finos.fdc3.proxy.channels.DefaultPrivateChannel;
 import org.finos.fdc3.proxy.listeners.DefaultIntentListener;
+import org.finos.fdc3.proxy.util.ContextMetadataMapper;
 import org.finos.fdc3.schema.*;
 
 /**
@@ -123,8 +131,13 @@ public class DefaultIntentSupport implements IntentSupport {
 
     @Override
     public CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app) {
+        return raiseIntent(intent, context, app, null);
+    }
+
+    @Override
+    public CompletionStage<IntentResolution> raiseIntent(
+            String intent, Context context, AppIdentifier app, AppProvidableContextMetadata metadata) {
         AddContextListenerRequestMeta meta = messaging.createMeta();
-        String requestUuid = meta.getRequestUUID();
 
         RaiseIntentRequest request = new RaiseIntentRequest();
         request.setType(RaiseIntentRequestType.RAISE_INTENT_REQUEST);
@@ -139,8 +152,11 @@ public class DefaultIntentSupport implements IntentSupport {
         request.setPayload(payload);
 
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
-
-        CompletionStage<Object> resultPromise = createResultPromise(requestUuid);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payloadMap = (Map<String, Object>) requestMap.get("payload");
+        if (payloadMap != null) {
+            payloadMap.put("metadata", ContextMetadataMapper.toWire(metadata));
+        }
 
         return messaging.<Map<String, Object>>exchange(requestMap, "raiseIntentResponse", appLaunchTimeout)
                 .thenCompose(response -> {
@@ -152,7 +168,8 @@ public class DefaultIntentSupport implements IntentSupport {
                     }
 
                     AppIntent schemaAppIntent = typedResponse.getPayload().getAppIntent();
-                    org.finos.fdc3.schema.IntentResolution schemaIntentResolution = typedResponse.getPayload().getIntentResolution();
+                    org.finos.fdc3.schema.IntentResolution schemaIntentResolution =
+                            typedResponse.getPayload().getIntentResolution();
 
                     if (schemaAppIntent == null && schemaIntentResolution == null) {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
@@ -164,22 +181,32 @@ public class DefaultIntentSupport implements IntentSupport {
                                     if (choice == null) {
                                         throw new RuntimeException(ResolveError.UserCancelled.toString());
                                     }
-                                    return raiseIntent(intent, context, choice.getAppId());
+                                    return raiseIntent(intent, context, choice.getAppId(), metadata);
                                 });
-                    } else {
-                        AppIdentifier source = schemaIntentResolution.getSource();
-                        String resolvedIntent = schemaIntentResolution.getIntent();
-
-                        return java.util.concurrent.CompletableFuture.completedFuture(
-                                new DefaultIntentResolution(messaging, messageExchangeTimeout, resultPromise, source, resolvedIntent));
                     }
+
+                    AppIdentifier source = schemaIntentResolution.getSource();
+                    String resolvedIntent = schemaIntentResolution.getIntent();
+                    ResultPromises promises = createResultPromises(meta.getRequestUUID(), source);
+                    return CompletableFuture.completedFuture(new DefaultIntentResolution(
+                            messaging,
+                            messageExchangeTimeout,
+                            promises.result,
+                            promises.resultMetadata,
+                            source,
+                            resolvedIntent));
                 });
     }
 
     @Override
     public CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app) {
+        return raiseIntentForContext(context, app, null);
+    }
+
+    @Override
+    public CompletionStage<IntentResolution> raiseIntentForContext(
+            Context context, AppIdentifier app, AppProvidableContextMetadata metadata) {
         AddContextListenerRequestMeta meta = messaging.createMeta();
-        String requestUuid = meta.getRequestUUID();
 
         RaiseIntentForContextRequest request = new RaiseIntentForContextRequest();
         request.setType(RaiseIntentForContextRequestType.RAISE_INTENT_FOR_CONTEXT_REQUEST);
@@ -193,8 +220,11 @@ public class DefaultIntentSupport implements IntentSupport {
         request.setPayload(payload);
 
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
-
-        CompletionStage<Object> resultPromise = createResultPromise(requestUuid);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> raiseForContextPayload = (Map<String, Object>) requestMap.get("payload");
+        if (raiseForContextPayload != null) {
+            raiseForContextPayload.put("metadata", ContextMetadataMapper.toWire(metadata));
+        }
 
         return messaging.<Map<String, Object>>exchange(requestMap, "raiseIntentForContextResponse", appLaunchTimeout)
                 .thenCompose(response -> {
@@ -206,29 +236,33 @@ public class DefaultIntentSupport implements IntentSupport {
                     }
 
                     AppIntent[] schemaAppIntents = typedResponse.getPayload().getAppIntents();
-                    org.finos.fdc3.schema.IntentResolution schemaIntentResolution = typedResponse.getPayload().getIntentResolution();
+                    org.finos.fdc3.schema.IntentResolution schemaIntentResolution =
+                            typedResponse.getPayload().getIntentResolution();
 
                     if ((schemaAppIntents == null || schemaAppIntents.length == 0) && schemaIntentResolution == null) {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
                     if (schemaAppIntents != null && schemaAppIntents.length > 0) {
-                        List<AppIntent> appIntents = Arrays.asList(schemaAppIntents);
-
-                        return intentResolver.chooseIntent(appIntents, context)
+                        return intentResolver.chooseIntent(Arrays.asList(schemaAppIntents), context)
                                 .thenCompose(choice -> {
                                     if (choice == null) {
                                         throw new RuntimeException(ResolveError.UserCancelled.toString());
                                     }
-                                    return raiseIntent(choice.getIntent(), context, choice.getAppId());
+                                    return raiseIntent(choice.getIntent(), context, choice.getAppId(), metadata);
                                 });
-                    } else {
-                        AppIdentifier source = schemaIntentResolution.getSource();
-                        String resolvedIntent = schemaIntentResolution.getIntent();
-
-                        return java.util.concurrent.CompletableFuture.completedFuture(
-                                new DefaultIntentResolution(messaging, messageExchangeTimeout, resultPromise, source, resolvedIntent));
                     }
+
+                    AppIdentifier source = schemaIntentResolution.getSource();
+                    String resolvedIntent = schemaIntentResolution.getIntent();
+                    ResultPromises promises = createResultPromises(meta.getRequestUUID(), source);
+                    return CompletableFuture.completedFuture(new DefaultIntentResolution(
+                            messaging,
+                            messageExchangeTimeout,
+                            promises.result,
+                            promises.resultMetadata,
+                            source,
+                            resolvedIntent));
                 });
     }
 
@@ -238,12 +272,20 @@ public class DefaultIntentSupport implements IntentSupport {
         return listener.register().thenApply(v -> listener);
     }
 
-    // ============ Helper methods ============
-    // Schema now uses fdc3-standard AppIdentifier directly, no conversion needed
+    private static final class ResultPromises {
+        final CompletionStage<IntentResult> result;
+        final CompletionStage<ContextMetadata> resultMetadata;
+
+        ResultPromises(CompletionStage<IntentResult> result, CompletionStage<ContextMetadata> resultMetadata) {
+            this.result = result;
+            this.resultMetadata = resultMetadata;
+        }
+    }
 
     @SuppressWarnings("unchecked")
-    private CompletionStage<Object> createResultPromise(String requestUuid) {
-        return messaging.<Map<String, Object>>waitFor(
+    private ResultPromises createResultPromises(String requestUuid, AppIdentifier source) {
+        CompletableFuture<ContextMetadata> metadataFuture = new CompletableFuture<>();
+        CompletionStage<IntentResult> result = messaging.<Map<String, Object>>waitFor(
                 m -> {
                     String type = (String) m.get("type");
                     Map<String, Object> meta = (Map<String, Object>) m.get("meta");
@@ -253,8 +295,71 @@ public class DefaultIntentSupport implements IntentSupport {
                 0,
                 null
         ).thenApply(response -> {
+            metadataFuture.complete(extractResultMetadata(response, source));
             Map<String, Object> payload = (Map<String, Object>) response.get("payload");
-            return payload.get("intentResult");
+            return convertIntentResult(payload.get("intentResult"));
         });
+        return new ResultPromises(result, metadataFuture);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ContextMetadata extractResultMetadata(Map<String, Object> response, AppIdentifier source) {
+        Map<String, Object> payload = (Map<String, Object>) response.get("payload");
+        Map<String, Object> resultMetadata = payload != null
+                ? (Map<String, Object>) payload.get("resultMetadata")
+                : null;
+        ContextMetadata metadata = ContextMetadataMapper.fromWire(resultMetadata, null);
+        metadata.setSource(source);
+        return metadata;
+    }
+
+    @SuppressWarnings("unchecked")
+    private IntentResult convertIntentResult(Object intentResultObj) {
+        if (intentResultObj == null) {
+            return null;
+        }
+        if (!(intentResultObj instanceof Map)) {
+            return null;
+        }
+        Map<String, Object> intentResult = (Map<String, Object>) intentResultObj;
+        if (intentResult.isEmpty()) {
+            return null;
+        }
+        Object contextObj = intentResult.get("context");
+        if (contextObj != null) {
+            if (contextObj instanceof Context) {
+                return (Context) contextObj;
+            }
+            return Context.fromMap((Map<String, Object>) contextObj);
+        }
+        Object channelObj = intentResult.get("channel");
+        if (channelObj instanceof Map) {
+            return createChannel((Map<String, Object>) channelObj);
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Channel createChannel(Map<String, Object> channelMap) {
+        String id = (String) channelMap.get("id");
+        Object typeObj = channelMap.get("type");
+        Channel.Type type = Channel.Type.App;
+        if (typeObj != null) {
+            String typeStr = typeObj.toString();
+            if ("user".equals(typeStr)) {
+                type = Channel.Type.User;
+            } else if ("private".equals(typeStr)) {
+                type = Channel.Type.Private;
+            }
+        }
+        Map<String, Object> displayMetadataMap = (Map<String, Object>) channelMap.get("displayMetadata");
+        org.finos.fdc3.api.metadata.DisplayMetadata displayMetadata = null;
+        if (displayMetadataMap != null) {
+            displayMetadata = org.finos.fdc3.api.metadata.DisplayMetadata.fromMap(displayMetadataMap);
+        }
+        if (type == Channel.Type.Private) {
+            return new DefaultPrivateChannel(messaging, messageExchangeTimeout, id);
+        }
+        return new DefaultChannel(messaging, messageExchangeTimeout, id, type, displayMetadata);
     }
 }

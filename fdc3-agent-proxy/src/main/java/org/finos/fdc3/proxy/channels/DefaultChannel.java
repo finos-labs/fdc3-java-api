@@ -25,10 +25,15 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
+import org.finos.fdc3.api.metadata.ContextMetadata;
 import org.finos.fdc3.api.metadata.DisplayMetadata;
+import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
+import org.finos.fdc3.api.types.ContextWithMetadata;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
+import org.finos.fdc3.proxy.util.ContextMetadataMapper;
 import org.finos.fdc3.proxy.listeners.DefaultContextListener;
 import org.finos.fdc3.schema.*;
 
@@ -83,6 +88,12 @@ public class DefaultChannel implements Channel {
     @Override
     @JsonIgnore
     public CompletionStage<Void> broadcast(Context context) {
+        return broadcast(context, null);
+    }
+
+    @Override
+    @JsonIgnore
+    public CompletionStage<Void> broadcast(Context context, AppProvidableContextMetadata metadata) {
         BroadcastRequest request = new BroadcastRequest();
         request.setType(BroadcastRequestType.BROADCAST_REQUEST);
         request.setMeta(messaging.createMeta());
@@ -93,6 +104,11 @@ public class DefaultChannel implements Channel {
         request.setPayload(payload);
 
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payloadMap = (Map<String, Object>) requestMap.get("payload");
+        if (payloadMap != null) {
+            payloadMap.put("metadata", ContextMetadataMapper.toWire(metadata));
+        }
 
         return messaging.<Map<String, Object>>exchange(requestMap, "broadcastResponse", messageExchangeTimeout)
                 .thenApply(response -> null);
@@ -128,6 +144,44 @@ public class DefaultChannel implements Channel {
                         return Optional.of(typedResponse.getPayload().getContext());
                     }
                     return Optional.empty();
+                });
+    }
+
+    @Override
+    @JsonIgnore
+    public CompletionStage<Optional<ContextWithMetadata>> getCurrentContextWithMetadata(String contextType) {
+        GetCurrentContextRequest request = new GetCurrentContextRequest();
+        request.setType(GetCurrentContextRequestType.GET_CURRENT_CONTEXT_REQUEST);
+        request.setMeta(messaging.createMeta());
+
+        GetCurrentContextRequestPayload payload = new GetCurrentContextRequestPayload();
+        payload.setChannelID(id);
+        payload.setContextType(contextType);
+        request.setPayload(payload);
+
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "getCurrentContextResponse", messageExchangeTimeout)
+                .thenApply(response -> {
+                    GetCurrentContextResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, GetCurrentContextResponse.class);
+
+                    if (typedResponse.getPayload() == null
+                            || typedResponse.getPayload().getContext() == null) {
+                        return Optional.empty();
+                    }
+
+                    Context context = typedResponse.getPayload().getContext();
+                    Map<String, Object> responseMap = response;
+                    Map<String, Object> responsePayload = (Map<String, Object>) responseMap.get("payload");
+                    Map<String, Object> payloadMetadata = responsePayload != null
+                            ? (Map<String, Object>) responsePayload.get("metadata")
+                            : null;
+                    Object messageTimestamp = typedResponse.getMeta() != null
+                            ? typedResponse.getMeta().getTimestamp()
+                            : null;
+                    ContextMetadata metadata = ContextMetadataMapper.fromWire(payloadMetadata, messageTimestamp);
+                    return Optional.of(new ContextWithMetadata(context, metadata));
                 });
     }
 

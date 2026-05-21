@@ -27,8 +27,10 @@ import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.errors.OpenError;
 import org.finos.fdc3.api.errors.ResolveError;
 import org.finos.fdc3.api.metadata.AppMetadata;
+import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.ImplementationMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
+import org.finos.fdc3.proxy.util.ContextMetadataMapper;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.util.Logger;
 import org.finos.fdc3.schema.*;
@@ -110,11 +112,15 @@ public class DefaultAppSupport implements AppSupport {
 
     @Override
     public CompletionStage<AppIdentifier> open(AppIdentifier app, Context context) {
-        // Build typed request
+        return open(app, context, null);
+    }
+
+    @Override
+    public CompletionStage<AppIdentifier> open(AppIdentifier app, Context context, AppProvidableContextMetadata metadata) {
         OpenRequest request = new OpenRequest();
         request.setType(OpenRequestType.OPEN_REQUEST);
         request.setMeta(messaging.createMeta());
-        
+
         OpenRequestPayload payload = new OpenRequestPayload();
         payload.setApp(app);
         if (context != null) {
@@ -122,8 +128,12 @@ public class DefaultAppSupport implements AppSupport {
         }
         request.setPayload(payload);
 
-        // Convert to Map for messaging
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payloadMap = (Map<String, Object>) requestMap.get("payload");
+        if (payloadMap != null) {
+            payloadMap.put("metadata", ContextMetadataMapper.toWire(metadata));
+        }
 
         return messaging.<Map<String, Object>>exchange(requestMap, "openResponse", appLaunchTimeout)
                 .thenApply(response -> {

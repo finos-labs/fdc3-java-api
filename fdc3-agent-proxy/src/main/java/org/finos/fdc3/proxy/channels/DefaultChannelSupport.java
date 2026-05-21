@@ -31,6 +31,7 @@ import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.api.ui.ChannelSelector;
+import org.finos.fdc3.api.ui.Connectable;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.DesktopAgentEventListener;
 import org.finos.fdc3.proxy.util.Logger;
@@ -60,7 +61,7 @@ import org.finos.fdc3.schema.LeaveCurrentChannelRequestType;
 /**
  * Default implementation of ChannelSupport.
  */
-public class DefaultChannelSupport implements ChannelSupport {
+public class DefaultChannelSupport implements ChannelSupport, Connectable {
 
     private final Messaging messaging;
     private final ChannelSelector channelSelector;
@@ -68,6 +69,7 @@ public class DefaultChannelSupport implements ChannelSupport {
     private List<Channel> userChannels = null;
     private Channel currentChannel = null;
     private final List<UserChannelContextListener> userChannelListeners = new ArrayList<>();
+    private boolean userChannelChangedListenerRegistered = false;
 
     public DefaultChannelSupport(Messaging messaging, ChannelSelector channelSelector, long messageExchangeTimeout) {
         this.messaging = messaging;
@@ -83,18 +85,31 @@ public class DefaultChannelSupport implements ChannelSupport {
                 joinUserChannel(channelId);
             }
         });
+    }
 
-        // Listen for channel changed events from the Desktop Agent
-        addEventListener(event -> {
+    @Override
+    public CompletionStage<Void> connect() {
+        CompletionStage<Void> loadChannel = getUserChannel().thenApply(channel -> {
+            currentChannel = channel;
+            return null;
+        });
+        if (userChannelChangedListenerRegistered) {
+            return loadChannel;
+        }
+        userChannelChangedListenerRegistered = true;
+        return loadChannel.thenCompose(v -> registerUserChannelChangedListener());
+    }
+
+    private CompletionStage<Void> registerUserChannelChangedListener() {
+        return addEventListener(event -> {
             @SuppressWarnings("unchecked")
             Map<String, Object> details = (Map<String, Object>) event.getDetails();
             String newChannelId = details != null ? (String) details.get("currentChannelId") : null;
             Logger.debug("Desktop Agent reports channel changed: {}", newChannelId);
 
-            getUserChannelsCached().thenCompose(channels -> {
+            getUserChannelsCached().thenAccept(channels -> {
                 Channel theChannel = null;
 
-                // If there's a newChannelId, retrieve details of the channel
                 if (newChannelId != null) {
                     theChannel = channels.stream()
                             .filter(c -> newChannelId.equals(c.getId()))
@@ -102,10 +117,10 @@ public class DefaultChannelSupport implements ChannelSupport {
                             .orElse(null);
 
                     if (theChannel == null) {
-                        // Channel not found - query user channels in case they have changed
-                        Logger.debug("Unknown user channel, querying Desktop Agent for updated user channels: {}",
+                        Logger.debug(
+                                "Unknown user channel, querying Desktop Agent for updated user channels: {}",
                                 newChannelId);
-                        return getUserChannels().thenApply(updatedChannels -> {
+                        getUserChannels().thenAccept(updatedChannels -> {
                             Channel foundChannel = updatedChannels.stream()
                                     .filter(c -> newChannelId.equals(c.getId()))
                                     .findFirst()
@@ -118,19 +133,28 @@ public class DefaultChannelSupport implements ChannelSupport {
                             }
 
                             currentChannel = foundChannel;
-                            channelSelector.updateChannel(foundChannel != null ? foundChannel.getId() : null,
-                                    updatedChannels);
-                            return null;
+                            channelSelector.updateChannel(
+                                    foundChannel != null ? foundChannel.getId() : null, updatedChannels);
+                            for (UserChannelContextListener listener : userChannelListeners) {
+                                listener.changeChannel();
+                            }
                         });
+                        return;
                     }
                 }
 
-                // Channel found in cache or newChannelId is null
                 currentChannel = theChannel;
                 channelSelector.updateChannel(theChannel != null ? theChannel.getId() : null, channels);
-                return CompletableFuture.completedFuture(null);
+                for (UserChannelContextListener listener : userChannelListeners) {
+                    listener.changeChannel();
+                }
             });
-        }, "userChannelChanged");
+        }, "userChannelChanged").thenApply(listener -> null);
+    }
+
+    @Override
+    public CompletionStage<Void> disconnect() {
+        return CompletableFuture.completedFuture(null);
     }
 
     @Override

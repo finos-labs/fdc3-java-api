@@ -60,9 +60,9 @@ public class DefaultUserChannelContextListener extends DefaultContextListener im
     public void changeChannel() {
         Channel currentChannel = channelSupport.getCurrentChannelInternal();
         if (currentChannel != null) {
-            currentChannel.getCurrentContext(contextType)
-                    .thenAccept(contextOpt -> {
-                        contextOpt.ifPresent(context -> handler.handleContext(context, null));
+            currentChannel.getCurrentContextWithMetadata(contextType)
+                    .thenAccept(resultOpt -> {
+                        resultOpt.ifPresent(cwm -> handler.handleContext(cwm.getContext(), cwm.getMetadata()));
                     });
         }
     }

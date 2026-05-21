@@ -21,6 +21,7 @@ import java.util.concurrent.CompletionStage;
 
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.AppIntent;
+import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.IntentResolution;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.IntentHandler;
@@ -60,6 +61,18 @@ public interface IntentSupport {
     CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app);
 
     /**
+     * Raise an intent with app-provided metadata.
+     *
+     * @param intent   the intent name
+     * @param context  the context to pass
+     * @param app      optional target application
+     * @param metadata optional app-provided metadata
+     * @return a CompletionStage containing the intent resolution
+     */
+    CompletionStage<IntentResolution> raiseIntent(
+            String intent, Context context, AppIdentifier app, AppProvidableContextMetadata metadata);
+
+    /**
      * Raise an intent for a context.
      *
      * @param context the context
@@ -67,6 +80,17 @@ public interface IntentSupport {
      * @return a CompletionStage containing the intent resolution
      */
     CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app);
+
+    /**
+     * Raise an intent for a context with app-provided metadata.
+     *
+     * @param context  the context
+     * @param app      optional target application
+     * @param metadata optional app-provided metadata
+     * @return a CompletionStage containing the intent resolution
+     */
+    CompletionStage<IntentResolution> raiseIntentForContext(
+            Context context, AppIdentifier app, AppProvidableContextMetadata metadata);
 
     /**
      * Add an intent listener.
@@ -77,4 +101,3 @@ public interface IntentSupport {
      */
     CompletionStage<Listener> addIntentListener(String intent, IntentHandler handler);
 }
-

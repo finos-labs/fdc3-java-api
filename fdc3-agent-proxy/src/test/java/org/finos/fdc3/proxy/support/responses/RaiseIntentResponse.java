@@ -206,7 +206,11 @@ public class RaiseIntentResponse implements AutomaticResponse {
         
         Map<String, Object> payload = new HashMap<>();
         payload.put("intentResult", intentResult);
-        
+        if (result.getResultMetadata() != null) {
+            payload.put("resultMetadata", messaging.getConverter().convertValue(
+                    result.getResultMetadata(), Map.class));
+        }
+
         Map<String, Object> response = new HashMap<>();
         response.put("type", "raiseIntentResultResponse");
         response.put("meta", createResponseMeta(meta));

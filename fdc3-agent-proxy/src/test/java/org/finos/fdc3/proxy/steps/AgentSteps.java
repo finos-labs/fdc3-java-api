@@ -49,10 +49,19 @@ public class AgentSteps {
 
     @Given("A Desktop Agent in {string}")
     public void aDesktopAgentIn(String field) throws Exception {
+        createDesktopAgent(field, null);
+    }
+
+    @Given("A Desktop Agent in {string} that puts apps on channel {string}")
+    public void aDesktopAgentInThatPutsAppsOnChannel(String field, String channelId) throws Exception {
+        createDesktopAgent(field, channelId);
+    }
+
+    private void createDesktopAgent(String field, String initialChannelId) throws Exception {
         if (!world.hasMessaging()) {
             @SuppressWarnings("unchecked")
             Map<String, List<Context>> channelState = (Map<String, List<Context>>) world.get(ChannelSteps.CHANNEL_STATE);
-            world.setMessaging(new TestMessaging(channelState != null ? channelState : new HashMap<>()));
+            world.setMessaging(new TestMessaging(channelState != null ? channelState : new HashMap<>(), initialChannelId));
         }
 
         TestMessaging messaging = world.getMessaging();
@@ -65,7 +74,8 @@ public class AgentSteps {
         
         List<Connectable> connectables = new ArrayList<>();
         connectables.add(hs);
-        
+        connectables.add(cs);
+
         DesktopAgentProxy da = new DesktopAgentProxy(hs, cs, is, as, connectables);
         da.connect().toCompletableFuture().get();
         

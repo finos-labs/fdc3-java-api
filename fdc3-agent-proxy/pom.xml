@@ -13,7 +13,7 @@
     <artifactId>fdc3-agent-proxy</artifactId>
     <name>FDC3 Desktop Agent Proxy</name>
     <description>Desktop Agent Proxy implementation for FDC3</description>
-
+ 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jdk.source.version>11</jdk.source.version>
@@ -21,6 +21,7 @@
         <fdc3.features.source>src/test/resources/temporary-features</fdc3.features.source>
         <cucumber.version>7.15.0</cucumber.version>
         <spring.version>6.1.2</spring.version>
+        <networknt.version>1.5.6</networknt.version>
 
     </properties>
 
@@ -98,15 +99,9 @@
         </dependency>
 
         <dependency>
-            <groupId>com.github.erosb</groupId>
-            <artifactId>everit-json-schema</artifactId>
-            <version>1.14.4</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>json</artifactId>
-            <version>20240303</version>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>${networknt.version}</version>
             <scope>test</scope>
         </dependency>
 

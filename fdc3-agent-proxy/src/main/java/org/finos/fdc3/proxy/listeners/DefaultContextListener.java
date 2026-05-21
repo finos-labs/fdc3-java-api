@@ -21,8 +21,10 @@ import java.util.Map;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.ContextMetadata;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.proxy.Messaging;
+import org.finos.fdc3.proxy.util.ContextMetadataMapper;
 
 /**
  * Default implementation of a context listener.
@@ -76,11 +78,9 @@ public class DefaultContextListener extends AbstractListener<ContextHandler> {
         } else {
             this.channelId = channel.getId();
             // Get current context from the channel
-            channel.getCurrentContext(contextType)
-                .thenAccept(context -> {
-                    if (context.isPresent()) {
-                        handler.handleContext(context.get(), null);
-                    }
+            channel.getCurrentContextWithMetadata(contextType)
+                .thenAccept(result -> {
+                    result.ifPresent(cwm -> handler.handleContext(cwm.getContext(), cwm.getMetadata()));
                 });
         }
     }
@@ -128,6 +128,9 @@ public class DefaultContextListener extends AbstractListener<ContextHandler> {
         Map<String, Object> payload = (Map<String, Object>) message.get("payload");
         Map<String, Object> contextMap = (Map<String, Object>) payload.get("context");
         Context context = Context.fromMap(contextMap);
-        handler.handleContext(context, null);
+        Map<String, Object> payloadMetadata = (Map<String, Object>) payload.get("metadata");
+        Object messageTimestamp = ((Map<String, Object>) message.get("meta")).get("timestamp");
+        ContextMetadata metadata = ContextMetadataMapper.fromWire(payloadMetadata, messageTimestamp);
+        handler.handleContext(context, metadata);
     }
 }
