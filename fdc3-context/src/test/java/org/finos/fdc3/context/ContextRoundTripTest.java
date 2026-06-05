@@ -35,15 +35,19 @@ public class ContextRoundTripTest {
 
     @BeforeAll
     static void setUp() {
-        // Find the schemas directory - it's in target/npm-work/node_modules/@finos/fdc3-context/dist/schemas/context
         String basePath = System.getProperty("user.dir");
-        schemasDir = Paths.get(basePath, "target", "npm-work", "node_modules", 
-                "@finos", "fdc3-context", "dist", "schemas", "context");
-        
+        // Prefer unified schemas-work layout (used by both default and local-schemas profiles)
+        schemasDir = Paths.get(basePath, "target", "schemas-work", "context");
+
+        if (!Files.exists(schemasDir)) {
+            // Fallback for builds before prepare-schemas ran
+            schemasDir = Paths.get(basePath, "target", "npm-work", "node_modules",
+                    "@finos", "fdc3-context", "dist", "schemas", "context");
+        }
+
         if (!Files.exists(schemasDir)) {
             // Try relative to project root
-            schemasDir = Paths.get("fdc3-context", "target", "npm-work", "node_modules",
-                    "@finos", "fdc3-context", "dist", "schemas", "context");
+            schemasDir = Paths.get("fdc3-context", "target", "schemas-work", "context");
         }
     }
 

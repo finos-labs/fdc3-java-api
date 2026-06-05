@@ -19,7 +19,7 @@ package org.finos.fdc3.proxy.steps;
 import static io.github.robmoffat.support.MatchingUtils.handleResolve;
 import static io.github.robmoffat.support.MatchingUtils.matchData;
 
-import java.lang.reflect.Method;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +27,7 @@ import java.util.Map;
 
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.ContextMetadata;
+import org.finos.fdc3.api.metadata.DetachedSignature;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
@@ -59,16 +60,47 @@ public class ChannelSteps {
 
     @Given("{string} is a BroadcastEvent message on channel {string} with context {string}")
     public void isABroadcastEventMessage(String field, String channel, String contextType) {
+        ContextMetadata metadata = defaultBroadcastMetadata();
+        metadata.put("signature", "");
+
         Map<String, Object> message = new HashMap<>();
         message.put("type", "broadcastEvent");
         message.put("meta", world.getMessaging().createEventMeta());
-
         Map<String, Object> payload = new HashMap<>();
         payload.put("channelId", handleResolve(channel, world));
         payload.put("context", ContextMap.get(contextType));
+        payload.put("metadata", metadata);
         message.put("payload", payload);
 
         world.set(field, message);
+    }
+
+    @Given("{string} is a BroadcastEvent message on channel {string} with context {string} and metadata")
+    public void isABroadcastEventMessageWithMetadata(String field, String channel, String contextType) {
+        ContextMetadata metadata = defaultBroadcastMetadata();
+        metadata.setSignature(new DetachedSignature("test-sig (protected part)", "test-sig (signature part)"));
+        Map<String, Object> custom = new HashMap<>();
+        custom.put("region", "EMEA");
+        metadata.setCustom(custom);
+
+        Map<String, Object> message = new HashMap<>();
+        message.put("type", "broadcastEvent");
+        message.put("meta", world.getMessaging().createEventMeta());
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("channelId", handleResolve(channel, world));
+        payload.put("context", ContextMap.get(contextType));
+        payload.put("metadata", metadata);
+        message.put("payload", payload);
+
+        world.set(field, message);
+    }
+
+    private ContextMetadata defaultBroadcastMetadata() {
+        ContextMetadata metadata = ContextMetadata.appProvidable();
+        metadata.setTimestamp(Instant.now());
+        metadata.setSource(world.getMessaging().getAppIdentifier());
+        metadata.setTraceId(world.getMessaging().createUUID());
+        return metadata;
     }
 
     @Given("{string} is a {string} message on channel {string}")
@@ -215,6 +247,24 @@ public class ChannelSteps {
         world.set(contextHandlerName, ch);
     }
 
+    @Given("{string} pipes context and metadata to {string} and {string}")
+    public void pipesContextAndMetadataTo(String contextHandlerName, String contextsField, String metadatasField) {
+        List<Context> contexts = new ArrayList<>();
+        List<ContextMetadata> metadatas = new ArrayList<>();
+        world.set(contextsField, contexts);
+        world.set(metadatasField, metadatas);
+
+        ContextHandler ch = new ContextHandler() {
+            @Override
+            public void handleContext(Context context, ContextMetadata metadata) {
+                contexts.add(context);
+                metadatas.add(metadata);
+            }
+        };
+
+        world.set(contextHandlerName, ch);
+    }
+
     @When("messaging receives {string}")
     public void messagingReceives(String field) {
         @SuppressWarnings("unchecked")
@@ -259,68 +309,53 @@ public class ChannelSteps {
     @When("I destructure methods {string}, {string} from {string}")
     public void iDestructureMethods(String method1, String method2, String objectField) {
         Object object = handleResolve(objectField, world);
-        // Store references to methods for later invocation
-        world.set("destructured_" + method1, new DestructuredMethod(object, method1));
-        world.set("destructured_" + method2, new DestructuredMethod(object, method2));
+        world.set("destructured_" + method1, extractDestructuredMethod(object, method1));
+        world.set("destructured_" + method2, extractDestructuredMethod(object, method2));
     }
 
     @When("I destructure method {string} from {string}")
     public void iDestructureMethod(String methodName, String objectField) {
         Object object = handleResolve(objectField, world);
-        world.set("destructured_" + methodName, new DestructuredMethod(object, methodName));
+        world.set("destructured_" + methodName, extractDestructuredMethod(object, methodName));
+    }
+
+    private static DestructuredMethod extractDestructuredMethod(Object object, String methodName) {
+        return new DestructuredMethod(object, methodName);
     }
 
     @When("I call destructured {string}")
     public void iCallDestructured(String methodName) {
-        try {
-            DestructuredMethod dm = (DestructuredMethod) world.get("destructured_" + methodName);
-            Object result = dm.invoke();
-            world.set("result", result);
-        } catch (Exception e) {
-            world.set("error", e);
-            world.set("result", null);
-        }
+        invokeDestructured(methodName);
     }
 
-    @When("I call destructured {string} with parameter {string}")
-    public void iCallDestructuredWithParameter(String methodName, String param) {
-        try {
-            DestructuredMethod dm = (DestructuredMethod) world.get("destructured_" + methodName);
-            Object resolvedParam = handleResolve(param, world);
-            Object result = dm.invoke(resolvedParam);
-            world.set("result", result);
-        } catch (Exception e) {
-            world.set("error", e);
-            world.set("result", null);
-        }
+    @When("I call destructured {string} using argument {string}")
+    public void iCallDestructuredUsingArgument(String methodName, String param) {
+        invokeDestructured(methodName, handleResolve(param, world));
     }
 
-    @When("I call destructured {string} with parameters {string} and {string}")
-    public void iCallDestructuredWithTwoParameters(String methodName, String param1, String param2) {
-        try {
-            DestructuredMethod dm = (DestructuredMethod) world.get("destructured_" + methodName);
-            Object resolvedParam1 = handleResolve(param1, world);
-            Object resolvedParam2 = handleResolve(param2, world);
-            Object result = dm.invoke(resolvedParam1, resolvedParam2);
-            world.set("result", result);
-        } catch (Exception e) {
-            world.set("error", e);
-            world.set("result", null);
-        }
+    @When("I call destructured {string} using arguments {string} and {string}")
+    public void iCallDestructuredUsingTwoArguments(String methodName, String param1, String param2) {
+        invokeDestructured(methodName, handleResolve(param1, world), handleResolve(param2, world));
     }
 
-    @When("I call destructured {string} with parameters {string} and {string} and {string}")
-    public void iCallDestructuredWithThreeParameters(String methodName, String param1, String param2, String param3) {
+    @When("I call destructured {string} using arguments {string} and {string} and {string}")
+    public void iCallDestructuredUsingThreeArguments(String methodName, String param1, String param2, String param3) {
+        invokeDestructured(
+                methodName,
+                handleResolve(param1, world),
+                handleResolve(param2, world),
+                handleResolve(param3, world));
+    }
+
+    private void invokeDestructured(String methodName, Object... args) {
         try {
             DestructuredMethod dm = (DestructuredMethod) world.get("destructured_" + methodName);
-            Object resolvedParam1 = handleResolve(param1, world);
-            Object resolvedParam2 = handleResolve(param2, world);
-            Object resolvedParam3 = handleResolve(param3, world);
-            Object result = dm.invoke(resolvedParam1, resolvedParam2, resolvedParam3);
-            world.set("result", result);
+            if (dm == null) {
+                throw new IllegalStateException("No destructured method: " + methodName);
+            }
+            world.set("result", dm.invoke(args));
         } catch (Exception e) {
-            world.set("error", e);
-            world.set("result", null);
+            world.set("result", e);
         }
     }
 

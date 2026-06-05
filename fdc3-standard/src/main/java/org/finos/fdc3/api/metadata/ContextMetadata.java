@@ -17,19 +17,16 @@ package org.finos.fdc3.api.metadata;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.finos.fdc3.api.types.AppIdentifier;
 
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
-import com.fasterxml.jackson.annotation.JsonAnySetter;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Map-backed metadata for context and intent messages.
+ * Metadata for context and intent messages, stored as a map (same pattern as {@link org.finos.fdc3.api.context.Context}).
  * <p>
  * Implements {@link AppProvidableContextMetadata} for outbound app-provided fields and
  * {@link DesktopAgentProvidableContextMetadata} for optional Desktop Agent fields.
@@ -37,16 +34,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * typically populated by the Desktop Agent.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ContextMetadata implements AppProvidableContextMetadata, DesktopAgentProvidableContextMetadata {
-
-    private final Map<String, Object> data;
+public class ContextMetadata extends HashMap<String, Object>
+        implements AppProvidableContextMetadata, DesktopAgentProvidableContextMetadata {
 
     public ContextMetadata() {
-        this.data = new LinkedHashMap<>();
+        super();
     }
 
     public ContextMetadata(Map<String, Object> initial) {
-        this.data = initial != null ? new LinkedHashMap<>(initial) : new LinkedHashMap<>();
+        super();
+        if (initial != null) {
+            mergeFrom(initial);
+        }
     }
 
     /** Returns a new empty instance suitable for outbound app-provided metadata. */
@@ -54,32 +53,19 @@ public class ContextMetadata implements AppProvidableContextMetadata, DesktopAge
         return new ContextMetadata();
     }
 
-    /** Returns an unmodifiable view of the backing map. */
-    @JsonIgnore
+    /** Returns an unmodifiable copy of this metadata. */
     public Map<String, Object> asMap() {
-        return Collections.unmodifiableMap(data);
+        return Collections.unmodifiableMap(new LinkedHashMap<>(this));
     }
 
-    /** Returns a mutable copy of the backing map (for wire serialization). */
-    @JsonIgnore
+    /** Returns a mutable copy for wire serialization. */
     public Map<String, Object> toMap() {
-        return new LinkedHashMap<>(data);
-    }
-
-    @JsonAnyGetter
-    public Map<String, Object> jsonProperties() {
-        return data;
-    }
-
-    @JsonAnySetter
-    public void jsonProperty(String key, Object value) {
-        data.put(key, value);
+        return new LinkedHashMap<>(this);
     }
 
     @Override
-    @JsonProperty("traceId")
     public String getTraceId() {
-        return (String) data.get("traceId");
+        return (String) get("traceId");
     }
 
     @Override
@@ -88,7 +74,6 @@ public class ContextMetadata implements AppProvidableContextMetadata, DesktopAge
     }
 
     @Override
-    @JsonProperty("signature")
     public DetachedSignature getSignature() {
         return getTyped("signature", DetachedSignature.class);
     }
@@ -99,7 +84,6 @@ public class ContextMetadata implements AppProvidableContextMetadata, DesktopAge
     }
 
     @Override
-    @JsonProperty("antiReplay")
     public AntiReplayClaims getAntiReplay() {
         return getTyped("antiReplay", AntiReplayClaims.class);
     }
@@ -110,9 +94,8 @@ public class ContextMetadata implements AppProvidableContextMetadata, DesktopAge
     }
 
     @Override
-    @JsonProperty("authenticity")
     public String getAuthenticity() {
-        return (String) data.get("authenticity");
+        return (String) get("authenticity");
     }
 
     @Override
@@ -121,9 +104,8 @@ public class ContextMetadata implements AppProvidableContextMetadata, DesktopAge
     }
 
     @Override
-    @JsonProperty("encryption")
     public String getEncryption() {
-        return (String) data.get("encryption");
+        return (String) get("encryption");
     }
 
     @Override
@@ -133,9 +115,8 @@ public class ContextMetadata implements AppProvidableContextMetadata, DesktopAge
 
     @Override
     @SuppressWarnings("unchecked")
-    @JsonProperty("custom")
     public Map<String, Object> getCustom() {
-        Object custom = data.get("custom");
+        Object custom = get("custom");
         if (custom instanceof Map) {
             return (Map<String, Object>) custom;
         }
@@ -148,9 +129,8 @@ public class ContextMetadata implements AppProvidableContextMetadata, DesktopAge
     }
 
     @Override
-    @JsonProperty("timestamp")
     public Instant getTimestamp() {
-        Object value = data.get("timestamp");
+        Object value = get("timestamp");
         if (value instanceof Instant) {
             return (Instant) value;
         }
@@ -166,14 +146,13 @@ public class ContextMetadata implements AppProvidableContextMetadata, DesktopAge
     }
 
     @Override
-    @JsonProperty("source")
     public AppIdentifier getSource() {
-        Object source = data.get("source");
+        Object source = get("source");
         if (source instanceof AppIdentifier) {
             return (AppIdentifier) source;
         }
         if (source instanceof Map) {
-            return AppIdentifier.fromMap((Map<String, Object>) source);
+            return AppIdentifier.fromMap(castMap(source));
         }
         return null;
     }
@@ -186,6 +165,9 @@ public class ContextMetadata implements AppProvidableContextMetadata, DesktopAge
     public static ContextMetadata fromMap(Map<String, Object> map) {
         if (map == null) {
             return null;
+        }
+        if (map instanceof ContextMetadata) {
+            return (ContextMetadata) map;
         }
         ContextMetadata metadata = new ContextMetadata();
         metadata.mergeFrom(map);
@@ -225,18 +207,23 @@ public class ContextMetadata implements AppProvidableContextMetadata, DesktopAge
         }
         setAuthenticity((String) map.get("authenticity"));
         setEncryption((String) map.get("encryption"));
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            if (!containsKey(entry.getKey())) {
+                put(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     private void putOrRemove(String key, Object value) {
         if (value == null) {
-            data.remove(key);
+            remove(key);
         } else {
-            data.put(key, value);
+            put(key, value);
         }
     }
 
     private <T> T getTyped(String key, Class<T> type) {
-        Object value = data.get(key);
+        Object value = get(key);
         if (type.isInstance(value)) {
             return type.cast(value);
         }

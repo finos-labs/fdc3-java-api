@@ -33,7 +33,6 @@ public class SchemaSteps {
 
     static {
         Fdc3SchemaMatchers.registerFdc3SchemaMatchers();
-        org.finos.fdc3.proxy.support.TestFieldMatchers.class.getName();
     }
 
     private final PropsWorld world;

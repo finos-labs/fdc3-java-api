@@ -128,9 +128,10 @@ public class DefaultContextListener extends AbstractListener<ContextHandler> {
         Map<String, Object> payload = (Map<String, Object>) message.get("payload");
         Map<String, Object> contextMap = (Map<String, Object>) payload.get("context");
         Context context = Context.fromMap(contextMap);
+        Map<String, Object> messageMeta = (Map<String, Object>) message.get("meta");
         Map<String, Object> payloadMetadata = (Map<String, Object>) payload.get("metadata");
-        Object messageTimestamp = ((Map<String, Object>) message.get("meta")).get("timestamp");
-        ContextMetadata metadata = ContextMetadataMapper.fromWire(payloadMetadata, messageTimestamp);
+        Object messageTimestamp = messageMeta != null ? messageMeta.get("timestamp") : null;
+        ContextMetadata metadata = ContextMetadataMapper.fromWire(payloadMetadata, messageTimestamp, messageMeta);
         handler.handleContext(context, metadata);
     }
 }

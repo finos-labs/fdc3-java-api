@@ -23,6 +23,7 @@ import java.util.UUID;
 
 import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.ContextMetadata;
+import org.finos.fdc3.api.types.AppIdentifier;
 
 /**
  * Maps between DACP wire metadata maps and {@link ContextMetadata}.
@@ -36,10 +37,27 @@ public final class ContextMetadataMapper {
      * Outbound metadata for DACP request payloads (reference TS: {@code metadata ?? {}}).
      */
     public static Map<String, Object> toWire(AppProvidableContextMetadata metadata) {
-        return metadata == null ? new LinkedHashMap<>() : ((ContextMetadata) metadata).toMap();
+        if (metadata == null) {
+            return new LinkedHashMap<>();
+        }
+        if (metadata instanceof ContextMetadata) {
+            return new LinkedHashMap<>((ContextMetadata) metadata);
+        }
+        throw new IllegalArgumentException("metadata must be ContextMetadata");
     }
 
     public static ContextMetadata fromWire(Map<String, Object> payloadMetadata, Object messageTimestamp) {
+        return fromWire(payloadMetadata, messageTimestamp, null);
+    }
+
+    /**
+     * Builds listener metadata from wire payload fields and optional message {@code meta} (e.g. event source).
+     */
+    @SuppressWarnings("unchecked")
+    public static ContextMetadata fromWire(
+            Map<String, Object> payloadMetadata,
+            Object messageTimestamp,
+            Map<String, Object> messageMeta) {
         ContextMetadata metadata = ContextMetadata.fromMap(payloadMetadata);
         if (metadata == null) {
             metadata = ContextMetadata.appProvidable();
@@ -54,6 +72,20 @@ public final class ContextMetadataMapper {
         if (metadata.getTraceId() == null || metadata.getTraceId().isEmpty()) {
             metadata.setTraceId(UUID.randomUUID().toString());
         }
+        applyMetaSourceIfAbsent(metadata, messageMeta);
         return metadata;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void applyMetaSourceIfAbsent(ContextMetadata metadata, Map<String, Object> messageMeta) {
+        if (metadata.getSource() != null || messageMeta == null) {
+            return;
+        }
+        Object source = messageMeta.get("source");
+        if (source instanceof AppIdentifier) {
+            metadata.setSource((AppIdentifier) source);
+        } else if (source instanceof Map) {
+            metadata.setSource(AppIdentifier.fromMap((Map<String, Object>) source));
+        }
     }
 }
