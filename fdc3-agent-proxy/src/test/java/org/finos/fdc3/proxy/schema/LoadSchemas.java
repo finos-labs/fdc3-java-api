@@ -85,7 +85,7 @@ public final class LoadSchemas {
             Path apiDir = resolveApiSchemaDirectory();
             if (apiDir == null || !Files.isDirectory(apiDir)) {
                 throw new IllegalStateException(
-                        "Schema directory not found. Build fdc3-schema (npm) or use FDC3 monorepo schemas at "
+                        "Schema directory not found. Build fdc3-schema first (target/schema-work/api) or use FDC3 monorepo schemas at "
                                 + "../../../FDC3/packages/fdc3-schema/schemas/api");
             }
 
@@ -165,6 +165,7 @@ public final class LoadSchemas {
 
     private static Path resolveApiSchemaDirectory() {
         Path[] candidates = {
+                Paths.get("../fdc3-schema/target/schema-work/api"),
                 Paths.get("../../../FDC3/packages/fdc3-schema/schemas/api"),
                 Paths.get("../fdc3-schema/target/npm-work/node_modules/@finos/fdc3-schema/dist/schemas/api"),
                 Paths.get("../fdc3-schema/schemas/api"),
@@ -179,6 +180,7 @@ public final class LoadSchemas {
 
     private static Path resolveContextSchemaFile() {
         Path[] candidates = {
+                Paths.get("../fdc3-schema/target/schema-work/context/context.schema.json"),
                 Paths.get("../../../FDC3/packages/fdc3-context/schemas/context/context.schema.json"),
                 Paths.get("../fdc3-context/target/npm-work/node_modules/@finos/fdc3-context/dist/schemas/context/context.schema.json"),
         };

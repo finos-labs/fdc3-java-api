@@ -20,6 +20,11 @@
         <node.version>v20.11.0</node.version>
         <npm.version>10.2.4</npm.version>
         <fdc3.schema.version>2.2.3</fdc3.schema.version>
+        <fdc3.schema.work.dir>${project.build.directory}/schema-work</fdc3.schema.work.dir>
+        <fdc3.schema.source.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-schema/dist/schemas</fdc3.schema.source.dir>
+        <fdc3.context.source.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-context/dist/schemas/context</fdc3.context.source.dir>
+        <fdc3.api.schema.path>${fdc3.schema.work.dir}/api/api.schema.json</fdc3.api.schema.path>
+        <fdc3.npm.schema.packages>install @finos/fdc3-schema@${fdc3.schema.version} @finos/fdc3-context@${fdc3.schema.version} quicktype --save</fdc3.npm.schema.packages>
     </properties>
 
     <dependencies>
@@ -73,7 +78,44 @@
                 </configuration>
             </plugin>
 
-            <!-- Create directories before npm runs -->
+            <!-- Populate target/schema-work from download or local profile source -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>populate-schema-work</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${fdc3.schema.work.dir}</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <resources>
+                                <resource>
+                                    <directory>${fdc3.schema.source.dir}/api</directory>
+                                    <targetPath>api</targetPath>
+                                </resource>
+                                <resource>
+                                    <directory>${fdc3.schema.source.dir}/bridging</directory>
+                                    <targetPath>bridging</targetPath>
+                                </resource>
+                                <resource>
+                                    <directory>${fdc3.schema.source.dir}/bridgingAsyncAPI</directory>
+                                    <targetPath>bridgingAsyncAPI</targetPath>
+                                </resource>
+                                <resource>
+                                    <directory>${fdc3.context.source.dir}</directory>
+                                    <targetPath>context</targetPath>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
@@ -92,10 +134,68 @@
                             </target>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>quicktype-api</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <pathconvert property="api.schema.src.args" pathsep=" ">
+                                    <fileset dir="${fdc3.schema.work.dir}/api">
+                                        <include name="*.schema.json"/>
+                                    </fileset>
+                                    <mapper type="regexp" from="^(.*)$$" to="--src \1"/>
+                                </pathconvert>
+                                <exec executable="${project.build.directory}/npm-work/node_modules/.bin/quicktype" failonerror="true">
+                                    <arg value="-s"/>
+                                    <arg value="schema"/>
+                                    <arg value="--quiet"/>
+                                    <arg value="--lang"/>
+                                    <arg value="java"/>
+                                    <arg value="--package"/>
+                                    <arg value="org.finos.fdc3.schema"/>
+                                    <arg value="--out"/>
+                                    <arg value="${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/schema/ApiTypes.java"/>
+                                    <arg value="-S"/>
+                                    <arg value="${fdc3.api.schema.path}"/>
+                                    <arg line="${api.schema.src.args}"/>
+                                </exec>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>delete-duplicate-classes</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <delete quiet="true">
+                                    <fileset dir="${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/schema">
+                                        <include name="Context.java"/>
+                                        <include name="ContextID.java"/>
+                                        <include name="ContextType.java"/>
+                                        <include name="Icon.java"/>
+                                        <include name="Image.java"/>
+                                        <include name="DisplayMetadata.java"/>
+                                        <include name="IntentMetadata.java"/>
+                                        <include name="ImplementationMetadata.java"/>
+                                        <include name="OptionalFeatures.java"/>
+                                        <include name="AppMetadata.java"/>
+                                        <include name="AppIntent.java"/>
+                                        <include name="AppIdentifier.java"/>
+                                    </fileset>
+                                </delete>
+                            </target>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
 
-            <!-- Frontend plugin for npm/node -->
+            <!-- Frontend plugin for npm/node (quicktype; @finos/fdc3-schema in download profile) -->
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
@@ -107,7 +207,6 @@
                     <installDirectory>${project.build.directory}/node-installation</installDirectory>
                 </configuration>
                 <executions>
-                    <!-- Install Node and NPM -->
                     <execution>
                         <id>install-node-and-npm</id>
                         <phase>generate-sources</phase>
@@ -115,7 +214,6 @@
                             <goal>install-node-and-npm</goal>
                         </goals>
                     </execution>
-                    <!-- Initialize npm project -->
                     <execution>
                         <id>npm-init</id>
                         <phase>generate-sources</phase>
@@ -126,7 +224,6 @@
                             <arguments>init -y</arguments>
                         </configuration>
                     </execution>
-                    <!-- Install @finos/fdc3-schema, @finos/fdc3-context, and quicktype -->
                     <execution>
                         <id>npm-install-packages</id>
                         <phase>generate-sources</phase>
@@ -134,86 +231,12 @@
                             <goal>npm</goal>
                         </goals>
                         <configuration>
-                            <arguments>install @finos/fdc3-schema@${fdc3.schema.version} @finos/fdc3-context@${fdc3.schema.version} quicktype --save</arguments>
+                            <arguments>${fdc3.npm.schema.packages}</arguments>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
 
-            <!-- Execute quicktype to generate Java -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.1</version>
-                <executions>
-                    <!-- Create symlink so relative schema refs work -->
-                    <execution>
-                        <id>create-context-symlink</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>ln</executable>
-                            <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
-                            <arguments>
-                                <argument>-sfn</argument>
-                                <argument>../../@finos/fdc3-context/dist/schemas/context</argument>
-                                <argument>node_modules/@finos/fdc3-schema/dist/schemas/context</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <!-- Generate API types using shell to properly list files individually -->
-                    <execution>
-                        <id>quicktype-api</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>/bin/sh</executable>
-                            <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument>node_modules/.bin/quicktype -s schema --quiet --lang java --package org.finos.fdc3.schema --out ${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/schema/ApiTypes.java -S node_modules/@finos/fdc3-context/dist/schemas/context/context.schema.json $(for f in node_modules/@finos/fdc3-schema/dist/schemas/api/*.schema.json; do echo "--src $f"; done)</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <!-- Delete generated classes that we use from fdc3-standard -->
-                    <execution>
-                        <id>delete-duplicate-classes</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>rm</executable>
-                            <workingDirectory>${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/schema</workingDirectory>
-                            <arguments>
-                                <argument>-f</argument>
-                                <argument>Context.java</argument>
-                                <argument>ContextID.java</argument>
-                                <argument>ContextType.java</argument>
-                                <argument>Icon.java</argument>
-                                <argument>Image.java</argument>
-                                <argument>DisplayMetadata.java</argument>
-                                <argument>IntentMetadata.java</argument>
-                                <argument>ImplementationMetadata.java</argument>
-                                <argument>OptionalFeatures.java</argument>
-                                <argument>AppMetadata.java</argument>
-                                <argument>AppIntent.java</argument>
-                                <argument>AppIdentifier.java</argument>
-                            </arguments>
-                            <successCodes>
-                                <successCode>0</successCode>
-                                <successCode>1</successCode>
-                            </successCodes>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- Replace package statement with imports for fdc3-standard types -->
             <plugin>
                 <groupId>com.google.code.maven-replacer-plugin</groupId>
                 <artifactId>replacer</artifactId>
@@ -221,7 +244,7 @@
                 <executions>
                     <execution>
                         <id>add-standard-imports</id>
-                        <phase>generate-sources</phase>
+                        <phase>process-sources</phase>
                         <goals>
                             <goal>replace</goal>
                         </goals>
@@ -249,7 +272,6 @@ import org.finos.fdc3.api.types.AppIdentifier;</value>
                 </executions>
             </plugin>
 
-            <!-- Add generated sources to compilation -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
@@ -257,7 +279,7 @@ import org.finos.fdc3.api.types.AppIdentifier;</value>
                 <executions>
                     <execution>
                         <id>add-source</id>
-                        <phase>generate-sources</phase>
+                        <phase>process-sources</phase>
                         <goals>
                             <goal>add-source</goal>
                         </goals>
@@ -271,4 +293,24 @@ import org.finos.fdc3.api.types.AppIdentifier;</value>
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Default: download published schemas from npm -->
+        <profile>
+            <id>download</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+        </profile>
+
+        <!-- Use unreleased schemas: API/bridging from fdc3-schema, context from fdc3-context -->
+        <profile>
+            <id>local</id>
+            <properties>
+                <fdc3.schema.source.dir>${project.basedir}/src/main/schemas-temp/3.0.0</fdc3.schema.source.dir>
+                <fdc3.context.source.dir>${project.basedir}/../fdc3-context/src/schemas-temp/3.0.0/context</fdc3.context.source.dir>
+                <fdc3.npm.schema.packages>install quicktype --save</fdc3.npm.schema.packages>
+            </properties>
+        </profile>
+    </profiles>
 </project>

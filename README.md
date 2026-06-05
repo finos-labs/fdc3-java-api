@@ -61,6 +61,14 @@ This project provides:
 mvn clean install
 ```
 
+This will download the schemas for the DACP / WCP / Contexts from NPM as it runs.  However, you can also run like this:
+
+```sh
+mvn clean install -Plocal
+```
+
+which will use local schemas inside the `src/main/schemas-temp` directories.  This is a temporary feature for unreleased versions of FDC3.
+
 ### Maven Dependency
 
 Once published, add to your `pom.xml`:
