@@ -35,7 +35,7 @@ import static io.cucumber.junit.platform.engine.Constants.PLUGIN_PROPERTY_NAME;
 @ConfigurationParameter(key = FEATURES_PROPERTY_NAME, value = "classpath:temporary-features")
 @ConfigurationParameter(
         key = GLUE_PROPERTY_NAME,
-        value = "org.finos.fdc3.proxy,org.finos.fdc3.proxy.steps,org.finos.fdc3.proxy.world,io.github.robmoffat.steps")
+        value = "org.finos.fdc3.proxy,org.finos.fdc3.proxy.steps,org.finos.fdc3.proxy.world")
 @ConfigurationParameter(key = OBJECT_FACTORY_PROPERTY_NAME, value = "io.cucumber.spring.SpringFactory")
 @ConfigurationParameter(
         key = PLUGIN_PROPERTY_NAME,

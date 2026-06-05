@@ -27,13 +27,12 @@ import java.util.Map;
 
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.ContextMetadata;
-import org.finos.fdc3.api.metadata.DetachedSignature;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.proxy.support.ContextMap;
 import org.finos.fdc3.proxy.world.CustomWorld;
-import io.github.robmoffat.steps.GenericSteps;
+
 
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;
@@ -78,7 +77,7 @@ public class ChannelSteps {
     @Given("{string} is a BroadcastEvent message on channel {string} with context {string} and metadata")
     public void isABroadcastEventMessageWithMetadata(String field, String channel, String contextType) {
         ContextMetadata metadata = defaultBroadcastMetadata();
-        metadata.setSignature(new DetachedSignature("test-sig (protected part)", "test-sig (signature part)"));
+        metadata.put("signature", "test-sig");
         Map<String, Object> custom = new HashMap<>();
         custom.put("region", "EMEA");
         metadata.setCustom(custom);
@@ -142,6 +141,42 @@ public class ChannelSteps {
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("newChannelId", handleResolve(channel, world));
+        message.put("payload", payload);
+
+        world.set(field, message);
+    }
+
+    @Given("{string} is a channelChangedEvent message with currentChannelId {string}")
+    public void isAChannelChangedEventMessageWithCurrentChannelId(String field, String channelId) {
+        Map<String, Object> message = new HashMap<>();
+        message.put("type", "channelChangedEvent");
+
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("eventUuid", world.getMessaging().createUUID());
+        meta.put("timestamp", java.time.Instant.now().toString());
+        message.put("meta", meta);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("currentChannelId", handleResolve(channelId, world));
+        message.put("payload", payload);
+
+        world.set(field, message);
+    }
+
+    @Given("{string} is a channelChangedEvent message with currentChannelId {string} and newChannelId {string}")
+    public void isAChannelChangedEventMessageWithCurrentAndNewChannelId(
+            String field, String currentChannelId, String newChannelId) {
+        Map<String, Object> message = new HashMap<>();
+        message.put("type", "channelChangedEvent");
+
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("eventUuid", world.getMessaging().createUUID());
+        meta.put("timestamp", java.time.Instant.now().toString());
+        message.put("meta", meta);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("currentChannelId", handleResolve(currentChannelId, world));
+        payload.put("newChannelId", handleResolve(newChannelId, world));
         message.put("payload", payload);
 
         world.set(field, message);
@@ -372,7 +407,7 @@ public class ChannelSteps {
         }
 
         public Object invoke(Object... args) throws Exception {
-            java.lang.reflect.Method method = GenericSteps.findMethod(target.getClass(), methodName, args);
+            java.lang.reflect.Method method = Fdc3GenericSteps.findMethod(target.getClass(), methodName, args);
             if (method == null) {
                 throw new NoSuchMethodException("Method not found: " + methodName);
             }

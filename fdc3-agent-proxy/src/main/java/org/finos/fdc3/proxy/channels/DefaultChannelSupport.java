@@ -166,6 +166,10 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
 
     @Override
     public CompletionStage<Channel> getUserChannel() {
+        if (currentChannel != null) {
+            return CompletableFuture.completedFuture(currentChannel);
+        }
+
         GetCurrentChannelRequest request = new GetCurrentChannelRequest();
         request.setType(GetCurrentChannelRequestType.GET_CURRENT_CHANNEL_REQUEST);
         request.setMeta(messaging.createMeta());

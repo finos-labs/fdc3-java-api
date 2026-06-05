@@ -20,8 +20,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
@@ -40,6 +42,12 @@ import org.finos.fdc3.schema.*;
 /**
  * Default implementation of a Channel.
  */
+@JsonAutoDetect(
+        getterVisibility = JsonAutoDetect.Visibility.NONE,
+        isGetterVisibility = JsonAutoDetect.Visibility.NONE,
+        fieldVisibility = JsonAutoDetect.Visibility.NONE,
+        setterVisibility = JsonAutoDetect.Visibility.NONE,
+        creatorVisibility = JsonAutoDetect.Visibility.NONE)
 public class DefaultChannel implements Channel {
 
     @JsonIgnore
@@ -65,6 +73,7 @@ public class DefaultChannel implements Channel {
     }
 
     @Override
+    @JsonProperty("id")
     public String getId() {
         return id;
     }
@@ -75,12 +84,14 @@ public class DefaultChannel implements Channel {
         return type;
     }
     
+    @JsonProperty("type")
     @JsonGetter("type")
     public String getTypeValue() {
         return type != null ? type.getValue() : null;
     }
 
     @Override
+    @JsonProperty("displayMetadata")
     public DisplayMetadata getDisplayMetadata() {
         return displayMetadata;
     }

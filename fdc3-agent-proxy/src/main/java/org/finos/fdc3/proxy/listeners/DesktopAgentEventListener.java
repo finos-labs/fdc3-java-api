@@ -81,12 +81,10 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
 
     @Override
     public boolean filter(Map<String, Object> message) {
-        String type = (String) message.get("type");
         if (eventType == null) {
-            // Listen to all events
-            return type != null && type.endsWith("Event");
+            return message.get("type") != null;
         }
-        return getExpectedMessageType().equals(type);
+        return getExpectedMessageType().equals(message.get("type"));
     }
 
     /**
@@ -113,19 +111,17 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
         
         // Restructure the event based on message type
         if ("channelChangedEvent".equals(messageType)) {
-            // Restructure channelChangedEvent to userChannelChanged format
             Map<String, Object> details = new HashMap<>();
-            String newChannelId = (String) payload.get("newChannelId");
-            details.put("currentChannelId", newChannelId);
-            
+            Object currentChannelId = payload.get("currentChannelId");
+            if (currentChannelId == null) {
+                currentChannelId = payload.get("newChannelId");
+            }
+            details.put("currentChannelId", currentChannelId);
+
             FDC3Event event = new FDC3Event(FDC3Event.Type.USER_CHANNEL_CHANGED, details);
             handler.handleEvent(event);
         } else {
-            // For other event types (currently unused but meeting the spec)
-            // Convert message type to FDC3Event.Type
-            FDC3Event.Type fdc3EventType = messageTypeToFDC3EventType(messageType);
-            FDC3Event event = new FDC3Event(fdc3EventType, payload);
-            handler.handleEvent(event);
+            handler.handleEvent(new FDC3Event(messageType, payload));
         }
     }
 
@@ -141,33 +137,4 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
         }
     }
 
-    private FDC3Event.Type toFDC3EventType(String eventType) {
-        if (eventType == null) {
-            return null;
-        }
-        switch (eventType) {
-            case "userChannelChanged":
-                return FDC3Event.Type.USER_CHANNEL_CHANGED;
-            default:
-                throw new RuntimeException("UnknownEventType");
-        }
-    }
-
-    /**
-     * Converts a message type (e.g., "channelChangedEvent") to the corresponding
-     * FDC3Event.Type enum value (e.g., USER_CHANNEL_CHANGED).
-     * This is used for messages received from the desktop agent.
-     */
-    private FDC3Event.Type messageTypeToFDC3EventType(String messageType) {
-        if (messageType == null) {
-            throw new RuntimeException("UnknownEventType");
-        }
-        switch (messageType) {
-            case "channelChangedEvent":
-                return FDC3Event.Type.USER_CHANNEL_CHANGED;
-            default:
-                // Currently unused but provided for future event types
-                throw new RuntimeException("UnknownEventType");
-        }
-    }
 }

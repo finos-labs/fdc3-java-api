@@ -17,10 +17,7 @@
 package org.finos.fdc3.proxy.channels;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Consumer;
-
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.channel.PrivateChannel;
 import org.finos.fdc3.api.types.ContextHandler;
