@@ -67,24 +67,44 @@ public class FDC3Event {
     }
 
     private final Type type;
+    private final String wireType;
     private final Object details;
 
     public FDC3Event(Type type, Object details) {
         this.type = type;
+        this.wireType = null;
+        this.details = details;
+    }
+
+    private FDC3Event(String wireType, Object details) {
+        this.type = null;
+        this.wireType = wireType;
         this.details = details;
     }
 
     /**
-     * Returns the type of the event.     
+     * Creates an event forwarded from a DACP wire message (for wildcard listeners).
+     */
+    public static FDC3Event fromWire(String wireMessageType, Object details) {
+        return new FDC3Event(wireMessageType, details);
+    }
+
+    /**
+     * Returns the typed enum constant for this event, or {@code null} for wire-forwarded events.
      */
     public Type getType() {
         return type;
     }
 
     /**
+     * Returns the event type as a string (API or wire message type).
+     */
+    public String getTypeString() {
+        return type != null ? type.getValue() : wireType;
+    }
+
+    /**
      * Returns the details object containing additional information about the event.
-     * 
-     * @return the event details
      */
     public Object getDetails() {
         return details;

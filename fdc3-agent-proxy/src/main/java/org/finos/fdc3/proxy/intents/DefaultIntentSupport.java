@@ -155,7 +155,7 @@ public class DefaultIntentSupport implements IntentSupport {
         @SuppressWarnings("unchecked")
         Map<String, Object> payloadMap = (Map<String, Object>) requestMap.get("payload");
         if (payloadMap != null) {
-            payloadMap.put("metadata", ContextMetadataMapper.toWire(metadata));
+            payloadMap.put("metadata", ContextMetadataMapper.toWireForIntentRequest(metadata, messaging::createUUID));
         }
 
         return messaging.<Map<String, Object>>exchange(requestMap, "raiseIntentResponse", appLaunchTimeout)
@@ -223,7 +223,7 @@ public class DefaultIntentSupport implements IntentSupport {
         @SuppressWarnings("unchecked")
         Map<String, Object> raiseForContextPayload = (Map<String, Object>) requestMap.get("payload");
         if (raiseForContextPayload != null) {
-            raiseForContextPayload.put("metadata", ContextMetadataMapper.toWire(metadata));
+            raiseForContextPayload.put("metadata", ContextMetadataMapper.toWireForIntentRequest(metadata, messaging::createUUID));
         }
 
         return messaging.<Map<String, Object>>exchange(requestMap, "raiseIntentForContextResponse", appLaunchTimeout)

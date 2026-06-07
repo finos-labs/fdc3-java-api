@@ -81,10 +81,15 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
 
     @Override
     public boolean filter(Map<String, Object> message) {
-        if (eventType == null) {
-            return message.get("type") != null;
+        String messageType = (String) message.get("type");
+        if (messageType == null) {
+            return false;
         }
-        return getExpectedMessageType().equals(message.get("type"));
+        if (eventType == null) {
+            // Wildcard listeners receive agent events only, not request/response traffic.
+            return !messageType.endsWith("Response") && !messageType.endsWith("Request");
+        }
+        return getExpectedMessageType().equals(messageType);
     }
 
     /**
@@ -121,7 +126,7 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
             FDC3Event event = new FDC3Event(FDC3Event.Type.USER_CHANNEL_CHANGED, details);
             handler.handleEvent(event);
         } else {
-            handler.handleEvent(new FDC3Event(messageType, payload));
+            handler.handleEvent(FDC3Event.fromWire(messageType, payload));
         }
     }
 

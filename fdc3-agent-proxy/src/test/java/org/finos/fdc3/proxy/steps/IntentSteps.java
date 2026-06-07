@@ -30,8 +30,8 @@ import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.ContextMetadata;
 import org.finos.fdc3.api.metadata.DetachedSignature;
-import org.finos.fdc3.api.metadata.DisplayMetadata;
 import org.finos.fdc3.proxy.support.ParseAntiReplayClaims;
+import org.finos.fdc3.api.metadata.DisplayMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.IntentHandler;
@@ -133,38 +133,42 @@ public class IntentSteps {
         world.getMessaging().setIntentResult(intentResult);
     }
 
+    @Given("Raise Intent returns a context of {string} with traceId {string} and signature {string}")
+    public void raiseIntentReturnsContextWithMetadata(String result, String traceId, String signature) {
+        raiseIntentReturnsContextWithMetadataAndAntiReplay(result, traceId, signature, null);
+    }
+
     @Given("Raise Intent returns a context of {string} with traceId {string} and signature {string} and antiReplay claims {string}")
-    public void raiseIntentReturnsContextWithMetadata(
+    public void raiseIntentReturnsContextWithMetadataAndAntiReplay(
             String result, String traceId, String signature, String antiReplayClaims) {
         TestMessaging.PossibleIntentResult intentResult = new TestMessaging.PossibleIntentResult();
         intentResult.setContext((Context) handleResolve(result, world));
-        ContextMetadata resultMetadata = new ContextMetadata();
-        resultMetadata.setSource(new AppIdentifier("some-app", "abc123"));
-        resultMetadata.setTimestamp(Instant.parse("2024-01-01T00:00:00Z"));
-        resultMetadata.setTraceId(traceId);
-        resultMetadata.setSignature(new DetachedSignature(
-                signature + " (protected part)",
-                signature + " (signature part)"));
-        resultMetadata.setAntiReplay(ParseAntiReplayClaims.parse(antiReplayClaims));
-        Map<String, Object> custom = new HashMap<>();
-        custom.put("priority", "high");
-        resultMetadata.setCustom(custom);
-        intentResult.setResultMetadata(resultMetadata);
+        intentResult.setResultMetadata(metadataWithTraceSignatureAndAntiReplay(traceId, signature, antiReplayClaims));
         world.getMessaging().setIntentResult(intentResult);
     }
 
+    @Given("{string} is metadata with traceId {string} and signature {string}")
+    public void isMetadataWithTraceId(String field, String traceId, String signature) {
+        world.set(field, metadataWithTraceSignatureAndAntiReplay(traceId, signature, null));
+    }
+
     @Given("{string} is metadata with traceId {string} and signature {string} and antiReplay claims {string}")
-    public void isMetadataWithTraceId(String field, String traceId, String signature, String antiReplayClaims) {
-        AppProvidableContextMetadata metadata = ContextMetadata.appProvidable();
+    public void isMetadataWithTraceIdAndAntiReplay(String field, String traceId, String signature, String antiReplayClaims) {
+        world.set(field, metadataWithTraceSignatureAndAntiReplay(traceId, signature, antiReplayClaims));
+    }
+
+    private ContextMetadata metadataWithTraceSignatureAndAntiReplay(
+            String traceId, String signature, String antiReplayClaims) {
+        ContextMetadata metadata = ContextMetadata.appProvidable();
         metadata.setTraceId(traceId);
-        metadata.setSignature(new DetachedSignature(
-                signature + " (protected part)",
-                signature + " (signature part)"));
-        metadata.setAntiReplay(ParseAntiReplayClaims.parse(antiReplayClaims));
+        metadata.setSignature(testDetachedSignature(signature));
+        if (antiReplayClaims != null) {
+            metadata.setAntiReplay(ParseAntiReplayClaims.parse(antiReplayClaims));
+        }
         Map<String, Object> custom = new HashMap<>();
         custom.put("priority", "high");
         metadata.setCustom(custom);
-        world.set(field, metadata);
+        return metadata;
     }
 
     @Given("Raise Intent will throw a {string} error")
@@ -241,6 +245,13 @@ public class IntentSteps {
         payload.put("context", handleResolve(context, world));
         payload.put("intent", intent);
         payload.put("raiseIntentRequestUuid", "request-id");
+
+        ContextMetadata metadata = ContextMetadata.appProvidable();
+        metadata.setTimestamp(Instant.now());
+        metadata.setSource(world.getMessaging().getAppIdentifier());
+        metadata.setTraceId(world.getMessaging().createUUID());
+        payload.put("metadata", metadata);
+
         message.put("payload", payload);
 
         world.set(field, message);
@@ -374,6 +385,13 @@ public class IntentSteps {
         detail.setContext(context);
         detail.setResultType(resultType);
         return detail;
+    }
+
+    private static DetachedSignature testDetachedSignature(String base) {
+        DetachedSignature sig = new DetachedSignature();
+        sig.setSignature(base + " (signature part)");
+        sig.setProtectedHeader(base + " (protected part)");
+        return sig;
     }
 }
 

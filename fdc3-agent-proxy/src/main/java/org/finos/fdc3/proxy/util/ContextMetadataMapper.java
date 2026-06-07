@@ -20,9 +20,12 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 
+import org.finos.fdc3.api.metadata.AntiReplayClaims;
 import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.ContextMetadata;
+import org.finos.fdc3.api.metadata.DetachedSignature;
 import org.finos.fdc3.api.types.AppIdentifier;
 
 /**
@@ -37,13 +40,60 @@ public final class ContextMetadataMapper {
      * Outbound metadata for DACP request payloads (reference TS: {@code metadata ?? {}}).
      */
     public static Map<String, Object> toWire(AppProvidableContextMetadata metadata) {
+        return toWire(metadata, false, null);
+    }
+
+    /**
+     * Outbound metadata for intent raise requests (reference TS: always includes {@code traceId}).
+     */
+    public static Map<String, Object> toWireForIntentRequest(
+            AppProvidableContextMetadata metadata,
+            Supplier<String> traceIdSupplier) {
+        return toWire(metadata, true, traceIdSupplier);
+    }
+
+    private static Map<String, Object> toWire(
+            AppProvidableContextMetadata metadata,
+            boolean ensureTraceId,
+            Supplier<String> traceIdSupplier) {
         if (metadata == null) {
+            if (ensureTraceId && traceIdSupplier != null) {
+                Map<String, Object> wire = new LinkedHashMap<>();
+                wire.put("traceId", traceIdSupplier.get());
+                return wire;
+            }
             return new LinkedHashMap<>();
         }
-        if (metadata instanceof ContextMetadata) {
-            return new LinkedHashMap<>((ContextMetadata) metadata);
+        if (!(metadata instanceof ContextMetadata)) {
+            throw new IllegalArgumentException("metadata must be ContextMetadata");
         }
-        throw new IllegalArgumentException("metadata must be ContextMetadata");
+        ContextMetadata cm = (ContextMetadata) metadata;
+        Map<String, Object> wire = new LinkedHashMap<>();
+
+        String traceId = cm.getTraceId();
+        if (traceId == null && ensureTraceId && traceIdSupplier != null) {
+            traceId = traceIdSupplier.get();
+        }
+        if (traceId != null) {
+            wire.put("traceId", traceId);
+        }
+
+        DetachedSignature signature = cm.getSignature();
+        if (signature != null) {
+            wire.put("signature", signatureToMap(signature));
+        }
+
+        AntiReplayClaims antiReplay = cm.getAntiReplay();
+        if (antiReplay != null) {
+            wire.put("antiReplay", antiReplayToMap(antiReplay));
+        }
+
+        Map<String, Object> custom = cm.getCustom();
+        if (custom != null) {
+            wire.put("custom", new LinkedHashMap<>(custom));
+        }
+
+        return wire;
     }
 
     public static ContextMetadata fromWire(Map<String, Object> payloadMetadata, Object messageTimestamp) {
@@ -87,5 +137,24 @@ public final class ContextMetadataMapper {
         } else if (source instanceof Map) {
             metadata.setSource(AppIdentifier.fromMap((Map<String, Object>) source));
         }
+    }
+
+    private static Map<String, Object> signatureToMap(DetachedSignature signature) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        if (signature.getProtectedHeader() != null) {
+            map.put("protected", signature.getProtectedHeader());
+        }
+        if (signature.getSignature() != null) {
+            map.put("signature", signature.getSignature());
+        }
+        return map;
+    }
+
+    private static Map<String, Object> antiReplayToMap(AntiReplayClaims antiReplay) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("iat", antiReplay.getIat());
+        map.put("exp", antiReplay.getExp());
+        map.put("jti", antiReplay.getJti());
+        return map;
     }
 }

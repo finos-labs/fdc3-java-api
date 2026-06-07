@@ -642,7 +642,10 @@ public class Fdc3GenericSteps {
             promise = ((Supplier<?>) promise).get();
         }
         if (promise instanceof CompletionStage) {
-            return ((CompletionStage<?>) promise).toCompletableFuture().get(30, TimeUnit.SECONDS);
+            promise = ((CompletionStage<?>) promise).toCompletableFuture().get(30, TimeUnit.SECONDS);
+        }
+        if (promise instanceof java.util.Optional) {
+            return ((java.util.Optional<?>) promise).orElse(null);
         }
         return promise;
     }

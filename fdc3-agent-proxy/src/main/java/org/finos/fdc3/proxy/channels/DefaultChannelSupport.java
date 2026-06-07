@@ -100,6 +100,31 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
         return loadChannel.thenCompose(v -> registerUserChannelChangedListener());
     }
 
+    /**
+     * Update cached user channel synchronously from a channel id (e.g. from userChannelChanged).
+     * Must run before any await in event handlers so other listeners calling getCurrentChannel()
+     * do not read a stale channel.
+     */
+    private void applyCurrentChannelFromId(String channelId) {
+        if (channelId == null) {
+            currentChannel = null;
+            return;
+        }
+        if (userChannels != null) {
+            Channel cached = userChannels.stream()
+                    .filter(c -> channelId.equals(c.getId()))
+                    .findFirst()
+                    .orElse(null);
+            if (cached != null) {
+                currentChannel = cached;
+            } else if (currentChannel == null || !channelId.equals(currentChannel.getId())) {
+                currentChannel = null;
+            }
+        } else if (currentChannel == null || !channelId.equals(currentChannel.getId())) {
+            currentChannel = null;
+        }
+    }
+
     private CompletionStage<Void> registerUserChannelChangedListener() {
         return addEventListener(event -> {
             @SuppressWarnings("unchecked")
@@ -107,47 +132,34 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
             String newChannelId = details != null ? (String) details.get("currentChannelId") : null;
             Logger.debug("Desktop Agent reports channel changed: {}", newChannelId);
 
-            getUserChannelsCached().thenAccept(channels -> {
-                Channel theChannel = null;
+            applyCurrentChannelFromId(newChannelId);
 
-                if (newChannelId != null) {
-                    theChannel = channels.stream()
-                            .filter(c -> newChannelId.equals(c.getId()))
-                            .findFirst()
-                            .orElse(null);
+            Channel theChannel = currentChannel;
+            CompletionStage<Channel> resolveChannel;
+            if (newChannelId != null && theChannel == null) {
+                resolveChannel = getUserChannels().thenApply(channels -> channels.stream()
+                        .filter(c -> newChannelId.equals(c.getId()))
+                        .findFirst()
+                        .orElse(null));
+            } else {
+                resolveChannel = CompletableFuture.completedFuture(theChannel);
+            }
 
-                    if (theChannel == null) {
-                        Logger.debug(
-                                "Unknown user channel, querying Desktop Agent for updated user channels: {}",
-                                newChannelId);
-                        getUserChannels().thenAccept(updatedChannels -> {
-                            Channel foundChannel = updatedChannels.stream()
-                                    .filter(c -> newChannelId.equals(c.getId()))
-                                    .findFirst()
-                                    .orElse(null);
-
-                            if (foundChannel == null) {
-                                Logger.warn(
-                                        "Received user channel update with unknown user channel (user channel listeners will not work): {}",
-                                        newChannelId);
-                            }
-
-                            currentChannel = foundChannel;
-                            channelSelector.updateChannel(
-                                    foundChannel != null ? foundChannel.getId() : null, updatedChannels);
-                            for (UserChannelContextListener listener : userChannelListeners) {
-                                listener.changeChannel();
-                            }
-                        });
-                        return;
-                    }
+            resolveChannel.thenCompose(channel -> {
+                if (newChannelId != null && channel == null) {
+                    Logger.warn(
+                            "Received user channel update with unknown user channel (user channel listeners will not work): {}",
+                            newChannelId);
                 }
-
-                currentChannel = theChannel;
-                channelSelector.updateChannel(theChannel != null ? theChannel.getId() : null, channels);
+                currentChannel = channel;
+                return getUserChannelsCached();
+            }).thenCompose(channels -> {
+                channelSelector.updateChannel(currentChannel != null ? currentChannel.getId() : null, channels);
+                CompletionStage<Void> notify = CompletableFuture.completedFuture(null);
                 for (UserChannelContextListener listener : userChannelListeners) {
-                    listener.changeChannel();
+                    notify = notify.thenCompose(v -> listener.changeChannel());
                 }
+                return notify;
             });
         }, "userChannelChanged").thenApply(listener -> null);
     }
@@ -319,7 +331,7 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
 
         return messaging.<Map<String, Object>>exchange(requestMap, "joinUserChannelResponse", messageExchangeTimeout)
                 .thenCompose(response -> getUserChannelsCached())
-                .thenAccept(channels -> {
+                .thenCompose(channels -> {
                     currentChannel = channels.stream()
                             .filter(c -> id.equals(c.getId()))
                             .findFirst()
@@ -331,10 +343,11 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
 
                     channelSelector.updateChannel(id, channels);
 
-                    // Notify all user channel listeners of the channel change
+                    CompletionStage<Void> notify = CompletableFuture.completedFuture(null);
                     for (UserChannelContextListener listener : userChannelListeners) {
-                        listener.changeChannel();
+                        notify = notify.thenCompose(v -> listener.changeChannel());
                     }
+                    return notify;
                 });
     }
 

@@ -240,7 +240,10 @@ public class ChannelStateResponse implements AutomaticResponse {
             metadata.put("source", source);
             metadata.put("timestamp", java.time.Instant.now().toString());
             metadata.put("traceId", "test-trace-id");
-            metadata.put("signature", "test-signature");
+            Map<String, String> signature = new HashMap<>();
+            signature.put("protected", "test-signature (protected part)");
+            signature.put("signature", "test-signature (signature part)");
+            metadata.put("signature", signature);
             Map<String, String> custom = new HashMap<>();
             custom.put("key", "value");
             metadata.put("custom", custom);

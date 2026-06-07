@@ -27,6 +27,7 @@ import java.util.Map;
 
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.ContextMetadata;
+import org.finos.fdc3.api.metadata.DetachedSignature;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
@@ -60,7 +61,7 @@ public class ChannelSteps {
     @Given("{string} is a BroadcastEvent message on channel {string} with context {string}")
     public void isABroadcastEventMessage(String field, String channel, String contextType) {
         ContextMetadata metadata = defaultBroadcastMetadata();
-        metadata.put("signature", "");
+        metadata.setSignature(new DetachedSignature());
 
         Map<String, Object> message = new HashMap<>();
         message.put("type", "broadcastEvent");
@@ -76,11 +77,15 @@ public class ChannelSteps {
 
     @Given("{string} is a BroadcastEvent message on channel {string} with context {string} and metadata")
     public void isABroadcastEventMessageWithMetadata(String field, String channel, String contextType) {
-        ContextMetadata metadata = defaultBroadcastMetadata();
-        metadata.put("signature", "test-sig");
-        Map<String, Object> custom = new HashMap<>();
-        custom.put("region", "EMEA");
-        metadata.setCustom(custom);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("timestamp", Instant.now().toString());
+        metadata.put("source", world.getMessaging().getAppIdentifier());
+        metadata.put("traceId", world.getMessaging().createUUID());
+        Map<String, String> signature = new HashMap<>();
+        signature.put("protected", "test-sig (protected part)");
+        signature.put("signature", "test-sig (signature part)");
+        metadata.put("signature", signature);
+        metadata.put("custom", Map.of("region", "EMEA"));
 
         Map<String, Object> message = new HashMap<>();
         message.put("type", "broadcastEvent");
@@ -417,7 +422,10 @@ public class ChannelSteps {
 
             // Handle CompletionStage/CompletableFuture
             if (result instanceof java.util.concurrent.CompletionStage) {
-                return ((java.util.concurrent.CompletionStage<?>) result).toCompletableFuture().get();
+                result = ((java.util.concurrent.CompletionStage<?>) result).toCompletableFuture().get();
+            }
+            if (result instanceof java.util.Optional) {
+                return ((java.util.Optional<?>) result).orElse(null);
             }
             return result;
         }

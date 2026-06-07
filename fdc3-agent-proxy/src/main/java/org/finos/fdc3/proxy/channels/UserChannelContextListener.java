@@ -16,8 +16,8 @@
 
 package org.finos.fdc3.proxy.channels;
 
-import org.finos.fdc3.api.channel.Channel;
-import org.finos.fdc3.api.types.Listener;
+import java.util.concurrent.CompletionStage;
+
 import org.finos.fdc3.proxy.listeners.RegisterableListener;
 
 /**
@@ -25,12 +25,12 @@ import org.finos.fdc3.proxy.listeners.RegisterableListener;
  * fdc3.addContextListener method. In this scenario, the listener will respond to broadcasts
  * on whatever is the current user channel.
  */
-public interface UserChannelContextListener extends Listener, RegisterableListener {
+public interface UserChannelContextListener extends RegisterableListener {
 
     /**
      * This method is called when the user channel changes. The listener should then
      * call its handler with the latest piece of relevant channel state and start responding to
      * events on the new channelId.
      */
-    void changeChannel();
+    CompletionStage<Void> changeChannel();
 }

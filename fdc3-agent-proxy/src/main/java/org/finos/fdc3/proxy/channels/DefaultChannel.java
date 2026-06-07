@@ -147,14 +147,8 @@ public class DefaultChannel implements Channel {
 
         return messaging.<Map<String, Object>>exchange(requestMap, "getCurrentContextResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    GetCurrentContextResponse typedResponse = messaging.getConverter()
-                            .convertValue(response, GetCurrentContextResponse.class);
-
-                    if (typedResponse.getPayload() != null &&
-                        typedResponse.getPayload().getContext() != null) {
-                        return Optional.of(typedResponse.getPayload().getContext());
-                    }
-                    return Optional.empty();
+                    Context context = extractContextFromResponse(response);
+                    return context != null ? Optional.of(context) : Optional.empty();
                 });
     }
 
@@ -174,17 +168,14 @@ public class DefaultChannel implements Channel {
 
         return messaging.<Map<String, Object>>exchange(requestMap, "getCurrentContextResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    GetCurrentContextResponse typedResponse = messaging.getConverter()
-                            .convertValue(response, GetCurrentContextResponse.class);
-
-                    if (typedResponse.getPayload() == null
-                            || typedResponse.getPayload().getContext() == null) {
+                    Context context = extractContextFromResponse(response);
+                    if (context == null) {
                         return Optional.empty();
                     }
 
-                    Context context = typedResponse.getPayload().getContext();
-                    Map<String, Object> responseMap = response;
-                    Map<String, Object> responsePayload = (Map<String, Object>) responseMap.get("payload");
+                    GetCurrentContextResponse typedResponse = messaging.getConverter()
+                            .convertValue(response, GetCurrentContextResponse.class);
+                    Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
                     Map<String, Object> payloadMetadata = responsePayload != null
                             ? (Map<String, Object>) responsePayload.get("metadata")
                             : null;
@@ -218,5 +209,24 @@ public class DefaultChannel implements Channel {
                 handler
         );
         return listener.register().thenApply(v -> listener);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Context extractContextFromResponse(Map<String, Object> response) {
+        Map<String, Object> payload = (Map<String, Object>) response.get("payload");
+        if (payload == null) {
+            return null;
+        }
+        Object ctx = payload.get("context");
+        if (ctx == null) {
+            return null;
+        }
+        if (ctx instanceof Context) {
+            return (Context) ctx;
+        }
+        if (ctx instanceof Map) {
+            return Context.fromMap((Map<String, Object>) ctx);
+        }
+        return null;
     }
 }

@@ -46,10 +46,7 @@ public class DefaultUserChannelContextListener extends DefaultContextListener im
 
     @Override
     public CompletionStage<Void> register() {
-        return super.register().thenCompose(v -> {
-            changeChannel();
-            return CompletableFuture.completedFuture(null);
-        });
+        return super.register().thenCompose(v -> changeChannel());
     }
 
     /**
@@ -57,14 +54,15 @@ public class DefaultUserChannelContextListener extends DefaultContextListener im
      * current channel and notifies the handler if there is one.
      */
     @Override
-    public void changeChannel() {
+    public CompletionStage<Void> changeChannel() {
         Channel currentChannel = channelSupport.getCurrentChannelInternal();
-        if (currentChannel != null) {
-            currentChannel.getCurrentContextWithMetadata(contextType)
-                    .thenAccept(resultOpt -> {
-                        resultOpt.ifPresent(cwm -> handler.handleContext(cwm.getContext(), cwm.getMetadata()));
-                    });
+        if (currentChannel == null) {
+            return CompletableFuture.completedFuture(null);
         }
+        return currentChannel.getCurrentContextWithMetadata(contextType)
+                .thenAccept(resultOpt -> {
+                    resultOpt.ifPresent(cwm -> handler.handleContext(cwm.getContext(), cwm.getMetadata()));
+                });
     }
 
     @Override
