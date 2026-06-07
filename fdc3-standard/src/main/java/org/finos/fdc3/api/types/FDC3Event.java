@@ -17,6 +17,7 @@
 package org.finos.fdc3.api.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
@@ -60,6 +61,30 @@ public class FDC3Event {
             throw new IllegalArgumentException("Unknown FDC3 event type: " + value);
         }
 
+        /**
+         * Maps a DACP agent event message type to the corresponding API event type,
+         * or {@code null} if the message is not a recognised FDC3 event.
+         */
+        public static Type fromMessageType(String messageType) {
+            if (messageType == null) {
+                return null;
+            }
+            switch (messageType) {
+                case "channelChangedEvent":
+                    return USER_CHANNEL_CHANGED;
+                case "contextClearedEvent":
+                    return CONTEXT_CLEARED;
+                case "privateChannelOnAddContextListenerEvent":
+                    return ADD_CONTEXT_LISTENER;
+                case "privateChannelOnUnsubscribeEvent":
+                    return ON_UNSUBSCRIBE;
+                case "privateChannelOnDisconnectEvent":
+                    return ON_DISCONNECT;
+                default:
+                    return null;
+            }
+        }
+
         @Override
         public String toString() {
             return value;
@@ -67,40 +92,20 @@ public class FDC3Event {
     }
 
     private final Type type;
-    private final String wireType;
     private final Object details;
 
-    public FDC3Event(Type type, Object details) {
+    @JsonCreator
+    public FDC3Event(@JsonProperty("type") Type type, @JsonProperty("details") Object details) {
         this.type = type;
-        this.wireType = null;
-        this.details = details;
-    }
-
-    private FDC3Event(String wireType, Object details) {
-        this.type = null;
-        this.wireType = wireType;
         this.details = details;
     }
 
     /**
-     * Creates an event forwarded from a DACP wire message (for wildcard listeners).
-     */
-    public static FDC3Event fromWire(String wireMessageType, Object details) {
-        return new FDC3Event(wireMessageType, details);
-    }
-
-    /**
-     * Returns the typed enum constant for this event, or {@code null} for wire-forwarded events.
+     * Returns the typed enum constant for this event, or {@code null} for
+     * wildcard listeners receiving unmapped agent events.
      */
     public Type getType() {
         return type;
-    }
-
-    /**
-     * Returns the event type as a string (API or wire message type).
-     */
-    public String getTypeString() {
-        return type != null ? type.getValue() : wireType;
     }
 
     /**

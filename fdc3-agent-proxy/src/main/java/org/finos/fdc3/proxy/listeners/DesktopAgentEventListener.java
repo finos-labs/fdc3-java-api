@@ -113,8 +113,13 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
     public void action(Map<String, Object> message) {
         String messageType = (String) message.get("type");
         Map<String, Object> payload = (Map<String, Object>) message.get("payload");
-        
-        // Restructure the event based on message type
+
+        FDC3Event.Type eventType = FDC3Event.Type.fromMessageType(messageType);
+        Object details = buildEventDetails(messageType, payload);
+        handler.handleEvent(new FDC3Event(eventType, details));
+    }
+
+    private static Object buildEventDetails(String messageType, Map<String, Object> payload) {
         if ("channelChangedEvent".equals(messageType)) {
             Map<String, Object> details = new HashMap<>();
             Object currentChannelId = payload.get("currentChannelId");
@@ -122,12 +127,9 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
                 currentChannelId = payload.get("newChannelId");
             }
             details.put("currentChannelId", currentChannelId);
-
-            FDC3Event event = new FDC3Event(FDC3Event.Type.USER_CHANNEL_CHANGED, details);
-            handler.handleEvent(event);
-        } else {
-            handler.handleEvent(FDC3Event.fromWire(messageType, payload));
+            return details;
         }
+        return payload;
     }
 
     private FDC3EventType toFDC3SchemaEventType(String eventType) {
