@@ -26,20 +26,16 @@ import io.cucumber.spring.ScenarioScope;
 
 /**
  * Spring configuration for Cucumber tests.
- * 
- * Scans both local step definitions and the generic steps from fdc3-testing.
+ *
+ * Scans GetAgent-specific step definitions and generic steps from standard-cucumber-steps.
  */
 @Configuration
 @ComponentScan(basePackages = {
     "org.finos.fdc3.getagent.steps",
-    "org.finos.fdc3.testing.steps"
+    "io.github.robmoffat.steps"
 })
 public class TestSpringConfig {
 
-    /**
-     * Create PropsWorld as a scenario-scoped bean.
-     * This is shared across all step definition classes within a scenario.
-     */
     @Bean
     @ScenarioScope(proxyMode = ScopedProxyMode.NO)
     public PropsWorld propsWorld() {

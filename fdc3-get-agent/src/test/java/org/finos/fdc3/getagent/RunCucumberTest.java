@@ -1,5 +1,5 @@
-/*
- * Copyright FINOS and Contributors to the FDC3 project
+/**
+ * Copyright FINOS and its Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.finos.fdc3.proxy;
+
+package org.finos.fdc3.getagent;
 
 import org.junit.platform.suite.api.ConfigurationParameter;
 import org.junit.platform.suite.api.IncludeEngines;
@@ -25,17 +26,14 @@ import static io.cucumber.junit.platform.engine.Constants.OBJECT_FACTORY_PROPERT
 import static io.cucumber.junit.platform.engine.Constants.PLUGIN_PROPERTY_NAME;
 
 /**
- * JUnit Platform Suite entry point so Maven Surefire discovers Cucumber scenarios,
- * reports an accurate test count, and fails the build on scenario failures.
- *
- * @see <a href="https://github.com/cucumber/cucumber-jvm/tree/main/cucumber-junit-platform-engine">cucumber-junit-platform-engine</a>
+ * JUnit Platform Suite entry point so Maven Surefire discovers Cucumber scenarios.
  */
 @Suite
 @IncludeEngines("cucumber")
-@ConfigurationParameter(key = FEATURES_PROPERTY_NAME, value = "classpath:temporary-features")
+@ConfigurationParameter(key = FEATURES_PROPERTY_NAME, value = "classpath:features")
 @ConfigurationParameter(
         key = GLUE_PROPERTY_NAME,
-        value = "org.finos.fdc3.proxy,org.finos.fdc3.proxy.steps,org.finos.fdc3.proxy.world,io.github.robmoffat.steps")
+        value = "org.finos.fdc3.getagent,org.finos.fdc3.getagent.steps,io.github.robmoffat.steps")
 @ConfigurationParameter(key = OBJECT_FACTORY_PROPERTY_NAME, value = "io.cucumber.spring.SpringFactory")
 @ConfigurationParameter(
         key = PLUGIN_PROPERTY_NAME,

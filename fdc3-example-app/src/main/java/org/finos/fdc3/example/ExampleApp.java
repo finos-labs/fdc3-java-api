@@ -50,7 +50,9 @@ import java.util.Map;
  * <p>
  * Required system properties or environment variables:
  * <ul>
- *   <li>{@code FDC3_WEBSOCKET_URL} - WebSocket URL for the Desktop Agent</li>
+ *   <li>{@code FDC3_WEBSOCKET_URL} - WebSocket URL (e.g. ws://host/fdc3/ws)</li>
+ *   <li>{@code FDC3_SESSION_ID} - Sail session ID from pairing UI</li>
+ *   <li>{@code FDC3_CONNECTION_SECRET} - Per-app shared secret from pairing UI</li>
  * </ul>
  */
 public class ExampleApp extends JFrame {
@@ -75,8 +77,9 @@ public class ExampleApp extends JFrame {
     private JButton broadcastCurrencyButton;
     private JButton broadcastContactButton;
     
-    // WebSocket URL (set from environment or user prompt)
     private String websocketUrl;
+    private String sessionId;
+    private String sharedSecret;
     
     // Stored connection info for reconnection
     private String lastInstanceId;
@@ -99,50 +102,67 @@ public class ExampleApp extends JFrame {
      * If not set, prompt the user for the URL.
      */
     private void initializeConnection() {
-        // Check environment variable first
-        websocketUrl = System.getenv("FDC3_WEBSOCKET_URL");
-        
-        // Also check system property as fallback
-        if (websocketUrl == null || websocketUrl.isEmpty()) {
-            websocketUrl = System.getProperty("FDC3_WEBSOCKET_URL");
-        }
-        
-        if (websocketUrl == null || websocketUrl.isEmpty()) {
-            // Prompt user for the URL
-            promptForWebSocketUrl();
+        websocketUrl = envOrProperty("FDC3_WEBSOCKET_URL");
+        sessionId = envOrProperty("FDC3_SESSION_ID");
+        sharedSecret = envOrProperty("FDC3_CONNECTION_SECRET");
+
+        if (websocketUrl == null || sessionId == null || sharedSecret == null) {
+            promptForConnectionConfig();
         } else {
-            // URL is set, proceed with connection
-            log("Using FDC3_WEBSOCKET_URL: " + websocketUrl);
+            log("Using WSCP connection config from environment");
             connectToAgent();
         }
     }
-    
-    /**
-     * Show a dialog prompting the user for the WebSocket URL.
-     */
-    private void promptForWebSocketUrl() {
-        String message = "FDC3_WEBSOCKET_URL environment variable is not set.\n\n" +
-                "Please enter the WebSocket URL to connect to the Desktop Agent.\n" +
-                "You can find this URL in the Sail app directory for native apps.\n\n" +
-                "Example: ws://localhost:8090/remote/user-abc123/1a2b3c4d5e6f";
-        
-        String url = JOptionPane.showInputDialog(
-                this,
-                message,
-                "Enter WebSocket URL",
-                JOptionPane.QUESTION_MESSAGE);
-        
-        if (url != null && !url.trim().isEmpty()) {
-            websocketUrl = url.trim();
-            log("Using user-provided WebSocket URL: " + websocketUrl);
-            connectToAgent();
-        } else {
-            // User cancelled or entered empty string
-            statusLabel.setText("Not Connected");
-            statusLabel.setForeground(Color.RED);
-            log("No WebSocket URL provided. Cannot connect to Desktop Agent.");
-            log("Set FDC3_WEBSOCKET_URL environment variable or restart and enter URL.");
+
+    private static String envOrProperty(String name) {
+        String v = System.getenv(name);
+        if (v == null || v.isEmpty()) {
+            v = System.getProperty(name);
         }
+        return (v == null || v.isEmpty()) ? null : v;
+    }
+
+    private void promptForConnectionConfig() {
+        String message = "WSCP connection values are required.\n\n" +
+                "Copy these from the Sail app directory for your native app:\n" +
+                "  • WebSocket URL (same for all apps, e.g. ws://localhost:8090/fdc3/ws)\n" +
+                "  • Session ID\n" +
+                "  • Shared secret (unique per app)\n\n" +
+                "Enter WebSocket URL:";
+
+        String url = JOptionPane.showInputDialog(this, message, "WSCP WebSocket URL",
+                JOptionPane.QUESTION_MESSAGE);
+        if (url == null || url.trim().isEmpty()) {
+            showConfigError("No WebSocket URL provided.");
+            return;
+        }
+        websocketUrl = url.trim();
+
+        String sid = JOptionPane.showInputDialog(this, "Enter Session ID:", "WSCP Session ID",
+                JOptionPane.QUESTION_MESSAGE);
+        if (sid == null || sid.trim().isEmpty()) {
+            showConfigError("No session ID provided.");
+            return;
+        }
+        sessionId = sid.trim();
+
+        String secret = JOptionPane.showInputDialog(this, "Enter shared secret:", "WSCP Shared Secret",
+                JOptionPane.QUESTION_MESSAGE);
+        if (secret == null || secret.trim().isEmpty()) {
+            showConfigError("No shared secret provided.");
+            return;
+        }
+        sharedSecret = secret.trim();
+
+        log("Using user-provided WSCP connection config");
+        connectToAgent();
+    }
+
+    private void showConfigError(String msg) {
+        statusLabel.setText("Not Connected");
+        statusLabel.setForeground(Color.RED);
+        log(msg);
+        log("Set FDC3_WEBSOCKET_URL, FDC3_SESSION_ID, and FDC3_CONNECTION_SECRET or restart.");
     }
 
     private void initUI() {
@@ -275,17 +295,19 @@ public class ExampleApp extends JFrame {
     }
 
     private void connectToAgent() {
-        if (websocketUrl == null || websocketUrl.isEmpty()) {
-            log("ERROR: No WebSocket URL configured");
+        if (websocketUrl == null || sessionId == null || sharedSecret == null) {
+            log("ERROR: WSCP connection config incomplete");
             return;
         }
-        
+
         log("Connecting to Desktop Agent at: " + websocketUrl);
-        
+
         try {
             GetAgentParams params = GetAgentParams.builder()
                     .timeoutMs(30000)
                     .webSocketUrl(websocketUrl)
+                    .sessionId(sessionId)
+                    .sharedSecret(sharedSecret)
                     .build();
 
             GetAgent.getAgent(params)
@@ -367,8 +389,7 @@ public class ExampleApp extends JFrame {
                 "Enter New URL");
         
         if (result == 0) {
-            // User wants to try a different URL
-            promptForWebSocketUrl();
+            promptForConnectionConfig();
         }
     }
     
@@ -423,11 +444,11 @@ public class ExampleApp extends JFrame {
      * Reconnect to the Desktop Agent using the stored instanceId and instanceUuid.
      */
     private void reconnect() {
-        if (websocketUrl == null || websocketUrl.isEmpty()) {
-            log("ERROR: No WebSocket URL configured for reconnection");
+        if (websocketUrl == null || sessionId == null) {
+            log("ERROR: webSocketUrl and sessionId required for reconnection");
             return;
         }
-        
+
         if (lastInstanceId == null || lastInstanceUuid == null) {
             log("ERROR: No stored connection info for reconnection. Connect fresh first.");
             return;
@@ -445,6 +466,7 @@ public class ExampleApp extends JFrame {
             GetAgentParams params = GetAgentParams.builder()
                     .timeoutMs(30000)
                     .webSocketUrl(websocketUrl)
+                    .sessionId(sessionId)
                     .instanceId(lastInstanceId)
                     .instanceUuid(lastInstanceUuid)
                     .build();

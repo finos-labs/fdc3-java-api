@@ -24,21 +24,25 @@ import org.finos.fdc3.getagent.ui.DefaultIntentResolver;
 /**
  * Parameters for obtaining a DesktopAgent connection via WebSocket.
  * <p>
- * This class contains all the configuration needed to establish a connection
- * to an FDC3 Desktop Agent over WebSocket using the Web Connection Protocol (WCP).
+ * Uses the WebSocket Connection Protocol (WSCP) for the initial handshake.
  * <p>
- * The following system properties can be used to provide default values:
+ * The following environment variables / system properties provide defaults:
  * <ul>
- *   <li>{@code FDC3_WEBSOCKET_URL} - Default WebSocket URL</li>
+ *   <li>{@code FDC3_WEBSOCKET_URL} — deployment WebSocket endpoint (e.g. ws://host/fdc3/ws)</li>
+ *   <li>{@code FDC3_SESSION_ID} — DA user session identifier</li>
+ *   <li>{@code FDC3_CONNECTION_SECRET} — pairing secret or launch token (required for initial connect only)</li>
  * </ul>
- * Values set via the builder will override system property defaults.
  */
 public class GetAgentParams {
 
-    /** System property name for the WebSocket URL default. */
     public static final String PROP_WEBSOCKET_URL = "FDC3_WEBSOCKET_URL";
+    public static final String PROP_SESSION_ID = "FDC3_SESSION_ID";
+    public static final String PROP_CONNECTION_SECRET = "FDC3_CONNECTION_SECRET";
 
     private final String webSocketUrl;
+    private final String sessionId;
+    private final String sharedSecret;
+    private final String appId;
     private final String instanceId;
     private final String instanceUuid;
     private final ChannelSelector channelSelector;
@@ -50,6 +54,9 @@ public class GetAgentParams {
 
     private GetAgentParams(Builder builder) {
         this.webSocketUrl = builder.webSocketUrl;
+        this.sessionId = builder.sessionId;
+        this.sharedSecret = builder.sharedSecret;
+        this.appId = builder.appId;
         this.instanceId = builder.instanceId;
         this.instanceUuid = builder.instanceUuid;
         this.channelSelector = builder.channelSelector;
@@ -60,105 +67,69 @@ public class GetAgentParams {
         this.heartbeatIntervalMs = builder.heartbeatIntervalMs;
     }
 
-    /**
-     * Gets the WebSocket URL to connect to the Desktop Agent.
-     *
-     * @return the WebSocket URL
-     */
     public String getWebSocketUrl() {
         return webSocketUrl;
     }
 
-    /**
-     * Gets the instance ID used to identify this application instance.
-     * This is sent to the Desktop Agent during the handshake.
-     *
-     * @return the instance ID
-     */
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public String getSharedSecret() {
+        return sharedSecret;
+    }
+
+    public String getAppId() {
+        return appId;
+    }
+
     public String getInstanceId() {
         return instanceId;
     }
 
-    /**
-     * Gets the instance UUID used as a shared secret with the Desktop Agent.
-     * This is used to validate the application's identity during reconnection.
-     *
-     * @return the instance UUID
-     */
     public String getInstanceUuid() {
         return instanceUuid;
     }
 
-    /**
-     * Gets the channel selector implementation for user channel selection UI.
-     *
-     * @return the channel selector
-     */
     public ChannelSelector getChannelSelector() {
         return channelSelector;
     }
 
-    /**
-     * Gets the intent resolver implementation for intent resolution UI.
-     *
-     * @return the intent resolver
-     */
     public IntentResolver getIntentResolver() {
         return intentResolver;
     }
 
-    /**
-     * Gets the connection timeout in milliseconds.
-     *
-     * @return the timeout in milliseconds
-     */
     public long getTimeoutMs() {
         return timeoutMs;
     }
 
-    /**
-     * Gets the message exchange timeout in milliseconds.
-     * This is used for API calls to the Desktop Agent.
-     *
-     * @return the message exchange timeout
-     */
     public long getMessageExchangeTimeout() {
         return messageExchangeTimeout;
     }
 
-    /**
-     * Gets the app launch timeout in milliseconds.
-     * This is used when opening apps or raising intents.
-     *
-     * @return the app launch timeout
-     */
     public long getAppLaunchTimeout() {
         return appLaunchTimeout;
     }
 
-    /**
-     * Gets the heartbeat interval in milliseconds.
-     *
-     * @return the heartbeat interval
-     */
     public long getHeartbeatIntervalMs() {
         return heartbeatIntervalMs;
     }
 
-    /**
-     * Creates a new builder for GetAgentParams.
-     *
-     * @return a new builder instance
-     */
     public static Builder builder() {
         return new Builder();
     }
 
-    /**
-     * Builder for GetAgentParams.
-     */
     public static class Builder {
-        private String webSocketUrl = System.getProperty(PROP_WEBSOCKET_URL);
+        private String webSocketUrl = firstNonEmpty(
+                System.getenv(PROP_WEBSOCKET_URL),
+                System.getProperty(PROP_WEBSOCKET_URL));
+        private String sessionId = firstNonEmpty(
+                System.getenv(PROP_SESSION_ID),
+                System.getProperty(PROP_SESSION_ID));
+        private String sharedSecret = firstNonEmpty(
+                System.getenv(PROP_CONNECTION_SECRET),
+                System.getProperty(PROP_CONNECTION_SECRET));
+        private String appId = null;
         private String instanceId = null;
         private String instanceUuid = null;
         private ChannelSelector channelSelector = new DefaultChannelSelector();
@@ -168,114 +139,87 @@ public class GetAgentParams {
         private long appLaunchTimeout = 30000;
         private long heartbeatIntervalMs = 5000;
 
-        /**
-         * Sets the WebSocket URL to connect to the Desktop Agent.
-         *
-         * @param webSocketUrl the WebSocket URL (required)
-         * @return this builder
-         */
+        private static String firstNonEmpty(String a, String b) {
+            if (a != null && !a.isEmpty()) {
+                return a;
+            }
+            if (b != null && !b.isEmpty()) {
+                return b;
+            }
+            return null;
+        }
+
         public Builder webSocketUrl(String webSocketUrl) {
             this.webSocketUrl = webSocketUrl;
             return this;
         }
 
-        /**
-         * Sets the instance ID used to identify this application instance.
-         *
-         * @param instanceId the instance ID (required)
-         * @return this builder
-         */
+        public Builder sessionId(String sessionId) {
+            this.sessionId = sessionId;
+            return this;
+        }
+
+        public Builder sharedSecret(String sharedSecret) {
+            this.sharedSecret = sharedSecret;
+            return this;
+        }
+
+        public Builder appId(String appId) {
+            this.appId = appId;
+            return this;
+        }
+
         public Builder instanceId(String instanceId) {
             this.instanceId = instanceId;
             return this;
         }
 
-        /**
-         * Sets the instance UUID used as a shared secret with the Desktop Agent.
-         *
-         * @param instanceUuid the instance UUID (required)
-         * @return this builder
-         */
         public Builder instanceUuid(String instanceUuid) {
             this.instanceUuid = instanceUuid;
             return this;
         }
 
-        /**
-         * Sets the channel selector implementation.
-         *
-         * @param channelSelector the channel selector (default: NullChannelSelector)
-         * @return this builder
-         */
         public Builder channelSelector(ChannelSelector channelSelector) {
             this.channelSelector = channelSelector != null ? channelSelector : new DefaultChannelSelector();
             return this;
         }
 
-        /**
-         * Sets the intent resolver implementation.
-         *
-         * @param intentResolver the intent resolver (default: NullIntentResolver)
-         * @return this builder
-         */
         public Builder intentResolver(IntentResolver intentResolver) {
             this.intentResolver = intentResolver != null ? intentResolver : new DefaultIntentResolver();
             return this;
         }
 
-        /**
-         * Sets the connection timeout in milliseconds.
-         *
-         * @param timeoutMs the timeout (default: 10000)
-         * @return this builder
-         */
         public Builder timeoutMs(long timeoutMs) {
             this.timeoutMs = timeoutMs;
             return this;
         }
 
-        /**
-         * Sets the message exchange timeout in milliseconds.
-         *
-         * @param messageExchangeTimeout the timeout (default: 10000)
-         * @return this builder
-         */
         public Builder messageExchangeTimeout(long messageExchangeTimeout) {
             this.messageExchangeTimeout = messageExchangeTimeout;
             return this;
         }
 
-        /**
-         * Sets the app launch timeout in milliseconds.
-         *
-         * @param appLaunchTimeout the timeout (default: 30000)
-         * @return this builder
-         */
         public Builder appLaunchTimeout(long appLaunchTimeout) {
             this.appLaunchTimeout = appLaunchTimeout;
             return this;
         }
 
-        /**
-         * Sets the heartbeat interval in milliseconds.
-         *
-         * @param heartbeatIntervalMs the interval (default: 5000)
-         * @return this builder
-         */
         public Builder heartbeatIntervalMs(long heartbeatIntervalMs) {
             this.heartbeatIntervalMs = heartbeatIntervalMs;
             return this;
         }
 
-        /**
-         * Builds the GetAgentParams instance.
-         *
-         * @return the built GetAgentParams
-         * @throws IllegalArgumentException if required parameters are missing
-         */
         public GetAgentParams build() {
             if (webSocketUrl == null || webSocketUrl.isEmpty()) {
                 throw new IllegalArgumentException("webSocketUrl is required");
+            }
+            if (sessionId == null || sessionId.isEmpty()) {
+                throw new IllegalArgumentException("sessionId is required");
+            }
+            if ((sharedSecret == null || sharedSecret.isEmpty())
+                    && (instanceUuid == null || instanceUuid.isEmpty())) {
+                throw new IllegalArgumentException(
+                        "sharedSecret is required for initial connection, or instanceUuid for reconnect");
             }
             return new GetAgentParams(this);
         }

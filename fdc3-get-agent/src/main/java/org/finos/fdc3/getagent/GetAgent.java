@@ -37,59 +37,27 @@ import org.finos.fdc3.proxy.channels.DefaultChannelSupport;
 import org.finos.fdc3.proxy.heartbeat.DefaultHeartbeatSupport;
 import org.finos.fdc3.proxy.intents.DefaultIntentSupport;
 import org.finos.fdc3.proxy.util.Logger;
-import org.finos.fdc3.schema.WebConnectionProtocol1HelloMeta;
-import org.finos.fdc3.schema.WebConnectionProtocol4ValidateAppIdentity;
-import org.finos.fdc3.schema.WebConnectionProtocol4ValidateAppIdentityPayload;
-import org.finos.fdc3.schema.WebConnectionProtocol4ValidateAppIdentityType;
+import org.finos.fdc3.schema.ConnectionRole;
+import org.finos.fdc3.schema.ProtocolVersion;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol1ConnectRequest;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol1ConnectRequestMeta;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol1ConnectRequestPayload;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol1ConnectRequestType;
 
 /**
- * Factory for obtaining a DesktopAgent connection via WebSocket.
- * <p>
- * This class handles the Web Connection Protocol (WCP) handshake to establish
- * a connection to an FDC3 Desktop Agent over WebSocket.
- * <p>
- * Usage example:
- * <pre>{@code
- * GetAgentParams params = GetAgentParams.builder()
- *     .webSocketUrl("ws://localhost:8080/fdc3")
- *     .instanceId("my-app-instance-1")
- *     .instanceUuid("550e8400-e29b-41d4-a716-446655440000")
- *     .channelSelector(myChannelSelector)
- *     .intentResolver(myIntentResolver)
- *     .build();
- *
- * DesktopAgent agent = GetAgent.getAgent(params).toCompletableFuture().get();
- * }</pre>
+ * Factory for obtaining a DesktopAgent connection via WebSocket using WSCP.
  */
 public class GetAgent {
 
-    private static final String WCP5_VALIDATE_APP_IDENTITY_RESPONSE = "WCP5ValidateAppIdentityResponse";
-    private static final String WCP5_VALIDATE_APP_IDENTITY_FAILED_RESPONSE = "WCP5ValidateAppIdentityFailedResponse";
+    private static final String WSCP2_CONNECT_RESPONSE = "WSCP2ConnectResponse";
+    private static final String WSCP2_CONNECT_FAILED_RESPONSE = "WSCP2ConnectFailedResponse";
 
     private GetAgent() {
-        // Utility class - no instantiation
     }
 
-    /**
-     * Obtains a DesktopAgent connection using the provided parameters.
-     * <p>
-     * This method:
-     * <ol>
-     *   <li>Establishes a WebSocket connection to the Desktop Agent</li>
-     *   <li>Sends a WCP4ValidateAppIdentity message</li>
-     *   <li>Waits for WCP5ValidateAppIdentityResponse or WCP5ValidateAppIdentityFailedResponse</li>
-     *   <li>If successful, constructs and returns a DesktopAgentProxy</li>
-     * </ol>
-     *
-     * @param params the connection parameters
-     * @return a CompletionStage that completes with the DesktopAgent, or fails with an exception
-     * @throws FDC3ConnectionException if the connection fails
-     */
     public static CompletionStage<DesktopAgent> getAgent(GetAgentParams params) {
         Logger.info("Initiating Desktop Agent connection to {}", params.getWebSocketUrl());
 
-        // Create a temporary AppIdentifier for the initial connection
-        // This will be updated once we receive the identity validation response
         AppIdentifier tempAppId = new AppIdentifier("pending", null, null);
         WebSocketMessaging messaging = new WebSocketMessaging(params.getWebSocketUrl(), tempAppId);
 
@@ -97,13 +65,12 @@ public class GetAgent {
                 .thenCompose(v -> performHandshake(messaging, params))
                 .thenApply(validationResult -> createDesktopAgent(messaging, validationResult, params))
                 .exceptionally(error -> {
-                    // Clean up on failure
                     try {
                         messaging.disconnect();
                     } catch (Exception e) {
                         Logger.error("Error during cleanup: {}", e.getMessage());
                     }
-                    
+
                     if (error.getCause() instanceof FDC3ConnectionException) {
                         throw (FDC3ConnectionException) error.getCause();
                     }
@@ -111,37 +78,42 @@ public class GetAgent {
                 });
     }
 
-    /**
-     * Performs the WCP4/WCP5 handshake with the Desktop Agent.
-     */
     private static CompletionStage<ValidationResult> performHandshake(
             WebSocketMessaging messaging, GetAgentParams params) {
-        
+
         String connectionAttemptUuid = UUID.randomUUID().toString();
 
-        // Build WCP4ValidateAppIdentity message using schema classes
-        WebConnectionProtocol4ValidateAppIdentity validateMsg = new WebConnectionProtocol4ValidateAppIdentity();
-        validateMsg.setType(WebConnectionProtocol4ValidateAppIdentityType.WCP4_VALIDATE_APP_IDENTITY);
+        WebSocketConnectionProtocol1ConnectRequest connectMsg =
+                new WebSocketConnectionProtocol1ConnectRequest();
+        connectMsg.setType(WebSocketConnectionProtocol1ConnectRequestType.WSCP1_CONNECT_REQUEST);
 
-        WebConnectionProtocol1HelloMeta meta = new WebConnectionProtocol1HelloMeta();
+        WebSocketConnectionProtocol1ConnectRequestMeta meta =
+                new WebSocketConnectionProtocol1ConnectRequestMeta();
         meta.setConnectionAttemptUUID(connectionAttemptUuid);
         meta.setTimestamp(OffsetDateTime.now());
-        validateMsg.setMeta(meta);
+        connectMsg.setMeta(meta);
 
-        WebConnectionProtocol4ValidateAppIdentityPayload payload = new WebConnectionProtocol4ValidateAppIdentityPayload();
-        // For native apps, use "native" as the identity and actual URLs
-        payload.setIdentityURL("native");
-        payload.setActualURL("native");
+        WebSocketConnectionProtocol1ConnectRequestPayload payload =
+                new WebSocketConnectionProtocol1ConnectRequestPayload();
+        payload.setRole(ConnectionRole.APPLICATION);
+        payload.setProtocolVersion(ProtocolVersion.THE_10);
+        payload.setSessionID(params.getSessionId());
+        if (params.getSharedSecret() != null) {
+            payload.setSharedSecret(params.getSharedSecret());
+        }
+        if (params.getAppId() != null) {
+            payload.setAppID(params.getAppId());
+        }
+        if (params.getInstanceId() != null) {
+            payload.setInstanceID(params.getInstanceId());
+        }
+        if (params.getInstanceUuid() != null) {
+            payload.setInstanceUUID(params.getInstanceUuid());
+        }
+        connectMsg.setPayload(payload);
 
-        // Include instanceId and instanceUuid (required for native apps)
-        payload.setInstanceID(params.getInstanceId());
-        payload.setInstanceUUID(params.getInstanceUuid());
-        validateMsg.setPayload(payload);
+        Map<String, Object> connectMessage = messaging.getConverter().toMap(connectMsg);
 
-        // Convert to Map for sending
-        Map<String, Object> validateMessage = messaging.getConverter().toMap(validateMsg);
-
-        // Set up response listener
         CompletableFuture<ValidationResult> responseFuture = new CompletableFuture<>();
 
         messaging.register(new org.finos.fdc3.proxy.listeners.RegisterableListener() {
@@ -156,12 +128,11 @@ public class GetAgent {
             @SuppressWarnings("unchecked")
             public boolean filter(Map<String, Object> message) {
                 String type = (String) message.get("type");
-                if (!WCP5_VALIDATE_APP_IDENTITY_RESPONSE.equals(type) &&
-                    !WCP5_VALIDATE_APP_IDENTITY_FAILED_RESPONSE.equals(type)) {
+                if (!WSCP2_CONNECT_RESPONSE.equals(type)
+                        && !WSCP2_CONNECT_FAILED_RESPONSE.equals(type)) {
                     return false;
                 }
 
-                // Verify the connectionAttemptUuid matches
                 Map<String, Object> msgMeta = (Map<String, Object>) message.get("meta");
                 if (msgMeta == null) {
                     return false;
@@ -178,34 +149,33 @@ public class GetAgent {
                 String type = (String) message.get("type");
                 Map<String, Object> responsePayload = (Map<String, Object>) message.get("payload");
 
-                if (WCP5_VALIDATE_APP_IDENTITY_FAILED_RESPONSE.equals(type)) {
-                    String errorMessage = responsePayload != null 
-                            ? (String) responsePayload.get("message") 
-                            : "Identity validation failed";
+                if (WSCP2_CONNECT_FAILED_RESPONSE.equals(type)) {
+                    String errorMessage = responsePayload != null
+                            ? (String) responsePayload.get("message")
+                            : "Connection failed";
                     responseFuture.completeExceptionally(
-                            new FDC3ConnectionException("Identity validation failed: " + errorMessage));
+                            new FDC3ConnectionException("Connection failed: " + errorMessage));
                     return;
                 }
 
-                // Parse successful response
                 try {
                     ValidationResult result = new ValidationResult();
                     result.appId = (String) responsePayload.get("appId");
                     result.instanceId = (String) responsePayload.get("instanceId");
                     result.instanceUuid = (String) responsePayload.get("instanceUuid");
 
-                    // Parse implementation metadata
-                    Map<String, Object> implMeta = (Map<String, Object>) responsePayload.get("implementationMetadata");
+                    Map<String, Object> implMeta =
+                            (Map<String, Object>) responsePayload.get("implementationMetadata");
                     if (implMeta != null) {
                         result.implementationMetadata = parseImplementationMetadata(implMeta);
                     }
 
-                    Logger.info("Identity validation successful - appId: {}, instanceId: {}",
+                    Logger.info("WSCP handshake successful - appId: {}, instanceId: {}",
                             result.appId, result.instanceId);
                     responseFuture.complete(result);
                 } catch (Exception e) {
                     responseFuture.completeExceptionally(
-                            new FDC3ConnectionException("Failed to parse validation response", e));
+                            new FDC3ConnectionException("Failed to parse WSCP2 response", e));
                 }
             }
 
@@ -221,17 +191,16 @@ public class GetAgent {
             }
         });
 
-        // Send the validation message
-        Logger.debug("Sending WCP4ValidateAppIdentity message");
-        messaging.post(validateMessage);
+        Logger.debug("Sending WSCP1ConnectRequest message");
+        messaging.post(connectMessage);
 
-        // Apply timeout
         return responseFuture
                 .orTimeout(params.getTimeoutMs(), TimeUnit.MILLISECONDS)
                 .exceptionally(error -> {
-                    if (error instanceof TimeoutException || 
-                        (error.getCause() != null && error.getCause() instanceof TimeoutException)) {
-                        throw new FDC3ConnectionException("Connection timeout waiting for identity validation");
+                    if (error instanceof TimeoutException
+                            || (error.getCause() != null
+                            && error.getCause() instanceof TimeoutException)) {
+                        throw new FDC3ConnectionException("Connection timeout waiting for WSCP2 response");
                     }
                     if (error instanceof FDC3ConnectionException) {
                         throw (FDC3ConnectionException) error;
@@ -240,21 +209,18 @@ public class GetAgent {
                 });
     }
 
-    /**
-     * Parses the implementation metadata from the validation response.
-     */
     @SuppressWarnings("unchecked")
     private static ImplementationMetadata parseImplementationMetadata(Map<String, Object> implMeta) {
         ImplementationMetadata metadata = new ImplementationMetadata();
-        
+
         metadata.setFdc3Version((String) implMeta.get("fdc3Version"));
         metadata.setProvider((String) implMeta.get("provider"));
         metadata.setProviderVersion((String) implMeta.get("providerVersion"));
 
-        // Parse app metadata
         Map<String, Object> appMeta = (Map<String, Object>) implMeta.get("appMetadata");
         if (appMeta != null) {
-            org.finos.fdc3.api.metadata.AppMetadata appMetadata = new org.finos.fdc3.api.metadata.AppMetadata();
+            org.finos.fdc3.api.metadata.AppMetadata appMetadata =
+                    new org.finos.fdc3.api.metadata.AppMetadata();
             appMetadata.setAppId((String) appMeta.get("appId"));
             appMetadata.setInstanceId((String) appMeta.get("instanceId"));
             appMetadata.setName((String) appMeta.get("name"));
@@ -265,15 +231,16 @@ public class GetAgent {
             metadata.setAppMetadata(appMetadata);
         }
 
-        // Parse optional features
         Map<String, Object> optFeatures = (Map<String, Object>) implMeta.get("optionalFeatures");
         if (optFeatures != null) {
-            ImplementationMetadata.OptionalFeatures features = new ImplementationMetadata.OptionalFeatures();
+            ImplementationMetadata.OptionalFeatures features =
+                    new ImplementationMetadata.OptionalFeatures();
             if (optFeatures.get("OriginatingAppMetadata") != null) {
                 features.setOriginatingAppMetadata((Boolean) optFeatures.get("OriginatingAppMetadata"));
             }
             if (optFeatures.get("UserChannelMembershipAPIs") != null) {
-                features.setUserChannelMembershipAPIs((Boolean) optFeatures.get("UserChannelMembershipAPIs"));
+                features.setUserChannelMembershipAPIs(
+                        (Boolean) optFeatures.get("UserChannelMembershipAPIs"));
             }
             if (optFeatures.get("DesktopAgentBridging") != null) {
                 features.setDesktopAgentBridging((Boolean) optFeatures.get("DesktopAgentBridging"));
@@ -284,25 +251,18 @@ public class GetAgent {
         return metadata;
     }
 
-    /**
-     * Creates the DesktopAgentProxy with all support components.
-     */
     private static DesktopAgent createDesktopAgent(
             WebSocketMessaging messaging,
             ValidationResult validationResult,
             GetAgentParams params) {
 
-        // Create the final AppIdentifier with the validated identity
         AppIdentifier appIdentifier = new AppIdentifier(
                 validationResult.appId,
                 validationResult.instanceId,
-                null // desktopAgent is not set on the app's own identifier
-        );
+                null);
 
-        // Update the messaging with the validated identity
         messaging.setIdentifier(appIdentifier, validationResult.instanceUuid);
 
-        // Create support components
         DefaultHeartbeatSupport heartbeatSupport = new DefaultHeartbeatSupport(
                 messaging, params.getHeartbeatIntervalMs());
 
@@ -316,11 +276,9 @@ public class GetAgent {
         DefaultAppSupport appSupport = new DefaultAppSupport(
                 messaging, params.getMessageExchangeTimeout(), params.getAppLaunchTimeout());
 
-        // Build list of connectables (for connect/disconnect lifecycle)
         List<Connectable> connectables = new ArrayList<>();
         connectables.add(heartbeatSupport);
 
-        // Create and return the DesktopAgentProxy
         DesktopAgentProxy proxy = new DesktopAgentProxy(
                 heartbeatSupport,
                 channelSupport,
@@ -328,16 +286,12 @@ public class GetAgent {
                 appSupport,
                 connectables);
 
-        // Start the heartbeat and other connectables
         proxy.connect();
 
         Logger.info("DesktopAgent proxy created successfully");
         return proxy;
     }
 
-    /**
-     * Holds the result of a successful identity validation.
-     */
     private static class ValidationResult {
         String appId;
         String instanceId;

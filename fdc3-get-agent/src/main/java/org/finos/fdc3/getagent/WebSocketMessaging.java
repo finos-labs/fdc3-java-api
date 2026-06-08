@@ -180,25 +180,30 @@ public class WebSocketMessaging extends AbstractMessaging {
             return CompletableFuture.completedFuture(null);
         }
 
-        // Send WCP6Goodbye message before closing
+        // Send WSCP3Goodbye message before closing
         Map<String, Object> goodbye = new HashMap<>();
-        goodbye.put("type", "WCP6Goodbye");
+        goodbye.put("type", "WSCP3Goodbye");
         Map<String, Object> meta = new HashMap<>();
         meta.put("timestamp", OffsetDateTime.now());
         goodbye.put("meta", meta);
 
-        return post(goodbye).whenComplete((v, error) -> {
-            // Close the WebSocket regardless of whether the goodbye was sent successfully
-            try {
-                session.close();
-            } catch (IOException e) {
-                Logger.error("Error closing WebSocket: {}", e.getMessage());
-            }
-            
-            // Clear all listeners
-            listeners.clear();
-            connected = false;
-        });
+        try {
+            String json = getConverter().toJson(goodbye);
+            Logger.debug("Sending message: {}", json);
+            session.getBasicRemote().sendText(json);
+        } catch (Exception e) {
+            Logger.error("Failed to send WSCP3Goodbye: {}", e.getMessage());
+        }
+
+        try {
+            session.close();
+        } catch (IOException e) {
+            Logger.error("Error closing WebSocket: {}", e.getMessage());
+        }
+
+        listeners.clear();
+        connected = false;
+        return CompletableFuture.completedFuture(null);
     }
 
     /**

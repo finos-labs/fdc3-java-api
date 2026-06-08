@@ -18,6 +18,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jdk.source.version>11</jdk.source.version>
         <jdk.target.version>11</jdk.target.version>
+        <cucumber.version>7.15.0</cucumber.version>
+        <spring.version>6.1.2</spring.version>
     </properties>
 
     <dependencies>
@@ -56,6 +58,20 @@
             <version>2.1.5</version>
         </dependency>
 
+        <!-- Tyrus WebSocket server for mock server tests -->
+        <dependency>
+            <groupId>org.glassfish.tyrus</groupId>
+            <artifactId>tyrus-server</artifactId>
+            <version>2.1.5</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.tyrus</groupId>
+            <artifactId>tyrus-container-grizzly-server</artifactId>
+            <version>2.1.5</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- SLF4J for logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -63,11 +79,53 @@
             <version>2.0.9</version>
         </dependency>
 
-        <!-- FDC3 Testing Framework -->
+        <!-- Cucumber test support -->
         <dependency>
-            <groupId>org.finos.fdc3</groupId>
-            <artifactId>fdc3-testing</artifactId>
-            <version>${project.version}</version>
+            <groupId>io.github.robmoffat</groupId>
+            <artifactId>standard-cucumber-steps</artifactId>
+            <version>1.2.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-spring</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>${spring.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <version>${spring.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-junit-platform-engine</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-suite</artifactId>
+            <version>1.10.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.9</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -91,9 +149,7 @@
                     <properties>
                         <configurationParameters>
                             cucumber.junit-platform.naming-strategy=long
-                            cucumber.plugin=pretty,html:target/cucumber-reports/cucumber.html
-                            cucumber.glue=org.finos.fdc3.getagent,org.finos.fdc3.getagent.steps,org.finos.fdc3.testing.steps
-                            cucumber.features=classpath:features
+                            cucumber.junit-platform.discovery.as-root-engine=false
                         </configurationParameters>
                     </properties>
                 </configuration>

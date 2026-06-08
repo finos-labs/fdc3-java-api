@@ -295,17 +295,17 @@ import org.finos.fdc3.api.types.AppIdentifier;</value>
     </build>
 
     <profiles>
-        <!-- Default: download published schemas from npm -->
+        <!-- Use published schemas from npm: mvn -Pdownload -->
         <profile>
             <id>download</id>
+        </profile>
+
+        <!-- Default: use unreleased schemas from src/main/schemas-temp -->
+        <profile>
+            <id>local</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
-        </profile>
-
-        <!-- Use unreleased schemas: API/bridging from fdc3-schema, context from fdc3-context -->
-        <profile>
-            <id>local</id>
             <properties>
                 <fdc3.schema.source.dir>${project.basedir}/src/main/schemas-temp/3.0.0</fdc3.schema.source.dir>
                 <fdc3.context.source.dir>${project.basedir}/../fdc3-context/src/schemas-temp/3.0.0/context</fdc3.context.source.dir>

@@ -18,6 +18,7 @@ package org.finos.fdc3.getagent.support;
 
 import java.io.IOException;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import jakarta.websocket.CloseReason;
@@ -30,41 +31,38 @@ import jakarta.websocket.server.ServerEndpoint;
 import org.finos.fdc3.api.metadata.AppMetadata;
 import org.finos.fdc3.api.metadata.ImplementationMetadata;
 import org.finos.fdc3.schema.SchemaConverter;
-import org.finos.fdc3.schema.WebConnectionProtocol1HelloMeta;
-import org.finos.fdc3.schema.WebConnectionProtocol4ValidateAppIdentity;
-import org.finos.fdc3.schema.WebConnectionProtocol5ValidateAppIdentityFailedResponse;
-import org.finos.fdc3.schema.WebConnectionProtocol5ValidateAppIdentityFailedResponsePayload;
-import org.finos.fdc3.schema.WebConnectionProtocol5ValidateAppIdentityFailedResponseType;
-import org.finos.fdc3.schema.WebConnectionProtocol5ValidateAppIdentitySuccessResponse;
-import org.finos.fdc3.schema.WebConnectionProtocol5ValidateAppIdentitySuccessResponsePayload;
-import org.finos.fdc3.schema.WebConnectionProtocol5ValidateAppIdentitySuccessResponseType;
-import org.finos.fdc3.schema.WebConnectionProtocol6Goodbye;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol1ConnectRequest;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol1ConnectRequestMeta;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol2ConnectFailedResponse;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol2ConnectFailedResponsePayload;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol2ConnectFailedResponseType;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol2ConnectSuccessResponse;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol2ConnectSuccessResponsePayload;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol2ConnectSuccessResponseType;
+import org.finos.fdc3.schema.AddContextListenerResponseMeta;
+import org.finos.fdc3.schema.GetInfoRequest;
+import org.finos.fdc3.schema.GetInfoResponse;
+import org.finos.fdc3.schema.GetInfoResponsePayload;
+import org.finos.fdc3.schema.GetInfoResponseType;
+import org.finos.fdc3.schema.WebSocketConnectionProtocol3Goodbye;
 import org.glassfish.tyrus.server.Server;
 
 /**
- * Mock WebSocket server for testing GetAgent.
- * Simulates a Desktop Agent responding to WCP messages.
- * 
- * Uses schema types from fdc3-schema for type-safe JSON handling:
- * - WebConnectionProtocol4ValidateAppIdentity
- * - WebConnectionProtocol5ValidateAppIdentitySuccessResponse
- * - WebConnectionProtocol5ValidateAppIdentityFailedResponse
- * - WebConnectionProtocol6Goodbye
+ * Mock WebSocket server for testing GetAgent WSCP handshake.
  */
 @ServerEndpoint("/fdc3")
 public class MockWebSocketServer {
 
     private static final SchemaConverter converter = new SchemaConverter();
 
-    // Instance-specific state (accessed via static holder for @ServerEndpoint)
     private static final CopyOnWriteArrayList<Session> sessions = new CopyOnWriteArrayList<>();
     private static volatile MockWebSocketServer currentInstance;
 
     private Server server;
     private int port;
-    
-    // Configuration for responses
-    private String acceptedIdentityUrl;
+
+    private String acceptedSessionId;
+    private String acceptedSharedSecret;
     private String responseAppId;
     private String responseInstanceId;
     private String responseInstanceUuid = "response-uuid";
@@ -72,10 +70,9 @@ public class MockWebSocketServer {
     private boolean shouldTimeout;
     private String providerName = "test-provider";
     private String fdc3Version = "2.0";
-    
-    // Received messages for assertions (using typed schema classes)
-    private WebConnectionProtocol4ValidateAppIdentity lastWCP4;
-    private WebConnectionProtocol6Goodbye lastWCP6;
+
+    private WebSocketConnectionProtocol1ConnectRequest lastWSCP1;
+    private WebSocketConnectionProtocol3Goodbye lastWSCP3;
 
     public void start() throws Exception {
         port = 8025 + (int) (Math.random() * 1000);
@@ -97,21 +94,23 @@ public class MockWebSocketServer {
         return "ws://localhost:" + port + "/fdc3";
     }
 
-    public void acceptIdentity(String identityUrl, String appId, String instanceId) {
-        acceptedIdentityUrl = identityUrl;
+    public void acceptPairing(String sessionId, String sharedSecret, String appId, String instanceId) {
+        acceptedSessionId = sessionId;
+        acceptedSharedSecret = sharedSecret;
         responseAppId = appId;
         responseInstanceId = instanceId;
         rejectMessage = null;
         shouldTimeout = false;
     }
 
-    public void rejectIdentity(String message) {
-        acceptedIdentityUrl = null;
+    public void rejectPairing(String message) {
+        acceptedSessionId = null;
+        acceptedSharedSecret = null;
         rejectMessage = message;
         shouldTimeout = false;
     }
 
-    public void timeoutIdentity() {
+    public void timeoutPairing() {
         shouldTimeout = true;
     }
 
@@ -120,18 +119,14 @@ public class MockWebSocketServer {
         fdc3Version = version;
     }
 
-    // Property accessors for assertions
-    public WebConnectionProtocol4ValidateAppIdentity getLastWCP4() {
-        return lastWCP4;
+    public WebSocketConnectionProtocol1ConnectRequest getLastWSCP1() {
+        return lastWSCP1;
     }
 
-    public WebConnectionProtocol6Goodbye getLastWCP6() {
-        return lastWCP6;
+    public WebSocketConnectionProtocol3Goodbye getLastWSCP3() {
+        return lastWSCP3;
     }
 
-    // WebSocket endpoint methods - these are called on the endpoint instance
-    // created by the container, so we delegate to the currentInstance
-    
     @OnOpen
     public void onOpen(Session session) {
         sessions.add(session);
@@ -145,55 +140,66 @@ public class MockWebSocketServer {
     @OnMessage
     public void onMessage(String message, Session session) {
         try {
-            // First, peek at the type to determine which class to use
             String type = extractType(message);
-
-            // Delegate to current instance for state management
             MockWebSocketServer instance = currentInstance;
             if (instance == null) {
                 return;
             }
 
-            if ("WCP4ValidateAppIdentity".equals(type)) {
-                WebConnectionProtocol4ValidateAppIdentity wcp4 = 
-                    converter.fromJson(message, WebConnectionProtocol4ValidateAppIdentity.class);
-                instance.lastWCP4 = wcp4;
-                instance.handleValidateAppIdentity(wcp4, session);
-            } else if ("WCP6Goodbye".equals(type)) {
-                WebConnectionProtocol6Goodbye wcp6 = 
-                    converter.fromJson(message, WebConnectionProtocol6Goodbye.class);
-                instance.lastWCP6 = wcp6;
+            if ("WSCP1ConnectRequest".equals(type)) {
+                WebSocketConnectionProtocol1ConnectRequest wscp1 =
+                        converter.fromJson(message, WebSocketConnectionProtocol1ConnectRequest.class);
+                instance.lastWSCP1 = wscp1;
+                instance.handleConnectRequest(wscp1, session);
+            } else if ("WSCP3Goodbye".equals(type)) {
+                WebSocketConnectionProtocol3Goodbye wscp3 =
+                        converter.fromJson(message, WebSocketConnectionProtocol3Goodbye.class);
+                instance.lastWSCP3 = wscp3;
+            } else if ("getInfoRequest".equals(type)) {
+                GetInfoRequest request = converter.fromJson(message, GetInfoRequest.class);
+                instance.handleGetInfoRequest(request, session);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    /**
-     * Extract the "type" field from a JSON message without full parsing.
-     */
     private String extractType(String json) throws IOException {
         return converter.getObjectMapper().readTree(json).path("type").asText(null);
     }
 
-    private void handleValidateAppIdentity(WebConnectionProtocol4ValidateAppIdentity request, Session session) {
+    private void handleConnectRequest(
+            WebSocketConnectionProtocol1ConnectRequest request, Session session) {
         if (shouldTimeout) {
-            // Don't respond - simulate timeout
             return;
         }
 
         String connectionAttemptUuid = request.getMeta().getConnectionAttemptUUID();
-        String identityUrl = request.getPayload().getIdentityURL();
+        String sessionId = request.getPayload().getSessionID();
+        String sharedSecret = request.getPayload().getSharedSecret();
+        String instanceUuid = request.getPayload().getInstanceUUID();
 
         try {
             String responseJson;
 
             if (rejectMessage != null) {
                 responseJson = buildFailedResponse(connectionAttemptUuid, rejectMessage);
-            } else if (acceptedIdentityUrl != null && acceptedIdentityUrl.equals(identityUrl)) {
+            } else if (acceptedSessionId != null
+                    && acceptedSessionId.equals(sessionId)
+                    && instanceUuid != null
+                    && instanceUuid.equals(responseInstanceUuid)) {
+                // Flow 2: reconnect with sessionId + instanceUuid (no sharedSecret)
+                responseJson = buildSuccessResponse(connectionAttemptUuid);
+            } else if (acceptedSessionId != null
+                    && acceptedSessionId.equals(sessionId)
+                    && acceptedSharedSecret != null
+                    && acceptedSharedSecret.equals(sharedSecret)) {
+                if (instanceUuid != null) {
+                    responseInstanceUuid = instanceUuid;
+                }
                 responseJson = buildSuccessResponse(connectionAttemptUuid);
             } else {
-                responseJson = buildFailedResponse(connectionAttemptUuid, "Unknown identity URL: " + identityUrl);
+                responseJson = buildFailedResponse(connectionAttemptUuid, "Invalid pairing credentials");
             }
 
             session.getBasicRemote().sendText(responseJson);
@@ -202,70 +208,86 @@ public class MockWebSocketServer {
         }
     }
 
-    private String buildSuccessResponse(String connectionAttemptUuid) throws IOException {
-        WebConnectionProtocol5ValidateAppIdentitySuccessResponse response = 
-            new WebConnectionProtocol5ValidateAppIdentitySuccessResponse();
+    private void handleGetInfoRequest(GetInfoRequest request, Session session) throws IOException {
+        GetInfoResponse response = new GetInfoResponse();
+        response.setType(GetInfoResponseType.GET_INFO_RESPONSE);
 
-        // Build meta
-        WebConnectionProtocol1HelloMeta meta = new WebConnectionProtocol1HelloMeta();
-        meta.setConnectionAttemptUUID(connectionAttemptUuid);
+        AddContextListenerResponseMeta meta = new AddContextListenerResponseMeta();
+        meta.setRequestUUID(request.getMeta().getRequestUUID());
+        meta.setResponseUUID(UUID.randomUUID().toString());
         meta.setTimestamp(OffsetDateTime.now());
+        meta.setSource(request.getMeta().getSource());
         response.setMeta(meta);
 
-        // Set type
-        response.setType(WebConnectionProtocol5ValidateAppIdentitySuccessResponseType.WCP5_VALIDATE_APP_IDENTITY_RESPONSE);
+        GetInfoResponsePayload payload = new GetInfoResponsePayload();
+        payload.setImplementationMetadata(buildImplementationMetadata());
+        response.setPayload(payload);
 
-        // Build payload
-        WebConnectionProtocol5ValidateAppIdentitySuccessResponsePayload payload = 
-            new WebConnectionProtocol5ValidateAppIdentitySuccessResponsePayload();
-        payload.setAppID(responseAppId);
-        payload.setInstanceID(responseInstanceId);
-        payload.setInstanceUUID(responseInstanceUuid);
+        session.getBasicRemote().sendText(converter.toJson(response));
+    }
 
-        // Build implementation metadata
+    private ImplementationMetadata buildImplementationMetadata() {
         ImplementationMetadata implMeta = new ImplementationMetadata();
         implMeta.setFdc3Version(fdc3Version);
         implMeta.setProvider(providerName);
         implMeta.setProviderVersion("1.0.0");
 
-        // Build app metadata
         AppMetadata appMeta = new AppMetadata();
         appMeta.setAppId(responseAppId);
         appMeta.setInstanceId(responseInstanceId);
         implMeta.setAppMetadata(appMeta);
 
-        // Build optional features
         ImplementationMetadata.OptionalFeatures optFeatures = new ImplementationMetadata.OptionalFeatures();
         optFeatures.setOriginatingAppMetadata(true);
         optFeatures.setUserChannelMembershipAPIs(true);
         optFeatures.setDesktopAgentBridging(false);
         implMeta.setOptionalFeatures(optFeatures);
 
-        payload.setImplementationMetadata(implMeta);
+        return implMeta;
+    }
+
+    private String buildSuccessResponse(String connectionAttemptUuid) throws IOException {
+        WebSocketConnectionProtocol2ConnectSuccessResponse response =
+                new WebSocketConnectionProtocol2ConnectSuccessResponse();
+
+        WebSocketConnectionProtocol1ConnectRequestMeta meta =
+                new WebSocketConnectionProtocol1ConnectRequestMeta();
+        meta.setConnectionAttemptUUID(connectionAttemptUuid);
+        meta.setTimestamp(OffsetDateTime.now());
+        response.setMeta(meta);
+
+        response.setType(
+                WebSocketConnectionProtocol2ConnectSuccessResponseType.WSCP2_CONNECT_RESPONSE);
+
+        WebSocketConnectionProtocol2ConnectSuccessResponsePayload payload =
+                new WebSocketConnectionProtocol2ConnectSuccessResponsePayload();
+        payload.setAppID(responseAppId);
+        payload.setInstanceID(responseInstanceId);
+        payload.setInstanceUUID(responseInstanceUuid);
+        payload.setImplementationMetadata(buildImplementationMetadata());
         response.setPayload(payload);
 
         return converter.toJson(response);
     }
 
     private String buildFailedResponse(String connectionAttemptUuid, String message) throws IOException {
-        WebConnectionProtocol5ValidateAppIdentityFailedResponse response = 
-            new WebConnectionProtocol5ValidateAppIdentityFailedResponse();
+        WebSocketConnectionProtocol2ConnectFailedResponse response =
+                new WebSocketConnectionProtocol2ConnectFailedResponse();
 
-        // Build meta
-        WebConnectionProtocol1HelloMeta meta = new WebConnectionProtocol1HelloMeta();
+        WebSocketConnectionProtocol1ConnectRequestMeta meta =
+                new WebSocketConnectionProtocol1ConnectRequestMeta();
         meta.setConnectionAttemptUUID(connectionAttemptUuid);
         meta.setTimestamp(OffsetDateTime.now());
         response.setMeta(meta);
 
-        // Set type
-        response.setType(WebConnectionProtocol5ValidateAppIdentityFailedResponseType.WCP5_VALIDATE_APP_IDENTITY_FAILED_RESPONSE);
+        response.setType(
+                WebSocketConnectionProtocol2ConnectFailedResponseType.WSCP2_CONNECT_FAILED_RESPONSE);
 
-        // Build payload
-        WebConnectionProtocol5ValidateAppIdentityFailedResponsePayload payload = 
-            new WebConnectionProtocol5ValidateAppIdentityFailedResponsePayload();
+        WebSocketConnectionProtocol2ConnectFailedResponsePayload payload =
+                new WebSocketConnectionProtocol2ConnectFailedResponsePayload();
         payload.setMessage(message);
         response.setPayload(payload);
 
         return converter.toJson(response);
     }
-} 
+}

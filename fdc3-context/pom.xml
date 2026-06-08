@@ -20,6 +20,10 @@
         <node.version>v20.11.0</node.version>
         <npm.version>10.2.4</npm.version>
         <fdc3.context.version>2.2.3</fdc3.context.version>
+        <fdc3.context.schemas.work.dir>${project.build.directory}/schemas-work</fdc3.context.schemas.work.dir>
+        <fdc3.context.source.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-context/dist/schemas/context</fdc3.context.source.dir>
+        <fdc3.api.schema.path>${project.build.directory}/npm-work/node_modules/@finos/fdc3-schema/dist/schemas/api/api.schema.json</fdc3.api.schema.path>
+        <fdc3.npm.context.packages>install @finos/fdc3-context@${fdc3.context.version} @finos/fdc3-schema@${fdc3.context.version} quicktype --save</fdc3.npm.context.packages>
     </properties>
 
     <dependencies>
@@ -67,6 +71,31 @@
                     <!-- Generated quicktype output is many files; avoid stale incremental compiles -->
                     <useIncrementalCompilation>false</useIncrementalCompilation>
                 </configuration>
+            </plugin>
+
+            <!-- Populate target/schemas-work for round-trip tests (download or local profile source) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>populate-schemas-work</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${fdc3.context.schemas.work.dir}/context</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <resources>
+                                <resource>
+                                    <directory>${fdc3.context.source.dir}</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Create directories before npm runs -->
@@ -144,7 +173,7 @@
                             <goal>npm</goal>
                         </goals>
                         <configuration>
-                            <arguments>install @finos/fdc3-context@${fdc3.context.version} @finos/fdc3-schema@${fdc3.context.version} quicktype --save</arguments>
+                            <arguments>${fdc3.npm.context.packages}</arguments>
                         </configuration>
                     </execution>
                 </executions>
@@ -167,7 +196,7 @@
                             <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
                             <arguments>
                                 <argument>-c</argument>
-                                <argument>node_modules/.bin/quicktype -s schema --quiet --lang java --package org.finos.fdc3.context --out ${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context/ContextTypes.java -S node_modules/@finos/fdc3-schema/dist/schemas/api/api.schema.json $(find node_modules/@finos/fdc3-context/dist/schemas/context -name "*.schema.json" -exec printf "%s %s " "--src" {} \;)</argument>
+                                <argument>node_modules/.bin/quicktype -s schema --quiet --lang java --package org.finos.fdc3.context --out ${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context/ContextTypes.java -S ${fdc3.api.schema.path} $(find ${fdc3.context.source.dir} -name "*.schema.json" -exec printf "%s %s " "--src" {} \;)</argument>
                             </arguments>
                         </configuration>
                     </execution>
@@ -237,4 +266,24 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Use published schemas from npm: mvn -Pdownload -->
+        <profile>
+            <id>download</id>
+        </profile>
+
+        <!-- Default: use unreleased schemas from src/schemas-temp -->
+        <profile>
+            <id>local</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <fdc3.context.source.dir>${project.basedir}/src/schemas-temp/3.0.0/context</fdc3.context.source.dir>
+                <fdc3.api.schema.path>${project.basedir}/../fdc3-schema/src/main/schemas-temp/3.0.0/api/api.schema.json</fdc3.api.schema.path>
+                <fdc3.npm.context.packages>install quicktype --save</fdc3.npm.context.packages>
+            </properties>
+        </profile>
+    </profiles>
 </project>

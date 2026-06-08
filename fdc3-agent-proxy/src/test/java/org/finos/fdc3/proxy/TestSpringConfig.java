@@ -35,7 +35,8 @@ import io.github.robmoffat.world.PropsWorld;
  */
 @Configuration
 @ComponentScan(basePackages = {
-    "org.finos.fdc3.proxy.steps"
+    "org.finos.fdc3.proxy.steps",
+    "io.github.robmoffat.steps"
 })
 public class TestSpringConfig {
 

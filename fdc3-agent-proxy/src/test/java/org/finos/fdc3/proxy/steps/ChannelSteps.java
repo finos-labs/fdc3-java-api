@@ -412,7 +412,7 @@ public class ChannelSteps {
         }
 
         public Object invoke(Object... args) throws Exception {
-            java.lang.reflect.Method method = Fdc3GenericSteps.findMethod(target.getClass(), methodName, args);
+            java.lang.reflect.Method method = io.github.robmoffat.steps.GenericSteps.findMethod(target.getClass(), methodName, args);
             if (method == null) {
                 throw new NoSuchMethodException("Method not found: " + methodName);
             }

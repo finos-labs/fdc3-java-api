@@ -37,5 +37,19 @@
         <maven.compiler.target>11</maven.compiler.target>
     </properties>
 
+    <profiles>
+        <!-- Default: use unreleased schemas from src/main/schemas-temp (see fdc3-schema local profile) -->
+        <profile>
+            <id>local</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+        </profile>
+
+        <!-- Use published schemas from npm: mvn -Pdownload -->
+        <profile>
+            <id>download</id>
+        </profile>
+    </profiles>
 
 </project>

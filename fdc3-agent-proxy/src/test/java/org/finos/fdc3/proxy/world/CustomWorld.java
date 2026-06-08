@@ -16,6 +16,7 @@
 
 package org.finos.fdc3.proxy.world;
 
+import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.proxy.support.TestMessaging;
 
 import io.github.robmoffat.world.PropsWorld;
@@ -30,6 +31,32 @@ import io.github.robmoffat.world.PropsWorld;
 public class CustomWorld extends PropsWorld {
 
     private TestMessaging messaging;
+
+    /**
+     * standard-cucumber-steps stores invocation counters as {@link Runnable}, but FDC3
+     * event listener APIs require {@link EventHandler}. Adapt on lookup so feature
+     * files can keep the canonical step wording unchanged.
+     */
+    @Override
+    public Object get(String key) {
+        return adaptInvocationCounter(super.get(key));
+    }
+
+    @Override
+    public Object get(Object key) {
+        if (key instanceof String) {
+            return get((String) key);
+        }
+        return adaptInvocationCounter(super.get(key));
+    }
+
+    private static Object adaptInvocationCounter(Object value) {
+        if (value instanceof Runnable && !(value instanceof EventHandler)) {
+            Runnable runnable = (Runnable) value;
+            return (EventHandler) event -> runnable.run();
+        }
+        return value;
+    }
 
     public TestMessaging getMessaging() {
         return messaging;
