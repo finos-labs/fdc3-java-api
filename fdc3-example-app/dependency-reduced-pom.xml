@@ -32,6 +32,10 @@
               <transformers>
                 <transformer>
                   <mainClass>org.finos.fdc3.example.ExampleApp</mainClass>
+                  <manifestEntries>
+                    <Implementation-Version>${project.version}</Implementation-Version>
+                    <Build-Time>${maven.build.timestamp}</Build-Time>
+                  </manifestEntries>
                 </transformer>
               </transformers>
               <filters>
@@ -50,8 +54,39 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>macos-app</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.5.0</version>
+            <executions>
+              <execution>
+                <id>jpackage-macos-app</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>bash</executable>
+                  <arguments>
+                    <argument>/Users/rob/Documents/finos/fdc3-general/fdc3-java-api/fdc3-example-app/scripts/macos/build-app.sh</argument>
+                    <argument>1.0.0-SNAPSHOT</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
   <properties>
     <jdk.source.version>11</jdk.source.version>
+    <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jdk.target.version>11</jdk.target.version>
   </properties>

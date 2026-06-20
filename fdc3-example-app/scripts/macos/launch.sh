@@ -1,8 +1,9 @@
-#!/bin/bash
-# Edit JAR_PATH below, then copy this file to:
-#   FDC3 Java Example.app/Contents/MacOS/launch.sh
-# and run: chmod +x FDC3\ Java\ Example.app/Contents/MacOS/launch.sh
+#!/usr/bin/env bash
+# DEPRECATED: use jpackage instead (see README and scripts/macos/build-app.sh).
+#
+# A shell-script CFBundleExecutable prevents Java from receiving macOS OpenURL
+# events (JDK-8360120). The jpackage-built .app uses a native launcher that
+# works with Desktop.setOpenURIHandler().
 
-JAR_PATH="/absolute/path/to/fdc3-example-app-1.0.0-SNAPSHOT.jar"
-
-exec java -jar "$JAR_PATH" "$@"
+echo "error: use scripts/macos/build-app.sh to build the macOS app bundle" >&2
+exit 1

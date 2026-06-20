@@ -36,13 +36,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Example Java Swing application demonstrating FDC3 Desktop Agent connectivity.
  * <p>
  * This application:
  * <ul>
- *   <li>Connects to a Desktop Agent via WebSocket on startup</li>
+ *   <li>Connects to a Desktop Agent via WebSocket when launched with credentials or on user request</li>
  *   <li>Displays the current user channel and allows changing channels</li>
  *   <li>Shows a log of context broadcasts received on the current channel</li>
  *   <li>Supports adding and removing context listeners</li>
@@ -57,6 +59,9 @@ import java.util.Map;
 public class ExampleApp extends JFrame {
 
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
+    /** macOS delivers custom protocol URLs via Desktop OpenURIHandler, not main() args. */
+    private static final AtomicReference<String> pendingOpenUri = new AtomicReference<>();
+    private static volatile ExampleApp activeInstance;
     
     private DesktopAgent agent;
     private Listener contextListener;
@@ -86,42 +91,168 @@ public class ExampleApp extends JFrame {
     private String lastInstanceId;
     
     // Connection buttons
+    private JButton connectButton;
     private JButton disconnectButton;
     private JButton reconnectButton;
 
     public ExampleApp(String[] launchArgs) {
-        super("FDC3 Example App");
+        super("FDC3 Example App (" + buildLabel() + ")");
         this.launchArgs = launchArgs != null ? launchArgs : new String[0];
         initUI();
         
-        // Check for WebSocket URL and prompt if needed
         SwingUtilities.invokeLater(this::initializeConnection);
     }
-    
+
     /**
-     * Initialize the connection by checking for FDC3_WEBSOCKET_URL.
-     * If not set, prompt the user for the URL.
+     * Connect automatically when launch args, a pending protocol URL, or environment
+     * variables supply WSCP credentials; otherwise wait for Connect or OpenURI.
      */
     private void initializeConnection() {
-        java.util.Optional<ProtocolLaunchParams> protocolLaunch =
-                ProtocolLaunchParams.fromArgs(launchArgs);
-        if (protocolLaunch.isPresent()) {
-            websocketUrl = protocolLaunch.get().getWebSocketUrl();
-            sharedSecret = protocolLaunch.get().getSharedSecret();
-            log("Using WSCP connection config from protocol handler launch URL");
-            connectToAgent();
+        logLaunchArguments();
+
+        if (tryConnectFromLaunchArgs()) {
             return;
         }
+        if (tryConnectFromPendingOpenUri()) {
+            return;
+        }
+        if (tryConnectFromEnvironment()) {
+            return;
+        }
+        showAwaitingConnection();
+    }
 
+    private boolean tryConnectFromLaunchArgs() {
+        for (String arg : launchArgs) {
+            if (arg != null
+                    && arg.regionMatches(true, 0, ProtocolLaunchParams.SCHEME + "://", 0,
+                    ProtocolLaunchParams.SCHEME.length() + 3)) {
+                log("Protocol launch URL: " + arg);
+            }
+        }
+
+        Optional<ProtocolLaunchParams> protocolLaunch = ProtocolLaunchParams.fromArgs(launchArgs);
+        if (protocolLaunch.isPresent()) {
+            applyProtocolLaunchParams(protocolLaunch.get(), "command-line launch URL");
+            return true;
+        }
+
+        if (launchArgs.length > 0) {
+            log("No WSCP parameters parsed from launch arguments");
+        }
+        return false;
+    }
+
+    private boolean tryConnectFromPendingOpenUri() {
+        String uri = pendingOpenUri.getAndSet(null);
+        if (uri == null) {
+            return false;
+        }
+        return applyProtocolLaunchUri(uri, "desktop open URI");
+    }
+
+    private boolean tryConnectFromEnvironment() {
         websocketUrl = envOrProperty("FDC3_WEBSOCKET_URL");
         sharedSecret = envOrProperty("FDC3_CONNECTION_SECRET");
 
         if (websocketUrl == null || sharedSecret == null) {
-            promptForConnectionConfig();
-        } else {
-            log("Using WSCP connection config from environment");
-            connectToAgent();
+            return false;
         }
+        log("Using WSCP connection config from environment");
+        connectToAgent();
+        return true;
+    }
+
+    private void showAwaitingConnection() {
+        statusLabel.setText("Not Connected");
+        statusLabel.setForeground(Color.GRAY);
+        connectButton.setEnabled(true);
+        if (supportsOpenUriHandler()) {
+            log("No WSCP credentials at startup. Click Connect, or launch from Sail to connect via protocol URL.");
+        } else {
+            log("No WSCP credentials at startup. Click Connect to enter WebSocket URL and shared secret.");
+        }
+    }
+
+    private static boolean supportsOpenUriHandler() {
+        if (!Desktop.isDesktopSupported()) {
+            return false;
+        }
+        return Desktop.getDesktop().isSupported(Desktop.Action.APP_OPEN_URI);
+    }
+
+    private static void registerOpenUriHandler() {
+        if (!supportsOpenUriHandler()) {
+            return;
+        }
+        Desktop.getDesktop().setOpenURIHandler(event -> {
+            String uri = event.getURI().toString();
+            pendingOpenUri.set(uri);
+            ExampleApp instance = activeInstance;
+            if (instance != null) {
+                instance.log("Received open URI: " + uri);
+                SwingUtilities.invokeLater(() -> instance.handleOpenUri(uri));
+            }
+        });
+    }
+
+    private void handleOpenUri(String uri) {
+        pendingOpenUri.compareAndSet(uri, null);
+        applyProtocolLaunchUri(uri, "desktop open URI");
+    }
+
+    private boolean applyProtocolLaunchUri(String uri, String source) {
+        Optional<ProtocolLaunchParams> protocolLaunch = ProtocolLaunchParams.parseLaunchUri(uri);
+        if (protocolLaunch.isEmpty()) {
+            log("No WSCP parameters parsed from " + source + ": " + uri);
+            return false;
+        }
+        applyProtocolLaunchParams(protocolLaunch.get(), source);
+        return true;
+    }
+
+    private void applyProtocolLaunchParams(ProtocolLaunchParams params, String source) {
+        websocketUrl = params.getWebSocketUrl();
+        sharedSecret = params.getSharedSecret();
+        log("Parsed WSCP webSocketUrl: " + websocketUrl);
+        log("Using WSCP connection config from " + source);
+        if (agent != null) {
+            disconnect();
+        }
+        connectToAgent();
+    }
+
+    private void logLaunchArguments() {
+        log("Build: " + buildLabel());
+        log("URI Handler: " + supportsOpenUriHandler());
+        log("Running from: " + codeLocation());
+        if (launchArgs.length == 0) {
+            log("Started with no launch arguments");
+            return;
+        }
+        log("Launch arguments (" + launchArgs.length + "):");
+        for (int i = 0; i < launchArgs.length; i++) {
+            log("  [" + i + "] " + launchArgs[i]);
+        }
+    }
+
+    private static String buildLabel() {
+        Package pkg = ExampleApp.class.getPackage();
+        if (pkg != null && pkg.getImplementationVersion() != null) {
+            return pkg.getImplementationVersion();
+        }
+        return "dev";
+    }
+
+    private static String codeLocation() {
+        try {
+            if (ExampleApp.class.getProtectionDomain().getCodeSource() != null) {
+                return ExampleApp.class.getProtectionDomain().getCodeSource().getLocation().toString();
+            }
+        } catch (SecurityException ignored) {
+            // fall through
+        }
+        return "unknown";
     }
 
     private static String envOrProperty(String name) {
@@ -162,8 +293,9 @@ public class ExampleApp extends JFrame {
     private void showConfigError(String msg) {
         statusLabel.setText("Not Connected");
         statusLabel.setForeground(Color.RED);
+        connectButton.setEnabled(true);
         log(msg);
-        log("Set FDC3_WEBSOCKET_URL and FDC3_CONNECTION_SECRET or restart.");
+        log("Click Connect, set FDC3_WEBSOCKET_URL and FDC3_CONNECTION_SECRET, or launch from Sail.");
     }
 
     private void initUI() {
@@ -181,9 +313,14 @@ public class ExampleApp extends JFrame {
         // Status panel
         JPanel statusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         statusPanel.add(new JLabel("Status:"));
-        statusLabel = new JLabel("Connecting...");
-        statusLabel.setForeground(Color.ORANGE);
+        statusLabel = new JLabel("Not Connected");
+        statusLabel.setForeground(Color.GRAY);
         statusPanel.add(statusLabel);
+
+        connectButton = new JButton("Connect");
+        connectButton.setToolTipText("Enter WSCP WebSocket URL and shared secret");
+        connectButton.addActionListener(e -> promptForConnectionConfig());
+        statusPanel.add(connectButton);
         
         disconnectButton = new JButton("Disconnect");
         disconnectButton.setEnabled(false);
@@ -808,6 +945,8 @@ public class ExampleApp extends JFrame {
     }
 
     public static void main(String[] args) {
+        String[] launchArgs = args != null ? args : new String[0];
+
         // Set look and feel
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -815,9 +954,13 @@ public class ExampleApp extends JFrame {
             // Use default look and feel
         }
 
+        // macOS delivers protocol URLs via Desktop.setOpenURIHandler (requires jpackage .app).
+        registerOpenUriHandler();
+
         // Create and show the application
         SwingUtilities.invokeLater(() -> {
-            ExampleApp app = new ExampleApp(args);
+            ExampleApp app = new ExampleApp(launchArgs);
+            activeInstance = app;
             app.setVisible(true);
         });
     }

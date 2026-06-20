@@ -16,7 +16,6 @@
 
 package org.finos.fdc3.example;
 
-import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -52,9 +51,10 @@ public final class ProtocolLaunchParams {
 
     /**
      * Looks for a protocol launch URL in the process arguments.
+     * Rejoins arguments when a shell splits the URL at {@code &}.
      */
     public static Optional<ProtocolLaunchParams> fromArgs(String[] args) {
-        if (args == null) {
+        if (args == null || args.length == 0) {
             return Optional.empty();
         }
         for (String arg : args) {
@@ -63,7 +63,38 @@ public final class ProtocolLaunchParams {
                 return parsed;
             }
         }
+        for (int i = 0; i < args.length; i++) {
+            if (!isSchemeUrl(args[i])) {
+                continue;
+            }
+            StringBuilder rebuilt = new StringBuilder(args[i].trim());
+            for (int j = i + 1; j < args.length; j++) {
+                String part = args[j];
+                if (part == null || part.isBlank()) {
+                    continue;
+                }
+                if (isSchemeUrl(part)) {
+                    break;
+                }
+                if (!rebuilt.toString().contains("?")) {
+                    rebuilt.append('?');
+                }
+                if (!part.startsWith("&")) {
+                    rebuilt.append('&');
+                }
+                rebuilt.append(part);
+            }
+            Optional<ProtocolLaunchParams> parsed = parseLaunchUri(rebuilt.toString());
+            if (parsed.isPresent()) {
+                return parsed;
+            }
+        }
         return Optional.empty();
+    }
+
+    private static boolean isSchemeUrl(String value) {
+        return value != null
+                && value.regionMatches(true, 0, SCHEME + "://", 0, SCHEME.length() + 3);
     }
 
     /**
@@ -80,8 +111,15 @@ public final class ProtocolLaunchParams {
         }
 
         try {
-            URI parsed = URI.create(normalized);
-            Map<String, String> query = parseQuery(parsed.getRawQuery());
+            int queryStart = normalized.indexOf('?');
+            String rawQuery = queryStart >= 0 ? normalized.substring(queryStart + 1) : null;
+            if (rawQuery != null) {
+                int hash = rawQuery.indexOf('#');
+                if (hash >= 0) {
+                    rawQuery = rawQuery.substring(0, hash);
+                }
+            }
+            Map<String, String> query = parseQuery(rawQuery);
             String webSocketUrl = query.get("webSocketUrl");
             String sharedSecret = query.get("sharedSecret");
             if (webSocketUrl == null || webSocketUrl.isBlank()

@@ -4,7 +4,7 @@ A simple Java Swing application demonstrating FDC3 Desktop Agent connectivity vi
 
 ## Features
 
-- Connects to a Desktop Agent on startup using WSCP (WebSocket Connection Protocol)
+- Connects to a Desktop Agent when launched with WSCP credentials, via protocol URL, or on user request
 - Supports launch via the `fdc3-java-app://` custom protocol handler (from FDC3-Sail or other DAs)
 - Displays available user channels and allows joining/leaving channels
 - Shows a log of context broadcasts received on the current channel
@@ -32,7 +32,9 @@ The application accepts WSCP connection parameters from (in priority order):
 
 1. **Protocol handler launch URL** — `fdc3-java-app://launch?webSocketUrl=...&sharedSecret=...`
 2. **System properties / environment variables**
-3. **Interactive prompts** at startup
+3. **Connect button** in the UI (manual entry)
+
+On macOS, protocol URLs are delivered via `Desktop.setOpenURIHandler`, not as `main()` arguments.
 
 | Property / Variable       | Description                                              |
 | ------------------------- | -------------------------------------------------------- |
@@ -60,7 +62,7 @@ java -DFDC3_WEBSOCKET_URL=ws://localhost:8090/fdc3/ws \
 
 1. Open the Sail app directory and select the native app
 2. Copy the **WebSocket URL** and **shared secret** from the pairing credentials panel
-3. Pass them via system properties or enter them when prompted at startup
+3. Pass them via system properties or click **Connect** in the app
 4. Use **Reconnect** after disconnect to resume the same instance with the same secret
 
 ## Protocol handler setup
@@ -71,31 +73,93 @@ Sail launches native apps using URLs of the form:
 fdc3-java-app://launch?webSocketUrl=<url>>&sharedSecret=<sharedSecret>
 ```
 
-The OS passes this URL as a command-line argument to the registered handler. The example app parses it in `ProtocolLaunchParams`.
+The example app parses these in `ProtocolLaunchParams`. Delivery differs by platform:
+
+| Platform | How the URL arrives |
+| -------- | ------------------- |
+| **macOS** | `Desktop.setOpenURIHandler` (requires a jpackage-built `.app`) |
+| **Windows** | Command-line argument to the registered handler |
 
 Helper scripts are in `fdc3-example-app/scripts/`.
 
 ### macOS
 
-macOS requires a small **app bundle** to register a custom URL scheme. The `Info.plist` registers `fdc3-java-app://`; `launch.sh` runs the JAR and forwards the launch URL (passed as an argument by the OS).
+macOS requires a proper **app bundle** to register a custom URL scheme. Use **jpackage** (included with JDK 14+) — do **not** use the old manual `launch.sh` wrapper, which prevents Java from receiving OpenURL events ([JDK-8360120](https://bugs.openjdk.org/browse/JDK-8360120)).
 
-1. Build the JAR (see above).
-2. Edit `scripts/macos/launch.sh` and set `JAR_PATH` to the absolute path of your built JAR.
-3. Create the app bundle:
+**Build the app bundle** (macOS only):
 
 ```bash
-APP="FDC3 Java Example.app"
-mkdir -p "$APP/Contents/MacOS"
-cp scripts/macos/Info.plist "$APP/Contents/"
-cp scripts/macos/launch.sh "$APP/Contents/MacOS/"
-chmod +x "$APP/Contents/MacOS/launch.sh"
+mvn clean package -pl fdc3-example-app -am -Pmacos-app
 ```
 
-4. Copy the app bundle to `/Applications` or another location, then open it once so macOS registers the URL scheme.
-5. Test from Terminal:
+Or run the script directly after `mvn package`:
+
+```bash
+chmod +x fdc3-example-app/scripts/macos/build-app.sh
+fdc3-example-app/scripts/macos/build-app.sh
+```
+
+Output: `fdc3-example-app/target/jpackage-staging/FDC3 Java Example.app`
+
+**Install and register** (copies to `~/Applications`, clears quarantine, and launches):
+
+```bash
+chmod +x fdc3-example-app/scripts/macos/install-app.sh
+fdc3-example-app/scripts/macos/install-app.sh
+```
+
+Or manually:
+
+```bash
+APP="fdc3-example-app/target/jpackage-staging/FDC3 Java Example.app"
+mkdir -p ~/Applications
+cp -R "$APP" ~/Applications/
+open "$APP"
+```
+
+**Test from Terminal:**
 
 ```bash
 open "fdc3-java-app://launch?webSocketUrl=ws%3A%2F%2Flocalhost%3A8090%2Ffdc3%2Fws&sharedSecret=test-secret"
+```
+
+Check the in-app **Context Log** for `Received open URI:` and `Using WSCP connection config from desktop open URI`.
+
+**Dock icon bounces but no window appears:** this was caused by `-XstartOnFirstThread` in the jpackage build (that flag is for SWT, not Swing — it prevents the AWT event loop from running). Rebuild with a current `-Pmacos-app` build; `build-app.sh` no longer passes that flag.
+
+**If the app won't start**, diagnose in this order:
+
+1. **Run the launcher from Terminal** (shows Java errors on stderr):
+
+   ```bash
+   APP="fdc3-example-app/target/jpackage-staging/FDC3 Java Example.app"
+   "$APP/Contents/MacOS/FDC3 Java Example"
+   ```
+
+2. **Double-click blocked (unsigned dev build):** use `install-app.sh`, or right-click → Open once.
+
+3. **Check the code signature:**
+
+   ```bash
+   codesign --verify --deep --strict --verbose=2 "$APP"
+   ```
+
+   Rebuild with `-Pmacos-app` if verification fails.
+
+4. **Crash logs:** open **Console.app** → Crash Reports, or:
+
+   ```bash
+   ls ~/Library/Logs/DiagnosticReports/*FDC3*
+   log stream --predicate 'process == "FDC3 Java Example"' --level debug
+   ```
+
+**After rebuilding:** quit any running copy (`Cmd+Q`), rebuild with `-Pmacos-app`, and re-copy to `~/Applications` if you installed it there. The jpackage bundle always embeds the latest JAR from `target/`.
+
+To test without the protocol handler:
+
+```bash
+java -jar fdc3-example-app/target/fdc3-example-app-1.0.0-SNAPSHOT.jar \
+  'fdc3-java-app://launch?webSocketUrl=ws%3A%2F%2Flocalhost%3A8090%2Ffdc3%2Fws&sharedSecret=test-secret'
 ```
 
 ### Windows

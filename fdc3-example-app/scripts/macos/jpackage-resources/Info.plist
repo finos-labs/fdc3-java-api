@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!--
-  jpackage resource override (see scripts/macos/build-app.sh --resource-dir).
-  Includes CFBundleURLTypes so jpackage signs the bundle once with the URL scheme.
--->
 <plist version="1.0">
 <dict>
   <key>LSMinimumSystemVersion</key>
