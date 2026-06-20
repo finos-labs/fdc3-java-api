@@ -29,22 +29,18 @@ import org.finos.fdc3.getagent.ui.DefaultIntentResolver;
  * The following environment variables / system properties provide defaults:
  * <ul>
  *   <li>{@code FDC3_WEBSOCKET_URL} — deployment WebSocket endpoint (e.g. ws://host/fdc3/ws)</li>
- *   <li>{@code FDC3_SESSION_ID} — DA user session identifier</li>
- *   <li>{@code FDC3_CONNECTION_SECRET} — pairing secret or launch token (required for initial connect only)</li>
+ *   <li>{@code FDC3_CONNECTION_SECRET} — pairing secret from the Desktop Agent UI (required)</li>
  * </ul>
+ * The shared secret implicitly identifies the FDC3 session and app instance. The same secret
+ * MUST be presented again when reconnecting after interruption.
  */
 public class GetAgentParams {
 
     public static final String PROP_WEBSOCKET_URL = "FDC3_WEBSOCKET_URL";
-    public static final String PROP_SESSION_ID = "FDC3_SESSION_ID";
     public static final String PROP_CONNECTION_SECRET = "FDC3_CONNECTION_SECRET";
 
     private final String webSocketUrl;
-    private final String sessionId;
     private final String sharedSecret;
-    private final String appId;
-    private final String instanceId;
-    private final String instanceUuid;
     private final ChannelSelector channelSelector;
     private final IntentResolver intentResolver;
     private final long timeoutMs;
@@ -54,11 +50,7 @@ public class GetAgentParams {
 
     private GetAgentParams(Builder builder) {
         this.webSocketUrl = builder.webSocketUrl;
-        this.sessionId = builder.sessionId;
         this.sharedSecret = builder.sharedSecret;
-        this.appId = builder.appId;
-        this.instanceId = builder.instanceId;
-        this.instanceUuid = builder.instanceUuid;
         this.channelSelector = builder.channelSelector;
         this.intentResolver = builder.intentResolver;
         this.timeoutMs = builder.timeoutMs;
@@ -71,24 +63,8 @@ public class GetAgentParams {
         return webSocketUrl;
     }
 
-    public String getSessionId() {
-        return sessionId;
-    }
-
     public String getSharedSecret() {
         return sharedSecret;
-    }
-
-    public String getAppId() {
-        return appId;
-    }
-
-    public String getInstanceId() {
-        return instanceId;
-    }
-
-    public String getInstanceUuid() {
-        return instanceUuid;
     }
 
     public ChannelSelector getChannelSelector() {
@@ -123,15 +99,9 @@ public class GetAgentParams {
         private String webSocketUrl = firstNonEmpty(
                 System.getenv(PROP_WEBSOCKET_URL),
                 System.getProperty(PROP_WEBSOCKET_URL));
-        private String sessionId = firstNonEmpty(
-                System.getenv(PROP_SESSION_ID),
-                System.getProperty(PROP_SESSION_ID));
         private String sharedSecret = firstNonEmpty(
                 System.getenv(PROP_CONNECTION_SECRET),
                 System.getProperty(PROP_CONNECTION_SECRET));
-        private String appId = null;
-        private String instanceId = null;
-        private String instanceUuid = null;
         private ChannelSelector channelSelector = new DefaultChannelSelector();
         private IntentResolver intentResolver = new DefaultIntentResolver();
         private long timeoutMs = 10000;
@@ -154,28 +124,8 @@ public class GetAgentParams {
             return this;
         }
 
-        public Builder sessionId(String sessionId) {
-            this.sessionId = sessionId;
-            return this;
-        }
-
         public Builder sharedSecret(String sharedSecret) {
             this.sharedSecret = sharedSecret;
-            return this;
-        }
-
-        public Builder appId(String appId) {
-            this.appId = appId;
-            return this;
-        }
-
-        public Builder instanceId(String instanceId) {
-            this.instanceId = instanceId;
-            return this;
-        }
-
-        public Builder instanceUuid(String instanceUuid) {
-            this.instanceUuid = instanceUuid;
             return this;
         }
 
@@ -213,13 +163,8 @@ public class GetAgentParams {
             if (webSocketUrl == null || webSocketUrl.isEmpty()) {
                 throw new IllegalArgumentException("webSocketUrl is required");
             }
-            if (sessionId == null || sessionId.isEmpty()) {
-                throw new IllegalArgumentException("sessionId is required");
-            }
-            if ((sharedSecret == null || sharedSecret.isEmpty())
-                    && (instanceUuid == null || instanceUuid.isEmpty())) {
-                throw new IllegalArgumentException(
-                        "sharedSecret is required for initial connection, or instanceUuid for reconnect");
+            if (sharedSecret == null || sharedSecret.isEmpty()) {
+                throw new IllegalArgumentException("sharedSecret is required");
             }
             return new GetAgentParams(this);
         }

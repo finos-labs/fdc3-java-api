@@ -4,7 +4,7 @@ A simple Java Swing application demonstrating FDC3 Desktop Agent connectivity vi
 
 ## Features
 
-- Connects to a Desktop Agent on startup using the Web Connection Protocol
+- Connects to a Desktop Agent on startup using WSCP (WebSocket Connection Protocol)
 - Displays available user channels and allows joining/leaving channels
 - Shows a log of context broadcasts received on the current channel
 - Supports adding and removing context listeners on the user channel
@@ -27,25 +27,27 @@ This will create an executable JAR with all dependencies at:
 
 ## Running
 
-The application requires the following system properties to be set:
+The application requires the following system properties (or environment variables):
 
-| Property             | Description                         |
-| -------------------- | ----------------------------------- |
-| `FDC3_WEBSOCKET_URL` | WebSocket URL for the Desktop Agent |
+| Property                 | Description                                              |
+| ------------------------ | -------------------------------------------------------- |
+| `FDC3_WEBSOCKET_URL`     | WebSocket URL (e.g. `ws://localhost:8090/fdc3/ws`)       |
+| `FDC3_CONNECTION_SECRET` | Per-instance shared secret from the Sail pairing UI      |
 
 ### Example
 
 ```bash
-java -DFDC3_WEBSOCKET_URL=ws://localhost:4475/remote/my-app-path \
+java -DFDC3_WEBSOCKET_URL=ws://localhost:8090/fdc3/ws \
+     -DFDC3_CONNECTION_SECRET=your-pairing-secret-from-sail \
      -jar fdc3-example-app/target/fdc3-example-app-1.0.0-SNAPSHOT.jar
 ```
 
 ### Using with FDC3-Sail
 
-1. In FDC3-Sail, go to Configuration → Remote Apps
-2. Add a new remote app by selecting an existing app from your directories
-3. Copy the WebSocket URL provided
-4. Use that URL and generate your own instance ID and UUID to run this application
+1. Open the Sail app directory and select a native app
+2. Copy the **WebSocket URL** and **shared secret** from the pairing credentials panel
+3. Pass them via system properties or enter them when prompted at startup
+4. Use **Reconnect** after disconnect to resume the same instance with the same secret
 
 ## UI Overview
 

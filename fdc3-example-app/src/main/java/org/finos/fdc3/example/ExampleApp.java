@@ -51,8 +51,7 @@ import java.util.Map;
  * Required system properties or environment variables:
  * <ul>
  *   <li>{@code FDC3_WEBSOCKET_URL} - WebSocket URL (e.g. ws://host/fdc3/ws)</li>
- *   <li>{@code FDC3_SESSION_ID} - Sail session ID from pairing UI</li>
- *   <li>{@code FDC3_CONNECTION_SECRET} - Per-app shared secret from pairing UI</li>
+ *   <li>{@code FDC3_CONNECTION_SECRET} - Per-instance shared secret from Sail pairing UI</li>
  * </ul>
  */
 public class ExampleApp extends JFrame {
@@ -78,12 +77,10 @@ public class ExampleApp extends JFrame {
     private JButton broadcastContactButton;
     
     private String websocketUrl;
-    private String sessionId;
     private String sharedSecret;
     
     // Stored connection info for reconnection
     private String lastInstanceId;
-    private String lastInstanceUuid;
     
     // Connection buttons
     private JButton disconnectButton;
@@ -103,10 +100,9 @@ public class ExampleApp extends JFrame {
      */
     private void initializeConnection() {
         websocketUrl = envOrProperty("FDC3_WEBSOCKET_URL");
-        sessionId = envOrProperty("FDC3_SESSION_ID");
         sharedSecret = envOrProperty("FDC3_CONNECTION_SECRET");
 
-        if (websocketUrl == null || sessionId == null || sharedSecret == null) {
+        if (websocketUrl == null || sharedSecret == null) {
             promptForConnectionConfig();
         } else {
             log("Using WSCP connection config from environment");
@@ -125,9 +121,8 @@ public class ExampleApp extends JFrame {
     private void promptForConnectionConfig() {
         String message = "WSCP connection values are required.\n\n" +
                 "Copy these from the Sail app directory for your native app:\n" +
-                "  • WebSocket URL (same for all apps, e.g. ws://localhost:8090/fdc3/ws)\n" +
-                "  • Session ID\n" +
-                "  • Shared secret (unique per app)\n\n" +
+                "  • WebSocket URL (e.g. ws://localhost:8090/fdc3/ws)\n" +
+                "  • Shared secret (unique per app instance)\n\n" +
                 "Enter WebSocket URL:";
 
         String url = JOptionPane.showInputDialog(this, message, "WSCP WebSocket URL",
@@ -137,14 +132,6 @@ public class ExampleApp extends JFrame {
             return;
         }
         websocketUrl = url.trim();
-
-        String sid = JOptionPane.showInputDialog(this, "Enter Session ID:", "WSCP Session ID",
-                JOptionPane.QUESTION_MESSAGE);
-        if (sid == null || sid.trim().isEmpty()) {
-            showConfigError("No session ID provided.");
-            return;
-        }
-        sessionId = sid.trim();
 
         String secret = JOptionPane.showInputDialog(this, "Enter shared secret:", "WSCP Shared Secret",
                 JOptionPane.QUESTION_MESSAGE);
@@ -162,7 +149,7 @@ public class ExampleApp extends JFrame {
         statusLabel.setText("Not Connected");
         statusLabel.setForeground(Color.RED);
         log(msg);
-        log("Set FDC3_WEBSOCKET_URL, FDC3_SESSION_ID, and FDC3_CONNECTION_SECRET or restart.");
+        log("Set FDC3_WEBSOCKET_URL and FDC3_CONNECTION_SECRET or restart.");
     }
 
     private void initUI() {
@@ -191,7 +178,7 @@ public class ExampleApp extends JFrame {
         
         reconnectButton = new JButton("Reconnect");
         reconnectButton.setEnabled(false);
-        reconnectButton.setToolTipText("Reconnect using the same instanceId/instanceUuid");
+        reconnectButton.setToolTipText("Reconnect using the same shared secret");
         reconnectButton.addActionListener(e -> reconnect());
         statusPanel.add(reconnectButton);
         
@@ -295,7 +282,7 @@ public class ExampleApp extends JFrame {
     }
 
     private void connectToAgent() {
-        if (websocketUrl == null || sessionId == null || sharedSecret == null) {
+        if (websocketUrl == null || sharedSecret == null) {
             log("ERROR: WSCP connection config incomplete");
             return;
         }
@@ -306,7 +293,6 @@ public class ExampleApp extends JFrame {
             GetAgentParams params = GetAgentParams.builder()
                     .timeoutMs(30000)
                     .webSocketUrl(websocketUrl)
-                    .sessionId(sessionId)
                     .sharedSecret(sharedSecret)
                     .build();
 
@@ -339,24 +325,19 @@ public class ExampleApp extends JFrame {
     }
     
     /**
-     * Store instanceId and instanceUuid for potential reconnection.
+     * Store instanceId for display after connect.
      */
     private void storeConnectionInfo() {
         if (agent == null) return;
         
-        // Get instanceId and instanceUuid from getInfo()
         agent.getInfo()
                 .thenAccept(info -> {
                     if (info != null && info.getAppMetadata() != null) {
                         lastInstanceId = info.getAppMetadata().getInstanceId();
-                        lastInstanceUuid = info.getAppMetadata().getInstanceUuid();
                         
                         SwingUtilities.invokeLater(() -> {
                             if (lastInstanceId != null) {
-                                log("Stored instanceId for reconnection: " + lastInstanceId);
-                            }
-                            if (lastInstanceUuid != null) {
-                                log("Stored instanceUuid for reconnection");
+                                log("Assigned instanceId: " + lastInstanceId);
                             }
                         });
                     }
@@ -373,7 +354,7 @@ public class ExampleApp extends JFrame {
         statusLabel.setForeground(Color.RED);
         disconnectButton.setEnabled(false);
         // Enable reconnect if we have stored credentials
-        reconnectButton.setEnabled(lastInstanceId != null && lastInstanceUuid != null);
+        reconnectButton.setEnabled(sharedSecret != null);
         log("ERROR: Failed to connect - " + error.getMessage());
         
         // Show error dialog with option to retry
@@ -428,7 +409,7 @@ public class ExampleApp extends JFrame {
             statusLabel.setForeground(Color.GRAY);
             disconnectButton.setEnabled(false);
             // Enable reconnect if we have stored credentials
-            reconnectButton.setEnabled(lastInstanceId != null && lastInstanceUuid != null);
+            reconnectButton.setEnabled(sharedSecret != null);
             channelComboBox.setEnabled(false);
             channelComboBox.removeAllItems();
             addListenerButton.setEnabled(false);
@@ -441,22 +422,15 @@ public class ExampleApp extends JFrame {
     }
     
     /**
-     * Reconnect to the Desktop Agent using the stored instanceId and instanceUuid.
+     * Reconnect to the Desktop Agent using the same shared secret.
      */
     private void reconnect() {
-        if (websocketUrl == null || sessionId == null) {
-            log("ERROR: webSocketUrl and sessionId required for reconnection");
-            return;
-        }
-
-        if (lastInstanceId == null || lastInstanceUuid == null) {
-            log("ERROR: No stored connection info for reconnection. Connect fresh first.");
+        if (websocketUrl == null || sharedSecret == null) {
+            log("ERROR: webSocketUrl and sharedSecret required for reconnection");
             return;
         }
         
         log("Reconnecting to Desktop Agent...");
-        log("  Using instanceId: " + lastInstanceId);
-        log("  Using instanceUuid: [stored]");
         
         statusLabel.setText("Reconnecting...");
         statusLabel.setForeground(Color.ORANGE);
@@ -466,9 +440,7 @@ public class ExampleApp extends JFrame {
             GetAgentParams params = GetAgentParams.builder()
                     .timeoutMs(30000)
                     .webSocketUrl(websocketUrl)
-                    .sessionId(sessionId)
-                    .instanceId(lastInstanceId)
-                    .instanceUuid(lastInstanceUuid)
+                    .sharedSecret(sharedSecret)
                     .build();
 
             GetAgent.getAgent(params)

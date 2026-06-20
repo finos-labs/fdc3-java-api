@@ -53,10 +53,9 @@ public class GetAgentSteps {
         world.put(name, server);
     }
 
-    @Given("{string} will accept pairing for sessionId {string} sharedSecret {string} as appId {string} instanceId {string}")
-    public void acceptPairing(String serverName, String sessionId, String secret,
-                              String appId, String instanceId) {
-        getServer(serverName).acceptPairing(sessionId, secret, appId, instanceId);
+    @Given("{string} will accept pairing for sharedSecret {string} as appId {string} instanceId {string}")
+    public void acceptPairing(String serverName, String secret, String appId, String instanceId) {
+        getServer(serverName).acceptPairing(secret, appId, instanceId);
     }
 
     @Given("{string} will reject pairing with message {string}")
@@ -74,38 +73,19 @@ public class GetAgentSteps {
         getServer(serverName).setImplementationMetadata(provider, version);
     }
 
-    @Given("{string} is GetAgentParams with webSocketUrl {string} sessionId {string} sharedSecret {string} instanceId {string} instanceUuid {string}")
-    public void buildParams(String name, String url, String sessionId, String secret,
-                            String instanceId, String instanceUuid) throws Exception {
+    @Given("{string} is GetAgentParams with webSocketUrl {string} sharedSecret {string}")
+    public void buildParams(String name, String url, String secret) throws Exception {
         world.put(name, GetAgentParams.builder()
                 .webSocketUrl((String) handleResolve(url, world))
-                .sessionId(sessionId)
                 .sharedSecret(secret)
-                .instanceId(instanceId)
-                .instanceUuid(instanceUuid)
                 .build());
     }
 
-    @Given("{string} is GetAgentParams reconnect with webSocketUrl {string} sessionId {string} instanceId {string} instanceUuid {string}")
-    public void buildReconnectParams(String name, String url, String sessionId,
-                                     String instanceId, String instanceUuid) throws Exception {
+    @Given("{string} is GetAgentParams with webSocketUrl {string} sharedSecret {string} timeout {long}")
+    public void buildParamsWithTimeout(String name, String url, String secret, long timeout) throws Exception {
         world.put(name, GetAgentParams.builder()
                 .webSocketUrl((String) handleResolve(url, world))
-                .sessionId(sessionId)
-                .instanceId(instanceId)
-                .instanceUuid(instanceUuid)
-                .build());
-    }
-
-    @Given("{string} is GetAgentParams with webSocketUrl {string} sessionId {string} sharedSecret {string} instanceId {string} instanceUuid {string} timeout {long}")
-    public void buildParamsWithTimeout(String name, String url, String sessionId, String secret,
-                                       String instanceId, String instanceUuid, long timeout) throws Exception {
-        world.put(name, GetAgentParams.builder()
-                .webSocketUrl((String) handleResolve(url, world))
-                .sessionId(sessionId)
                 .sharedSecret(secret)
-                .instanceId(instanceId)
-                .instanceUuid(instanceUuid)
                 .timeoutMs(timeout)
                 .build());
     }

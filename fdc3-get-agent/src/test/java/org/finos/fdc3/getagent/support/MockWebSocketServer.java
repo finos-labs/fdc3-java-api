@@ -30,27 +30,28 @@ import jakarta.websocket.server.ServerEndpoint;
 
 import org.finos.fdc3.api.metadata.AppMetadata;
 import org.finos.fdc3.api.metadata.ImplementationMetadata;
-import org.finos.fdc3.schema.SchemaConverter;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol1ConnectRequest;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol1ConnectRequestMeta;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol2ConnectFailedResponse;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol2ConnectFailedResponsePayload;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol2ConnectFailedResponseType;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol2ConnectSuccessResponse;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol2ConnectSuccessResponsePayload;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol2ConnectSuccessResponseType;
 import org.finos.fdc3.schema.AddContextListenerResponseMeta;
 import org.finos.fdc3.schema.GetInfoRequest;
 import org.finos.fdc3.schema.GetInfoResponse;
 import org.finos.fdc3.schema.GetInfoResponsePayload;
 import org.finos.fdc3.schema.GetInfoResponseType;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol3Goodbye;
+import org.finos.fdc3.schema.ProtocolVersion;
+import org.finos.fdc3.schema.SchemaConverter;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolApplicationConnect;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolApplicationConnectMeta;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolConnectFailed;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolConnectFailedPayload;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolConnectFailedType;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolDesktopAgentConnect;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolDesktopAgentConnectPayload;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolDesktopAgentConnectType;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolGoodbye;
 import org.glassfish.tyrus.server.Server;
 
 /**
  * Mock WebSocket server for testing GetAgent WSCP handshake.
  */
-@ServerEndpoint("/fdc3")
+@ServerEndpoint("/fdc3/ws")
 public class MockWebSocketServer {
 
     private static final SchemaConverter converter = new SchemaConverter();
@@ -61,18 +62,16 @@ public class MockWebSocketServer {
     private Server server;
     private int port;
 
-    private String acceptedSessionId;
     private String acceptedSharedSecret;
     private String responseAppId;
     private String responseInstanceId;
-    private String responseInstanceUuid = "response-uuid";
     private String rejectMessage;
     private boolean shouldTimeout;
     private String providerName = "test-provider";
     private String fdc3Version = "2.0";
 
-    private WebSocketConnectionProtocol1ConnectRequest lastWSCP1;
-    private WebSocketConnectionProtocol3Goodbye lastWSCP3;
+    private WebSocketConnectionProtocolApplicationConnect lastApplicationConnect;
+    private WebSocketConnectionProtocolGoodbye lastGoodbye;
 
     public void start() throws Exception {
         port = 8025 + (int) (Math.random() * 1000);
@@ -91,11 +90,10 @@ public class MockWebSocketServer {
     }
 
     public String getUrl() {
-        return "ws://localhost:" + port + "/fdc3";
+        return "ws://localhost:" + port + "/fdc3/ws";
     }
 
-    public void acceptPairing(String sessionId, String sharedSecret, String appId, String instanceId) {
-        acceptedSessionId = sessionId;
+    public void acceptPairing(String sharedSecret, String appId, String instanceId) {
         acceptedSharedSecret = sharedSecret;
         responseAppId = appId;
         responseInstanceId = instanceId;
@@ -104,7 +102,6 @@ public class MockWebSocketServer {
     }
 
     public void rejectPairing(String message) {
-        acceptedSessionId = null;
         acceptedSharedSecret = null;
         rejectMessage = message;
         shouldTimeout = false;
@@ -119,12 +116,12 @@ public class MockWebSocketServer {
         fdc3Version = version;
     }
 
-    public WebSocketConnectionProtocol1ConnectRequest getLastWSCP1() {
-        return lastWSCP1;
+    public WebSocketConnectionProtocolApplicationConnect getLastApplicationConnect() {
+        return lastApplicationConnect;
     }
 
-    public WebSocketConnectionProtocol3Goodbye getLastWSCP3() {
-        return lastWSCP3;
+    public WebSocketConnectionProtocolGoodbye getLastGoodbye() {
+        return lastGoodbye;
     }
 
     @OnOpen
@@ -146,15 +143,15 @@ public class MockWebSocketServer {
                 return;
             }
 
-            if ("WSCP1ConnectRequest".equals(type)) {
-                WebSocketConnectionProtocol1ConnectRequest wscp1 =
-                        converter.fromJson(message, WebSocketConnectionProtocol1ConnectRequest.class);
-                instance.lastWSCP1 = wscp1;
-                instance.handleConnectRequest(wscp1, session);
-            } else if ("WSCP3Goodbye".equals(type)) {
-                WebSocketConnectionProtocol3Goodbye wscp3 =
-                        converter.fromJson(message, WebSocketConnectionProtocol3Goodbye.class);
-                instance.lastWSCP3 = wscp3;
+            if ("WSCPApplicationConnect".equals(type)) {
+                WebSocketConnectionProtocolApplicationConnect connect =
+                        converter.fromJson(message, WebSocketConnectionProtocolApplicationConnect.class);
+                instance.lastApplicationConnect = connect;
+                instance.handleConnectRequest(connect, session);
+            } else if ("WSCPGoodbye".equals(type)) {
+                WebSocketConnectionProtocolGoodbye goodbye =
+                        converter.fromJson(message, WebSocketConnectionProtocolGoodbye.class);
+                instance.lastGoodbye = goodbye;
             } else if ("getInfoRequest".equals(type)) {
                 GetInfoRequest request = converter.fromJson(message, GetInfoRequest.class);
                 instance.handleGetInfoRequest(request, session);
@@ -169,37 +166,24 @@ public class MockWebSocketServer {
     }
 
     private void handleConnectRequest(
-            WebSocketConnectionProtocol1ConnectRequest request, Session session) {
+            WebSocketConnectionProtocolApplicationConnect request, Session session) {
         if (shouldTimeout) {
             return;
         }
 
         String connectionAttemptUuid = request.getMeta().getConnectionAttemptUUID();
-        String sessionId = request.getPayload().getSessionID();
         String sharedSecret = request.getPayload().getSharedSecret();
-        String instanceUuid = request.getPayload().getInstanceUUID();
 
         try {
             String responseJson;
 
             if (rejectMessage != null) {
                 responseJson = buildFailedResponse(connectionAttemptUuid, rejectMessage);
-            } else if (acceptedSessionId != null
-                    && acceptedSessionId.equals(sessionId)
-                    && instanceUuid != null
-                    && instanceUuid.equals(responseInstanceUuid)) {
-                // Flow 2: reconnect with sessionId + instanceUuid (no sharedSecret)
-                responseJson = buildSuccessResponse(connectionAttemptUuid);
-            } else if (acceptedSessionId != null
-                    && acceptedSessionId.equals(sessionId)
-                    && acceptedSharedSecret != null
+            } else if (acceptedSharedSecret != null
                     && acceptedSharedSecret.equals(sharedSecret)) {
-                if (instanceUuid != null) {
-                    responseInstanceUuid = instanceUuid;
-                }
                 responseJson = buildSuccessResponse(connectionAttemptUuid);
             } else {
-                responseJson = buildFailedResponse(connectionAttemptUuid, "Invalid pairing credentials");
+                responseJson = buildFailedResponse(connectionAttemptUuid, "Invalid or unknown sharedSecret");
             }
 
             session.getBasicRemote().sendText(responseJson);
@@ -247,23 +231,21 @@ public class MockWebSocketServer {
     }
 
     private String buildSuccessResponse(String connectionAttemptUuid) throws IOException {
-        WebSocketConnectionProtocol2ConnectSuccessResponse response =
-                new WebSocketConnectionProtocol2ConnectSuccessResponse();
+        WebSocketConnectionProtocolDesktopAgentConnect response =
+                new WebSocketConnectionProtocolDesktopAgentConnect();
 
-        WebSocketConnectionProtocol1ConnectRequestMeta meta =
-                new WebSocketConnectionProtocol1ConnectRequestMeta();
+        WebSocketConnectionProtocolApplicationConnectMeta meta =
+                new WebSocketConnectionProtocolApplicationConnectMeta();
         meta.setConnectionAttemptUUID(connectionAttemptUuid);
         meta.setTimestamp(OffsetDateTime.now());
         response.setMeta(meta);
 
         response.setType(
-                WebSocketConnectionProtocol2ConnectSuccessResponseType.WSCP2_CONNECT_RESPONSE);
+                WebSocketConnectionProtocolDesktopAgentConnectType.WSCP_DESKTOP_AGENT_CONNECT);
 
-        WebSocketConnectionProtocol2ConnectSuccessResponsePayload payload =
-                new WebSocketConnectionProtocol2ConnectSuccessResponsePayload();
-        payload.setAppID(responseAppId);
-        payload.setInstanceID(responseInstanceId);
-        payload.setInstanceUUID(responseInstanceUuid);
+        WebSocketConnectionProtocolDesktopAgentConnectPayload payload =
+                new WebSocketConnectionProtocolDesktopAgentConnectPayload();
+        payload.setProtocolVersion(ProtocolVersion.THE_10);
         payload.setImplementationMetadata(buildImplementationMetadata());
         response.setPayload(payload);
 
@@ -271,20 +253,19 @@ public class MockWebSocketServer {
     }
 
     private String buildFailedResponse(String connectionAttemptUuid, String message) throws IOException {
-        WebSocketConnectionProtocol2ConnectFailedResponse response =
-                new WebSocketConnectionProtocol2ConnectFailedResponse();
+        WebSocketConnectionProtocolConnectFailed response =
+                new WebSocketConnectionProtocolConnectFailed();
 
-        WebSocketConnectionProtocol1ConnectRequestMeta meta =
-                new WebSocketConnectionProtocol1ConnectRequestMeta();
+        WebSocketConnectionProtocolApplicationConnectMeta meta =
+                new WebSocketConnectionProtocolApplicationConnectMeta();
         meta.setConnectionAttemptUUID(connectionAttemptUuid);
         meta.setTimestamp(OffsetDateTime.now());
         response.setMeta(meta);
 
-        response.setType(
-                WebSocketConnectionProtocol2ConnectFailedResponseType.WSCP2_CONNECT_FAILED_RESPONSE);
+        response.setType(WebSocketConnectionProtocolConnectFailedType.WSCP_CONNECT_FAILED);
 
-        WebSocketConnectionProtocol2ConnectFailedResponsePayload payload =
-                new WebSocketConnectionProtocol2ConnectFailedResponsePayload();
+        WebSocketConnectionProtocolConnectFailedPayload payload =
+                new WebSocketConnectionProtocolConnectFailedPayload();
         payload.setMessage(message);
         response.setPayload(payload);
 

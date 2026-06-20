@@ -180,9 +180,9 @@ public class WebSocketMessaging extends AbstractMessaging {
             return CompletableFuture.completedFuture(null);
         }
 
-        // Send WSCP3Goodbye message before closing
+        // Send WSCPGoodbye message before closing
         Map<String, Object> goodbye = new HashMap<>();
-        goodbye.put("type", "WSCP3Goodbye");
+        goodbye.put("type", "WSCPGoodbye");
         Map<String, Object> meta = new HashMap<>();
         meta.put("timestamp", OffsetDateTime.now());
         goodbye.put("meta", meta);
@@ -192,7 +192,7 @@ public class WebSocketMessaging extends AbstractMessaging {
             Logger.debug("Sending message: {}", json);
             session.getBasicRemote().sendText(json);
         } catch (Exception e) {
-            Logger.error("Failed to send WSCP3Goodbye: {}", e.getMessage());
+            Logger.error("Failed to send WSCPGoodbye: {}", e.getMessage());
         }
 
         try {

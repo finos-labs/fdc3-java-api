@@ -28,6 +28,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.finos.fdc3.api.DesktopAgent;
 import org.finos.fdc3.api.errors.FDC3ConnectionException;
+import org.finos.fdc3.api.metadata.AppMetadata;
 import org.finos.fdc3.api.metadata.ImplementationMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.ui.Connectable;
@@ -37,20 +38,19 @@ import org.finos.fdc3.proxy.channels.DefaultChannelSupport;
 import org.finos.fdc3.proxy.heartbeat.DefaultHeartbeatSupport;
 import org.finos.fdc3.proxy.intents.DefaultIntentSupport;
 import org.finos.fdc3.proxy.util.Logger;
-import org.finos.fdc3.schema.ConnectionRole;
 import org.finos.fdc3.schema.ProtocolVersion;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol1ConnectRequest;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol1ConnectRequestMeta;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol1ConnectRequestPayload;
-import org.finos.fdc3.schema.WebSocketConnectionProtocol1ConnectRequestType;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolApplicationConnect;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolApplicationConnectMeta;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolApplicationConnectPayload;
+import org.finos.fdc3.schema.WebSocketConnectionProtocolApplicationConnectType;
 
 /**
  * Factory for obtaining a DesktopAgent connection via WebSocket using WSCP.
  */
 public class GetAgent {
 
-    private static final String WSCP2_CONNECT_RESPONSE = "WSCP2ConnectResponse";
-    private static final String WSCP2_CONNECT_FAILED_RESPONSE = "WSCP2ConnectFailedResponse";
+    private static final String WSCP_DESKTOP_AGENT_CONNECT = "WSCPDesktopAgentConnect";
+    private static final String WSCP_CONNECT_FAILED = "WSCPConnectFailed";
 
     private GetAgent() {
     }
@@ -83,33 +83,21 @@ public class GetAgent {
 
         String connectionAttemptUuid = UUID.randomUUID().toString();
 
-        WebSocketConnectionProtocol1ConnectRequest connectMsg =
-                new WebSocketConnectionProtocol1ConnectRequest();
-        connectMsg.setType(WebSocketConnectionProtocol1ConnectRequestType.WSCP1_CONNECT_REQUEST);
+        WebSocketConnectionProtocolApplicationConnect connectMsg =
+                new WebSocketConnectionProtocolApplicationConnect();
+        connectMsg.setType(
+                WebSocketConnectionProtocolApplicationConnectType.WSCP_APPLICATION_CONNECT);
 
-        WebSocketConnectionProtocol1ConnectRequestMeta meta =
-                new WebSocketConnectionProtocol1ConnectRequestMeta();
+        WebSocketConnectionProtocolApplicationConnectMeta meta =
+                new WebSocketConnectionProtocolApplicationConnectMeta();
         meta.setConnectionAttemptUUID(connectionAttemptUuid);
         meta.setTimestamp(OffsetDateTime.now());
         connectMsg.setMeta(meta);
 
-        WebSocketConnectionProtocol1ConnectRequestPayload payload =
-                new WebSocketConnectionProtocol1ConnectRequestPayload();
-        payload.setRole(ConnectionRole.APPLICATION);
+        WebSocketConnectionProtocolApplicationConnectPayload payload =
+                new WebSocketConnectionProtocolApplicationConnectPayload();
         payload.setProtocolVersion(ProtocolVersion.THE_10);
-        payload.setSessionID(params.getSessionId());
-        if (params.getSharedSecret() != null) {
-            payload.setSharedSecret(params.getSharedSecret());
-        }
-        if (params.getAppId() != null) {
-            payload.setAppID(params.getAppId());
-        }
-        if (params.getInstanceId() != null) {
-            payload.setInstanceID(params.getInstanceId());
-        }
-        if (params.getInstanceUuid() != null) {
-            payload.setInstanceUUID(params.getInstanceUuid());
-        }
+        payload.setSharedSecret(params.getSharedSecret());
         connectMsg.setPayload(payload);
 
         Map<String, Object> connectMessage = messaging.getConverter().toMap(connectMsg);
@@ -128,8 +116,8 @@ public class GetAgent {
             @SuppressWarnings("unchecked")
             public boolean filter(Map<String, Object> message) {
                 String type = (String) message.get("type");
-                if (!WSCP2_CONNECT_RESPONSE.equals(type)
-                        && !WSCP2_CONNECT_FAILED_RESPONSE.equals(type)) {
+                if (!WSCP_DESKTOP_AGENT_CONNECT.equals(type)
+                        && !WSCP_CONNECT_FAILED.equals(type)) {
                     return false;
                 }
 
@@ -149,7 +137,7 @@ public class GetAgent {
                 String type = (String) message.get("type");
                 Map<String, Object> responsePayload = (Map<String, Object>) message.get("payload");
 
-                if (WSCP2_CONNECT_FAILED_RESPONSE.equals(type)) {
+                if (WSCP_CONNECT_FAILED.equals(type)) {
                     String errorMessage = responsePayload != null
                             ? (String) responsePayload.get("message")
                             : "Connection failed";
@@ -160,14 +148,21 @@ public class GetAgent {
 
                 try {
                     ValidationResult result = new ValidationResult();
-                    result.appId = (String) responsePayload.get("appId");
-                    result.instanceId = (String) responsePayload.get("instanceId");
-                    result.instanceUuid = (String) responsePayload.get("instanceUuid");
 
                     Map<String, Object> implMeta =
                             (Map<String, Object>) responsePayload.get("implementationMetadata");
                     if (implMeta != null) {
                         result.implementationMetadata = parseImplementationMetadata(implMeta);
+                        AppMetadata appMetadata = result.implementationMetadata.getAppMetadata();
+                        if (appMetadata != null) {
+                            result.appId = appMetadata.getAppId();
+                            result.instanceId = appMetadata.getInstanceId();
+                        }
+                    }
+
+                    if (result.appId == null || result.instanceId == null) {
+                        throw new FDC3ConnectionException(
+                                "WSCPDesktopAgentConnect missing appMetadata appId/instanceId");
                     }
 
                     Logger.info("WSCP handshake successful - appId: {}, instanceId: {}",
@@ -175,7 +170,7 @@ public class GetAgent {
                     responseFuture.complete(result);
                 } catch (Exception e) {
                     responseFuture.completeExceptionally(
-                            new FDC3ConnectionException("Failed to parse WSCP2 response", e));
+                            new FDC3ConnectionException("Failed to parse WSCPDesktopAgentConnect", e));
                 }
             }
 
@@ -191,7 +186,7 @@ public class GetAgent {
             }
         });
 
-        Logger.debug("Sending WSCP1ConnectRequest message");
+        Logger.debug("Sending WSCPApplicationConnect message");
         messaging.post(connectMessage);
 
         return responseFuture
@@ -200,7 +195,8 @@ public class GetAgent {
                     if (error instanceof TimeoutException
                             || (error.getCause() != null
                             && error.getCause() instanceof TimeoutException)) {
-                        throw new FDC3ConnectionException("Connection timeout waiting for WSCP2 response");
+                        throw new FDC3ConnectionException(
+                                "Connection timeout waiting for WSCPDesktopAgentConnect");
                     }
                     if (error instanceof FDC3ConnectionException) {
                         throw (FDC3ConnectionException) error;
@@ -219,8 +215,7 @@ public class GetAgent {
 
         Map<String, Object> appMeta = (Map<String, Object>) implMeta.get("appMetadata");
         if (appMeta != null) {
-            org.finos.fdc3.api.metadata.AppMetadata appMetadata =
-                    new org.finos.fdc3.api.metadata.AppMetadata();
+            AppMetadata appMetadata = new AppMetadata();
             appMetadata.setAppId((String) appMeta.get("appId"));
             appMetadata.setInstanceId((String) appMeta.get("instanceId"));
             appMetadata.setName((String) appMeta.get("name"));
@@ -261,7 +256,7 @@ public class GetAgent {
                 validationResult.instanceId,
                 null);
 
-        messaging.setIdentifier(appIdentifier, validationResult.instanceUuid);
+        messaging.setIdentifier(appIdentifier, validationResult.instanceId);
 
         DefaultHeartbeatSupport heartbeatSupport = new DefaultHeartbeatSupport(
                 messaging, params.getHeartbeatIntervalMs());
@@ -295,7 +290,6 @@ public class GetAgent {
     private static class ValidationResult {
         String appId;
         String instanceId;
-        String instanceUuid;
         ImplementationMetadata implementationMetadata;
     }
 }
