@@ -73,6 +73,7 @@ public class ExampleApp extends JFrame {
     
     // Broadcast buttons
     private JButton broadcastInstrumentButton;
+    private JButton broadcastTeslaButton;
     private JButton broadcastCurrencyButton;
     private JButton broadcastContactButton;
     
@@ -253,6 +254,12 @@ public class ExampleApp extends JFrame {
         broadcastInstrumentButton.setToolTipText("Broadcast Microsoft stock instrument context");
         broadcastInstrumentButton.addActionListener(e -> broadcastInstrument());
         broadcastPanel.add(broadcastInstrumentButton);
+
+        broadcastTeslaButton = new JButton("Instrument (TSLA)");
+        broadcastTeslaButton.setEnabled(false);
+        broadcastTeslaButton.setToolTipText("Broadcast Tesla stock instrument context");
+        broadcastTeslaButton.addActionListener(e -> broadcastTesla());
+        broadcastPanel.add(broadcastTeslaButton);
         
         broadcastCurrencyButton = new JButton("Currency (USD)");
         broadcastCurrencyButton.setEnabled(false);
@@ -624,6 +631,7 @@ public class ExampleApp extends JFrame {
     private void updateBroadcastButtonsState() {
         boolean canBroadcast = currentChannel != null && agent != null;
         broadcastInstrumentButton.setEnabled(canBroadcast);
+        broadcastTeslaButton.setEnabled(canBroadcast);
         broadcastCurrencyButton.setEnabled(canBroadcast);
         broadcastContactButton.setEnabled(canBroadcast);
     }
@@ -643,6 +651,29 @@ public class ExampleApp extends JFrame {
         log("Broadcasting instrument context: Microsoft (MSFT)");
         agent.broadcast(instrumentContext)
                 .thenRun(() -> SwingUtilities.invokeLater(() -> 
+                    log("Successfully broadcast instrument context")))
+                .exceptionally(error -> {
+                    SwingUtilities.invokeLater(() ->
+                        log("ERROR: Failed to broadcast - " + error.getMessage()));
+                    return null;
+                });
+    }
+
+    /**
+     * Broadcast a sample instrument context (Tesla stock).
+     */
+    private void broadcastTesla() {
+        if (agent == null || currentChannel == null) return;
+
+        Map<String, Object> id = new HashMap<>();
+        id.put("ticker", "TSLA");
+        id.put("ISIN", "US88160R1014");
+
+        Context instrumentContext = new Context("fdc3.instrument", "Tesla", id);
+
+        log("Broadcasting instrument context: Tesla (TSLA)");
+        agent.broadcast(instrumentContext)
+                .thenRun(() -> SwingUtilities.invokeLater(() ->
                     log("Successfully broadcast instrument context")))
                 .exceptionally(error -> {
                     SwingUtilities.invokeLater(() ->
