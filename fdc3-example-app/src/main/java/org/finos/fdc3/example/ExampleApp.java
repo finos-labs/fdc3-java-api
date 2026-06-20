@@ -79,6 +79,8 @@ public class ExampleApp extends JFrame {
     
     private String websocketUrl;
     private String sharedSecret;
+
+    private final String[] launchArgs;
     
     // Stored connection info for reconnection
     private String lastInstanceId;
@@ -87,8 +89,9 @@ public class ExampleApp extends JFrame {
     private JButton disconnectButton;
     private JButton reconnectButton;
 
-    public ExampleApp() {
+    public ExampleApp(String[] launchArgs) {
         super("FDC3 Example App");
+        this.launchArgs = launchArgs != null ? launchArgs : new String[0];
         initUI();
         
         // Check for WebSocket URL and prompt if needed
@@ -100,6 +103,16 @@ public class ExampleApp extends JFrame {
      * If not set, prompt the user for the URL.
      */
     private void initializeConnection() {
+        java.util.Optional<ProtocolLaunchParams> protocolLaunch =
+                ProtocolLaunchParams.fromArgs(launchArgs);
+        if (protocolLaunch.isPresent()) {
+            websocketUrl = protocolLaunch.get().getWebSocketUrl();
+            sharedSecret = protocolLaunch.get().getSharedSecret();
+            log("Using WSCP connection config from protocol handler launch URL");
+            connectToAgent();
+            return;
+        }
+
         websocketUrl = envOrProperty("FDC3_WEBSOCKET_URL");
         sharedSecret = envOrProperty("FDC3_CONNECTION_SECRET");
 
@@ -804,7 +817,7 @@ public class ExampleApp extends JFrame {
 
         // Create and show the application
         SwingUtilities.invokeLater(() -> {
-            ExampleApp app = new ExampleApp();
+            ExampleApp app = new ExampleApp(args);
             app.setVisible(true);
         });
     }
