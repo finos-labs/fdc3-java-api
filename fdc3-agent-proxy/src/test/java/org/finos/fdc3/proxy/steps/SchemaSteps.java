@@ -22,7 +22,7 @@ import org.finos.fdc3.proxy.schema.Fdc3SchemaMatchers;
 import org.finos.fdc3.proxy.schema.LoadSchemas;
 
 import io.cucumber.java.en.Given;
-import io.github.robmoffat.world.PropsWorld;
+import org.finos.cucumbertestingsteps.world.PropsWorld;
 
 /**
  * Cucumber glue for FDC3 schema loading and matchers.

@@ -16,7 +16,7 @@
 
 package org.finos.fdc3.getagent;
 
-import io.github.robmoffat.world.PropsWorld;
+import org.finos.cucumbertestingsteps.world.PropsWorld;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -27,12 +27,12 @@ import io.cucumber.spring.ScenarioScope;
 /**
  * Spring configuration for Cucumber tests.
  *
- * Scans GetAgent-specific step definitions and generic steps from standard-cucumber-steps.
+ * Scans GetAgent-specific step definitions and generic steps from cucumber-testing-steps.
  */
 @Configuration
 @ComponentScan(basePackages = {
     "org.finos.fdc3.getagent.steps",
-    "io.github.robmoffat.steps"
+    "org.finos.cucumbertestingsteps.steps"
 })
 public class TestSpringConfig {
 

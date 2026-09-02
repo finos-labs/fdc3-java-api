@@ -16,8 +16,8 @@
 
 package org.finos.fdc3.proxy.steps;
 
-import static io.github.robmoffat.support.MatchingUtils.handleResolve;
-import static io.github.robmoffat.support.MatchingUtils.matchData;
+import static org.finos.cucumbertestingsteps.support.MatchingUtils.handleResolve;
+import static org.finos.cucumbertestingsteps.support.MatchingUtils.matchData;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -436,7 +436,7 @@ public class ChannelSteps {
         }
 
         public Object invoke(Object... args) throws Exception {
-            java.lang.reflect.Method method = io.github.robmoffat.steps.GenericSteps.findMethod(target.getClass(), methodName, args);
+            java.lang.reflect.Method method = org.finos.cucumbertestingsteps.steps.GenericSteps.findMethod(target.getClass(), methodName, args);
             if (method == null) {
                 throw new NoSuchMethodException("Method not found: " + methodName);
             }

@@ -17,6 +17,7 @@
 package org.finos.fdc3.proxy.schema;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -28,9 +29,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
 
-import io.github.robmoffat.support.MatchingUtils;
-import io.github.robmoffat.support.RowFieldMatcher;
-import io.github.robmoffat.world.PropsWorld;
+import org.finos.cucumbertestingsteps.support.MatchingUtils;
+import org.finos.cucumbertestingsteps.support.RowFieldMatcher;
+import org.finos.cucumbertestingsteps.world.PropsWorld;
 
 /**
  * Registers the {@code matches_type} table column matcher for FDC3 DACP messages.
@@ -39,6 +40,7 @@ import io.github.robmoffat.world.PropsWorld;
 public final class Fdc3SchemaMatchers {
 
     private static final String MATCHES_TYPE_SUFFIX = "matches_type";
+    private static final String PROTECTED_SUFFIX = ".protected";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static final RowFieldMatcher MATCHES_TYPE_MATCHER = new RowFieldMatcher() {
@@ -86,8 +88,40 @@ public final class Fdc3SchemaMatchers {
         }
     };
 
+    /**
+     * JXPath cannot resolve JavaBean paths ending in {@code protected} (language keyword). FDC3 metadata
+     * uses {@code @JsonProperty("protected")} on {@code getProtectedHeader()}, so table columns like
+     * {@code signature.protected} need an alternate lookup via {@code protectedHeader}.
+     */
+    private static final RowFieldMatcher SIGNATURE_PROTECTED_MATCHER = new RowFieldMatcher() {
+        @Override
+        public boolean matchesField(String field) {
+            return field.endsWith(PROTECTED_SUFFIX);
+        }
+
+        @Override
+        public boolean matchField(PropsWorld world, String field, String expected, Object rowData) {
+            Object found = resolveProtectedField(rowData, field);
+            Object resolved = MatchingUtils.handleResolve(expected, world);
+            if (found == null && resolved == null) {
+                return true;
+            }
+            if (found == null || resolved == null) {
+                world.log(String.format("Match failed on %s: '%s' vs '%s'", field, found, resolved));
+                return false;
+            }
+            boolean matches = Objects.equals(found, resolved)
+                    || Objects.equals(String.valueOf(found), String.valueOf(resolved));
+            if (!matches) {
+                world.log(String.format("Match failed on %s: '%s' vs '%s'", field, found, resolved));
+            }
+            return matches;
+        }
+    };
+
     static {
         MatchingUtils.registerFieldMatcher(MATCHES_TYPE_MATCHER);
+        MatchingUtils.registerFieldMatcher(SIGNATURE_PROTECTED_MATCHER);
     }
 
     private Fdc3SchemaMatchers() {
@@ -108,6 +142,48 @@ public final class Fdc3SchemaMatchers {
             xpathName = xpathName.replaceAll("(/[^/]+)/length$", "count($1)");
             return context.getValue(xpathName);
         } catch (JXPathNotFoundException e) {
+            return null;
+        }
+    }
+
+    private static Object resolveProtectedField(Object data, String field) {
+        Object found = valueAtPath(data, field);
+        if (found != null) {
+            return found;
+        }
+
+        String protectedHeaderPath =
+                field.substring(0, field.length() - PROTECTED_SUFFIX.length()) + ".protectedHeader";
+        found = valueAtPath(data, protectedHeaderPath);
+        if (found != null) {
+            return found;
+        }
+
+        String signaturePath = field.substring(0, field.length() - PROTECTED_SUFFIX.length());
+        return protectedValueFromSignature(valueAtPath(data, signaturePath));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object protectedValueFromSignature(Object signature) {
+        if (signature == null) {
+            return null;
+        }
+        if (signature instanceof Map) {
+            Map<String, Object> map = (Map<String, Object>) signature;
+            Object value = map.get("protected");
+            if (value == null) {
+                value = map.get("protectedHeader");
+            }
+            return value;
+        }
+        try {
+            Map<String, Object> map = OBJECT_MAPPER.convertValue(signature, Map.class);
+            Object value = map.get("protected");
+            if (value == null) {
+                value = map.get("protectedHeader");
+            }
+            return value;
+        } catch (IllegalArgumentException e) {
             return null;
         }
     }

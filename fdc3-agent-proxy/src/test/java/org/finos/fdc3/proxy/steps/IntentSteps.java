@@ -47,7 +47,7 @@ import org.finos.fdc3.api.channel.Channel;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.When;
 
-import static io.github.robmoffat.support.MatchingUtils.handleResolve;
+import static org.finos.cucumbertestingsteps.support.MatchingUtils.handleResolve;
 
 /**
  * Cucumber step definitions for intent-related tests.
@@ -102,7 +102,7 @@ public class IntentSteps {
             for (int i = 0; i < params.length; i++) {
                 args[i] = handleResolve(params[i], world);
             }
-            java.lang.reflect.Method method = io.github.robmoffat.steps.GenericSteps.findMethod(
+            java.lang.reflect.Method method = org.finos.cucumbertestingsteps.steps.GenericSteps.findMethod(
                     object.getClass(), methodName, args);
             if (method == null) {
                 throw new NoSuchMethodException("Method not found: " + methodName);

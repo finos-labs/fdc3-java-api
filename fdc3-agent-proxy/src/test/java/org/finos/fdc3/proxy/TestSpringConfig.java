@@ -24,7 +24,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.ScopedProxyMode;
 
 import io.cucumber.spring.ScenarioScope;
-import io.github.robmoffat.world.PropsWorld;
+import org.finos.cucumbertestingsteps.world.PropsWorld;
 
 /**
  * Spring configuration for Cucumber tests.
@@ -36,7 +36,7 @@ import io.github.robmoffat.world.PropsWorld;
 @Configuration
 @ComponentScan(basePackages = {
     "org.finos.fdc3.proxy.steps",
-    "io.github.robmoffat.steps"
+    "org.finos.cucumbertestingsteps.steps"
 })
 public class TestSpringConfig {
 

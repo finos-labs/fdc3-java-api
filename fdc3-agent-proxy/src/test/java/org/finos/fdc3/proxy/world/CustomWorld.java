@@ -19,7 +19,7 @@ package org.finos.fdc3.proxy.world;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.proxy.support.TestMessaging;
 
-import io.github.robmoffat.world.PropsWorld;
+import org.finos.cucumbertestingsteps.world.PropsWorld;
 
 /**
  * Custom Cucumber World for agent-proxy tests.
@@ -33,7 +33,7 @@ public class CustomWorld extends PropsWorld {
     private TestMessaging messaging;
 
     /**
-     * standard-cucumber-steps stores invocation counters as {@link Runnable}, but FDC3
+     * cucumber-testing-steps stores invocation counters as {@link Runnable}, but FDC3
      * event listener APIs require {@link EventHandler}. Adapt on lookup so feature
      * files can keep the canonical step wording unchanged.
      */

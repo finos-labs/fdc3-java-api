@@ -16,7 +16,7 @@
 
 package org.finos.fdc3.getagent.steps;
 
-import static io.github.robmoffat.support.MatchingUtils.handleResolve;
+import static org.finos.cucumbertestingsteps.support.MatchingUtils.handleResolve;
 
 import org.finos.fdc3.api.DesktopAgent;
 import org.finos.fdc3.getagent.GetAgent;
@@ -25,7 +25,7 @@ import org.finos.fdc3.getagent.support.MockWebSocketServer;
 
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
-import io.github.robmoffat.world.PropsWorld;
+import org.finos.cucumbertestingsteps.world.PropsWorld;
 
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;

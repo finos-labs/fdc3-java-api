@@ -28,7 +28,7 @@ import org.finos.fdc3.api.metadata.IntentMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.ui.IntentResolutionChoice;
 import org.finos.fdc3.api.ui.IntentResolver;
-import io.github.robmoffat.world.PropsWorld;
+import org.finos.cucumbertestingsteps.world.PropsWorld;
 
 /**
  * A simple intent resolver for testing purposes.
