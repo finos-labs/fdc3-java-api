@@ -1,4 +1,4 @@
-[![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://community.finos.org/docs/governance/Software-Projects/stages/incubating)
+[![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://community.finos.org/docs/governance/lifecycle-stages/incubating)
 
 # FDC3 Java API
 
@@ -150,14 +150,18 @@ IntentResolution resolution = agent.raiseIntent("ViewChart", instrument, null)
 
 ## Contributing
 
-1. Fork the repository (<https://github.com/finos/fdc3-java-api/fork>)
+For any questions, bugs or feature requests please open an [issue](https://github.com/finos-labs/fdc3-java-api/issues).
+
+To submit a contribution:
+
+1. Fork the repository (<https://github.com/finos-labs/fdc3-java-api/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
-3. Read our [contribution guidelines](.github/CONTRIBUTING.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
+3. Read our [contribution guidelines](CONTRIBUTING.md) and [Community Code of Conduct](CODE_OF_CONDUCT.md)
 4. Commit your changes (`git commit -am 'Add some fooBar'`)
 5. Push to the branch (`git push origin feature/fooBar`)
 6. Create a new Pull Request
 
-_NOTE:_ Commits and pull requests to FINOS repositories will only be accepted from those contributors with an active, executed Individual Contributor License Agreement (ICLA) with FINOS OR who are covered under an existing and active Corporate Contribution License Agreement (CCLA) executed with FINOS. Commits from individuals not covered under an ICLA or CCLA will be flagged and blocked by the FINOS Clabot tool. Please note that some CCLAs require individuals/employees to be explicitly named on the CCLA.
+_NOTE:_ Pull requests must follow this repository's contribution policy. FINOS projects use **CLA** via [EasyCLA](https://community.finos.org/docs/governance/Software-Projects/easycla). Read [FINOS Contribution Requirements](https://community.finos.org/docs/governance/Software-Projects/contribution-compliance-requirements) and [CONTRIBUTING.md](CONTRIBUTING.md) before contributing.
 
 _Need an ICLA? Unsure if you are covered under an existing CCLA? Email [help@finos.org](mailto:help@finos.org)_
 
