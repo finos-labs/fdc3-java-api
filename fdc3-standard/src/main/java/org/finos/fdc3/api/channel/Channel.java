@@ -121,7 +121,4 @@ public interface Channel extends IntentResult {
    */
   CompletionStage<Listener> addEventListener(String type, EventHandler handler);
 
-  @Deprecated
-  CompletionStage<Listener> addContextListener(ContextHandler handler);
-
 }

@@ -27,7 +27,6 @@ import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.api.types.EventHandler;
-import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.proxy.listeners.AbstractPrivateChannelEventListener;
 import org.finos.fdc3.proxy.listeners.DefaultContextListener;
 import org.finos.fdc3.proxy.listeners.PrivateChannelAddContextEventListener;
@@ -91,30 +90,6 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
                         return failed;
                     }));
         });
-    }
-
-    @Override
-    public CompletionStage<Listener> onAddContextListener(EventHandler handler) {
-        PrivateChannelAddContextEventListener listener = new PrivateChannelAddContextEventListener(
-                messaging, messageExchangeTimeout, getId(),
-                event -> handler.handleEvent(new FDC3Event(FDC3Event.Type.ADD_CONTEXT_LISTENER, event.getDetails())));
-        return listener.register().thenApply(v -> listener);
-    }
-
-    @Override
-    public CompletionStage<Listener> onUnsubscribe(EventHandler handler) {
-        PrivateChannelUnsubscribeEventListener listener = new PrivateChannelUnsubscribeEventListener(
-                messaging, messageExchangeTimeout, getId(),
-                event -> handler.handleEvent(new FDC3Event(FDC3Event.Type.ON_UNSUBSCRIBE, event.getDetails())));
-        return listener.register().thenApply(v -> listener);
-    }
-
-    @Override
-    public CompletionStage<Listener> onDisconnect(EventHandler handler) {
-        PrivateChannelDisconnectEventListener listener = new PrivateChannelDisconnectEventListener(
-                messaging, messageExchangeTimeout, getId(),
-                event -> handler.handleEvent(new FDC3Event(FDC3Event.Type.ON_DISCONNECT, event.getDetails())));
-        return listener.register().thenApply(v -> listener);
     }
 
     @Override

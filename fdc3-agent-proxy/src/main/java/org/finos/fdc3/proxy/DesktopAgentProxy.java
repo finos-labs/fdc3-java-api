@@ -102,17 +102,7 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
     }
 
     @Override
-    public CompletionStage<Listener> addContextListener(ContextHandler handler) {
-        return channels.addContextListener(handler, null);
-    }
-
-    @Override
     public CompletionStage<List<Channel>> getUserChannels() {
-        return channels.getUserChannels();
-    }
-
-    @Deprecated
-    public CompletionStage<List<Channel>> getSystemChannels() {
         return channels.getUserChannels();
     }
 
@@ -133,10 +123,6 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
 
     @Override
     public CompletionStage<Void> joinUserChannel(String channelId) {
-        return channels.joinUserChannel(channelId);
-    }
-
-    public CompletionStage<Void> joinChannel(String channelId) {
         return channels.joinUserChannel(channelId);
     }
 
@@ -251,12 +237,6 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
     @Override
     public CompletionStage<Void> close() {
         return apps.close();
-    }
-
-    @Override
-    @Deprecated
-    public CompletionStage<AppIdentifier> open(String name, Context context) {
-        return apps.open(new AppIdentifier(name), context, null);
     }
 
     @Override

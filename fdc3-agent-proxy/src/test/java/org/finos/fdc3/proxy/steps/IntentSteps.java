@@ -389,11 +389,6 @@ public class IntentSteps {
 					}
 
 					@Override
-					public CompletionStage<Listener> addContextListener(ContextHandler handler) {
-						return null;
-					}
-
-					@Override
 					public CompletionStage<Listener> addEventListener(String type, EventHandler handler) {
 						return null;
 					}

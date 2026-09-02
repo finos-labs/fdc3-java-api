@@ -97,22 +97,6 @@ public interface DesktopAgent {
     CompletionStage<Void> close();
 
     /**
-     * @deprecated version of `open` that launches an app by name rather than `AppIdentifier`.
-     * Provided for backwards compatibility with FDC3 standard versions < 2.0.
-     */
-    @Deprecated
-    CompletionStage<AppIdentifier> open(String name, Context context);
-
-    /**
-     * @deprecated version of `open` that launches an app by name rather than `AppIdentifier`.
-     * Provided for backwards compatibility with FDC3 standard versions < 2.0.
-     */
-    @Deprecated
-    default CompletionStage<AppIdentifier> open(String name) {
-        return open(name, null);
-    }
-
-    /**
      * Find out more information about a particular intent by passing its name, and
      * optionally its context and/or a desired result context type.
      *
@@ -541,7 +525,8 @@ public interface DesktopAgent {
      * const symbol = context.id.symbol;
      *
      * // Called when the remote side adds a context listener
-     * const addContextListener = channel.onAddContextListener((contextType) => {
+     * const addContextListener = await channel.addEventListener("addContextListener",
+     * (event) => {
      * // broadcast price quotes as they come in from our quote feed
      * feed.onQuote(symbol, (price) => {
      * channel.broadcast({ type: "price", price});
@@ -549,7 +534,7 @@ public interface DesktopAgent {
      * });
      *
      * // Stop the feed if the remote side closes
-     * const disconnectListener = channel.onDisconnect(() => {
+     * const disconnectListener = await channel.addEventListener("disconnect", () => {
      * feed.stop(symbol);
      * });
      *
@@ -712,7 +697,8 @@ public interface DesktopAgent {
      * const symbol = context.id.ticker;
      *
      * // This gets called when the remote side adds a context listener
-     * const addContextListener = channel.onAddContextListener((contextType) => {
+     * const addContextListener = await channel.addEventListener("addContextListener",
+     * (event) => {
      * // broadcast price quotes as they come in from our quote feed
      * feed.onQuote(symbol, (price) => {
      * channel.broadcast({ type: "price", price});
@@ -720,12 +706,13 @@ public interface DesktopAgent {
      * });
      *
      * // This gets called when the remote side calls Listener.unsubscribe()
-     * const unsubscriberListener = channel.onUnsubscribe((contextType) => {
+     * const unsubscriberListener = await channel.addEventListener("unsubscribe",
+     * (event) => {
      * feed.stop(symbol);
      * });
      *
      * // This gets called if the remote side closes
-     * const disconnectListener = channel.onDisconnect(() => {
+     * const disconnectListener = await channel.addEventListener("disconnect", () => {
      * feed.stop(symbol);
      * })
      *
@@ -814,13 +801,4 @@ public interface DesktopAgent {
      * ```
      */
     CompletionStage<AppMetadata> getAppMetadata(AppIdentifier app);
-    
-    @Deprecated
-    public CompletionStage<List<Channel>> getSystemChannels();
-    
-    @Deprecated
-    public CompletionStage<Void> joinChannel(String channelId);
-    
-    @Deprecated
-    public CompletionStage<Listener> addContextListener(ContextHandler ch);
 }
