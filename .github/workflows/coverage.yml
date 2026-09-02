@@ -49,4 +49,8 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           use_oidc: true
-          files: target/site/jacoco-aggregate/jacoco.xml
+          directory: .
+          files: |
+            fdc3-agent-proxy/target/site/jacoco/jacoco.xml
+            fdc3-get-agent/target/site/jacoco/jacoco.xml
+            fdc3-context/target/site/jacoco/jacoco.xml
