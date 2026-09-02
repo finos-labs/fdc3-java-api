@@ -80,9 +80,10 @@ public class RaiseIntentResponse implements AutomaticResponse {
                 matches = false;
             }
             
-            // Match context type (optional)
-            if (matches && contextType != null && detail.getContext() != null && !contextType.equals(detail.getContext())) {
-                // Context type matching is optional
+            // Match context type when the request includes a context
+            if (matches && contextType != null && detail.getContext() != null
+                    && !contextType.equals(detail.getContext())) {
+                matches = false;
             }
             
             // Match target app if specified

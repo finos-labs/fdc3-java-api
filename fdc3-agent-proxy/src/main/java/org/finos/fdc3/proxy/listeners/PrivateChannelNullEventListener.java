@@ -62,16 +62,19 @@ public class PrivateChannelNullEventListener extends AbstractPrivateChannelEvent
             case "privateChannelOnAddContextListenerEvent":
                 eventType = FDC3Event.Type.ADD_CONTEXT_LISTENER;
                 details = new HashMap<>();
+                details.put("channelId", payload.get("privateChannelId"));
                 details.put("contextType", payload.get("contextType"));
                 break;
             case "privateChannelOnUnsubscribeEvent":
                 eventType = FDC3Event.Type.ON_UNSUBSCRIBE;
                 details = new HashMap<>();
+                details.put("channelId", payload.get("privateChannelId"));
                 details.put("contextType", payload.get("contextType"));
                 break;
             case "privateChannelOnDisconnectEvent":
                 eventType = FDC3Event.Type.ON_DISCONNECT;
-                details = null;
+                details = new HashMap<>();
+                details.put("channelId", payload.get("privateChannelId"));
                 break;
             default:
                 Logger.error("PrivateChannelNullEventListener received unexpected message type: " + type);

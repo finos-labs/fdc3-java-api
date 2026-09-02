@@ -16,23 +16,18 @@
 
 package org.finos.fdc3.api.errors;
 
-public enum ChannelError
-{
-    NoChannelFound("NoChannelFound"),
-    AccessDenied("AccessDenied"),
-    CreationFailed("CreationFailed"),
-    MalformedContext("MalformedContext"),
-    ApiTimeout("ApiTimeout"),
-    InvalidArguments("InvalidArguments");
-private final String value;
+public enum CloseError {
+    ErrorOnClose("ErrorOnClose"),
+    ApiTimeout("ApiTimeout");
 
-private ChannelError(String value)
-{
-    this.value = value;
-}
+    private final String value;
 
-public String toString()
-{
-    return this.value;
-}
+    CloseError(String value) {
+        this.value = value;
+    }
+
+    @Override
+    public String toString() {
+        return value;
+    }
 }

@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.finos.fdc3.proxy.world.CustomWorld;
 
+import io.cucumber.java.en.Given;
 import io.cucumber.java.en.When;
 
 /**
@@ -33,6 +34,13 @@ public class UtilSteps {
 
     public UtilSteps(CustomWorld world) {
         this.world = world;
+    }
+
+    @Given("close will fail")
+    public void closeWillFail() {
+        if (world.hasMessaging()) {
+            world.getMessaging().setCloseShouldFail(true);
+        }
     }
 
     @When("I call throwIfUndefined it throws if a specified property is not defined")

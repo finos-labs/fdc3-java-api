@@ -134,6 +134,20 @@ public class ChannelSteps {
         world.set(field, message);
     }
 
+    @Given("{string} is a ContextClearedEvent message on channel {string} with contextType as {string}")
+    public void isAContextClearedEventMessage(String field, String channel, String contextType) {
+        Map<String, Object> message = new HashMap<>();
+        message.put("type", "contextClearedEvent");
+        message.put("meta", world.getMessaging().createEventMeta());
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("channelId", handleResolve(channel, world));
+        payload.put("contextType", handleResolve(contextType, world));
+        message.put("payload", payload);
+
+        world.set(field, message);
+    }
+
     @Given("{string} is a channelChangedEvent message on channel {string}")
     public void isAChannelChangedEventMessage(String field, String channel) {
         Map<String, Object> message = new HashMap<>();
@@ -376,6 +390,16 @@ public class ChannelSteps {
     @When("I call destructured {string} using arguments {string} and {string}")
     public void iCallDestructuredUsingTwoArguments(String methodName, String param1, String param2) {
         invokeDestructured(methodName, handleResolve(param1, world), handleResolve(param2, world));
+    }
+
+    @When("I call destructured {string} using arguments {string}, {string}, and {string}")
+    public void iCallDestructuredUsingCommaSeparatedThreeArguments(
+            String methodName, String param1, String param2, String param3) {
+        invokeDestructured(
+                methodName,
+                handleResolve(param1, world),
+                handleResolve(param2, world),
+                handleResolve(param3, world));
     }
 
     @When("I call destructured {string} using arguments {string} and {string} and {string}")

@@ -18,6 +18,7 @@ package org.finos.fdc3.proxy.apps;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -75,7 +76,7 @@ public class DefaultAppSupport implements AppSupport {
                     }
 
                     // AppMetadata extends AppIdentifier, so we can return directly
-                    return Arrays.stream(typedResponse.getPayload().getAppIdentifiers())
+                    return typedResponse.getPayload().getAppIdentifiers().stream()
                             .map(am -> (AppIdentifier) am)
                             .collect(Collectors.toList());
                 });
@@ -111,12 +112,8 @@ public class DefaultAppSupport implements AppSupport {
     }
 
     @Override
-    public CompletionStage<AppIdentifier> open(AppIdentifier app, Context context) {
-        return open(app, context, null);
-    }
-
-    @Override
-    public CompletionStage<AppIdentifier> open(AppIdentifier app, Context context, AppProvidableContextMetadata metadata) {
+    public CompletionStage<AppIdentifier> open(
+            AppIdentifier app, Context context, AppProvidableContextMetadata metadata) {
         OpenRequest request = new OpenRequest();
         request.setType(OpenRequestType.OPEN_REQUEST);
         request.setMeta(messaging.createMeta());
@@ -150,10 +147,14 @@ public class DefaultAppSupport implements AppSupport {
     }
 
     @Override
-    @Deprecated
-    public CompletionStage<AppIdentifier> open(String name, Context context) {
-        // Create an AppIdentifier from the name string
-        return open(new AppIdentifier(name), context);
+    public CompletionStage<Void> close() {
+        Map<String, Object> request = new HashMap<>();
+        request.put("type", "closeRequest");
+        request.put("meta", messaging.getConverter().toMap(messaging.createMeta()));
+        request.put("payload", new HashMap<>());
+
+        return messaging.<Map<String, Object>>exchange(request, "closeResponse", messageExchangeTimeout)
+                .thenApply(response -> null);
     }
 
     @Override

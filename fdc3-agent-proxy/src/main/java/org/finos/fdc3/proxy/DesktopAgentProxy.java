@@ -158,19 +158,35 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
 
     @Override
     public CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app) {
-        return intents.raiseIntent(intent, context, app);
+        return intents.raiseIntent(intent, context, app, null, null);
     }
 
     @Override
     public CompletionStage<IntentResolution> raiseIntent(
             String intent, Context context, AppIdentifier app, AppProvidableContextMetadata metadata) {
-        return intents.raiseIntent(intent, context, app, metadata);
+        return intents.raiseIntent(intent, context, app, null, metadata);
+    }
+
+    @Override
+    public CompletionStage<IntentResolution> raiseIntent(
+            String intent, Context context, AppIdentifier app, Boolean newInstance) {
+        return intents.raiseIntent(intent, context, app, newInstance, null);
+    }
+
+    @Override
+    public CompletionStage<IntentResolution> raiseIntent(
+            String intent,
+            Context context,
+            AppIdentifier app,
+            Boolean newInstance,
+            AppProvidableContextMetadata metadata) {
+        return intents.raiseIntent(intent, context, app, newInstance, metadata);
     }
 
     @Override
     public CompletionStage<IntentResolution> raiseIntent(
             String intent, Context context, AppProvidableContextMetadata metadata) {
-        return intents.raiseIntent(intent, context, null, metadata);
+        return intents.raiseIntent(intent, context, null, null, metadata);
     }
 
     @Override
@@ -179,25 +195,52 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
     }
 
     @Override
+    public CompletionStage<Listener> addIntentListenerWithContext(
+            String intent, String contextType, IntentHandler handler) {
+        return intents.addIntentListenerWithContext(intent, List.of(contextType), handler);
+    }
+
+    @Override
+    public CompletionStage<Listener> addIntentListenerWithContext(
+            String intent, List<String> contextTypes, IntentHandler handler) {
+        return intents.addIntentListenerWithContext(intent, contextTypes, handler);
+    }
+
+    @Override
     public CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app) {
-        return intents.raiseIntentForContext(context, app);
+        return intents.raiseIntentForContext(context, app, null, null);
     }
 
     @Override
     public CompletionStage<IntentResolution> raiseIntentForContext(
             Context context, AppIdentifier app, AppProvidableContextMetadata metadata) {
-        return intents.raiseIntentForContext(context, app, metadata);
+        return intents.raiseIntentForContext(context, app, null, metadata);
+    }
+
+    @Override
+    public CompletionStage<IntentResolution> raiseIntentForContext(
+            Context context, AppIdentifier app, Boolean newInstance) {
+        return intents.raiseIntentForContext(context, app, newInstance, null);
+    }
+
+    @Override
+    public CompletionStage<IntentResolution> raiseIntentForContext(
+            Context context,
+            AppIdentifier app,
+            Boolean newInstance,
+            AppProvidableContextMetadata metadata) {
+        return intents.raiseIntentForContext(context, app, newInstance, metadata);
     }
 
     @Override
     public CompletionStage<IntentResolution> raiseIntentForContext(
             Context context, AppProvidableContextMetadata metadata) {
-        return intents.raiseIntentForContext(context, null, metadata);
+        return intents.raiseIntentForContext(context, null, null, metadata);
     }
 
     @Override
     public CompletionStage<AppIdentifier> open(AppIdentifier app, Context context) {
-        return apps.open(app, context);
+        return apps.open(app, context, null);
     }
 
     @Override
@@ -206,9 +249,14 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
     }
 
     @Override
+    public CompletionStage<Void> close() {
+        return apps.close();
+    }
+
+    @Override
     @Deprecated
     public CompletionStage<AppIdentifier> open(String name, Context context) {
-        return apps.open(name, context);
+        return apps.open(new AppIdentifier(name), context, null);
     }
 
     @Override

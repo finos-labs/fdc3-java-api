@@ -234,7 +234,7 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
                     }
 
                     // Schema now uses fdc3-standard DisplayMetadata directly
-                    userChannels = Arrays.stream(typedResponse.getPayload().getUserChannels())
+                    userChannels = typedResponse.getPayload().getUserChannels().stream()
                             .map(c -> (Channel) new DefaultChannel(
                                     messaging, messageExchangeTimeout, c.getID(), Channel.Type.User,
                                     c.getDisplayMetadata()))

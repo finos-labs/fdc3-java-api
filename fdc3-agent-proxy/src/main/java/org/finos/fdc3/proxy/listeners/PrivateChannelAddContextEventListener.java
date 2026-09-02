@@ -53,6 +53,7 @@ public class PrivateChannelAddContextEventListener extends AbstractPrivateChanne
         if ("privateChannelOnAddContextListenerEvent".equals(type)) {
             Map<String, Object> payload = (Map<String, Object>) message.get("payload");
             Map<String, Object> details = new HashMap<>();
+            details.put("channelId", payload.get("privateChannelId"));
             details.put("contextType", payload.get("contextType"));
             
             FDC3Event event = new FDC3Event(FDC3Event.Type.ADD_CONTEXT_LISTENER, details);

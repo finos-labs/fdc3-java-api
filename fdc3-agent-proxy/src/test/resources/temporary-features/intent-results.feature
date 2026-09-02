@@ -93,7 +93,7 @@ Feature: Intents Can Return Different Results
 
   Scenario: Destructured raiseIntent with app parameter
     When I destructure method "raiseIntent" from "{api}"
-    And I call destructured "raiseIntent" using arguments "OrderFood" and "{instrumentContext}" and "{c1}"
+    And I call destructured "raiseIntent" using arguments "OrderFood", "{instrumentContext}", and "{c1}"
     Then "{result}" is an object with the following contents
       | source.appId | source.instanceId | intent    |
       | chipShop     | c1                | OrderFood |

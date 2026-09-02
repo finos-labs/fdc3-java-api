@@ -89,6 +89,14 @@ public interface DesktopAgent {
     }
 
     /**
+     * Requests that the Desktop Agent close the calling application's window or frame.
+     *
+     * If the Desktop Agent cannot close the app, the promise MUST be rejected with an
+     * `Error` Object with a `message` chosen from the `CloseError` enumeration.
+     */
+    CompletionStage<Void> close();
+
+    /**
      * @deprecated version of `open` that launches an app by name rather than `AppIdentifier`.
      * Provided for backwards compatibility with FDC3 standard versions < 2.0.
      */
@@ -410,6 +418,12 @@ public interface DesktopAgent {
     CompletionStage<IntentResolution> raiseIntent(
             String intent, Context context, AppIdentifier app, AppProvidableContextMetadata metadata);
 
+    CompletionStage<IntentResolution> raiseIntent(
+            String intent, Context context, AppIdentifier app, Boolean newInstance);
+
+    CompletionStage<IntentResolution> raiseIntent(
+            String intent, Context context, AppIdentifier app, Boolean newInstance, AppProvidableContextMetadata metadata);
+
     default CompletionStage<IntentResolution> raiseIntent(String intent, Context context) {
         return raiseIntent(intent, context, (AppIdentifier) null);
     }
@@ -462,6 +476,11 @@ public interface DesktopAgent {
 
     CompletionStage<IntentResolution> raiseIntentForContext(
             Context context, AppIdentifier app, AppProvidableContextMetadata metadata);
+
+    CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app, Boolean newInstance);
+
+    CompletionStage<IntentResolution> raiseIntentForContext(
+            Context context, AppIdentifier app, Boolean newInstance, AppProvidableContextMetadata metadata);
 
     default CompletionStage<IntentResolution> raiseIntentForContext(Context context) {
         return raiseIntentForContext(context, (AppIdentifier) null);
@@ -539,6 +558,11 @@ public interface DesktopAgent {
      * ```
      */
     CompletionStage<Listener> addIntentListener(String intent, IntentHandler handler);
+
+    CompletionStage<Listener> addIntentListenerWithContext(String intent, String contextType, IntentHandler handler);
+
+    CompletionStage<Listener> addIntentListenerWithContext(
+            String intent, List<String> contextTypes, IntentHandler handler);
 
     /**
      * Adds a listener for incoming context broadcasts from the Desktop Agent via

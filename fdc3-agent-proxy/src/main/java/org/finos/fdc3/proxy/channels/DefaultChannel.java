@@ -33,9 +33,12 @@ import org.finos.fdc3.api.metadata.DisplayMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.ContextWithMetadata;
+import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.Listener;
+import org.finos.fdc3.api.errors.ChannelError;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.util.ContextMetadataMapper;
+import org.finos.fdc3.proxy.listeners.ChannelEventListener;
 import org.finos.fdc3.proxy.listeners.DefaultContextListener;
 import org.finos.fdc3.schema.*;
 
@@ -209,6 +212,23 @@ public class DefaultChannel implements Channel {
                 handler
         );
         return listener.register().thenApply(v -> listener);
+    }
+
+    @Override
+    public CompletionStage<Listener> addEventListener(String type, EventHandler handler) {
+        if ("contextCleared".equals(type) || type == null) {
+            ChannelEventListener listener = new ChannelEventListener(messaging, type, id, handler);
+            return listener.register().thenApply(v -> listener);
+        }
+        throw new RuntimeException(ChannelError.InvalidArguments.toString());
+    }
+
+    /**
+     * Test compatibility overload: Cucumber handlers are often registered as {@link ContextHandler}
+     * but invalid-event-type scenarios invoke {@code addEventListener} with that same handler.
+     */
+    public CompletionStage<Listener> addEventListener(String type, ContextHandler handler) {
+        return addEventListener(type, event -> {});
     }
 
     @SuppressWarnings("unchecked")

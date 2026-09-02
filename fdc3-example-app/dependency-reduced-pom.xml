@@ -73,8 +73,8 @@
                 <configuration>
                   <executable>bash</executable>
                   <arguments>
-                    <argument>/Users/rob/Documents/finos/fdc3-general/fdc3-java-api/fdc3-example-app/scripts/macos/build-app.sh</argument>
-                    <argument>1.0.0-SNAPSHOT</argument>
+                    <argument>${project.basedir}/scripts/macos/build-app.sh</argument>
+                    <argument>${project.version}</argument>
                   </arguments>
                 </configuration>
               </execution>

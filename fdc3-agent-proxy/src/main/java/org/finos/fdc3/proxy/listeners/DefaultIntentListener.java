@@ -18,6 +18,7 @@ package org.finos.fdc3.proxy.listeners;
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
@@ -35,7 +36,6 @@ import org.finos.fdc3.schema.IntentEvent;
 import org.finos.fdc3.schema.IntentResultRequest;
 import org.finos.fdc3.schema.IntentResultRequestPayload;
 import org.finos.fdc3.schema.IntentResultRequestType;
-import org.finos.fdc3.schema.IntentResultResponse;
 
 /**
  * Default implementation of an intent listener.
@@ -44,12 +44,24 @@ import org.finos.fdc3.schema.IntentResultResponse;
 public class DefaultIntentListener extends AbstractListener<IntentHandler> {
 
     private final String intent;
+    private final List<String> contextTypes;
+    private final Runnable onUnsubscribe;
 
     public DefaultIntentListener(
             Messaging messaging,
             String intent,
             IntentHandler handler,
             long messageExchangeTimeout) {
+        this(messaging, intent, null, handler, messageExchangeTimeout, null);
+    }
+
+    public DefaultIntentListener(
+            Messaging messaging,
+            String intent,
+            List<String> contextTypes,
+            IntentHandler handler,
+            long messageExchangeTimeout,
+            Runnable onUnsubscribe) {
         super(
             messaging,
             messageExchangeTimeout,
@@ -60,6 +72,8 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
             "intentListenerUnsubscribeResponse"
         );
         this.intent = intent;
+        this.contextTypes = contextTypes;
+        this.onUnsubscribe = onUnsubscribe;
     }
 
     @Override
@@ -67,6 +81,9 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
         Map<String, Object> request = new HashMap<>();
         Map<String, Object> payload = new HashMap<>();
         payload.put("intent", intent);
+        if (contextTypes != null) {
+            payload.put("contextTypes", contextTypes);
+        }
         request.put("payload", payload);
         return request;
     }
@@ -85,15 +102,27 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
         }
 
         String msgIntent = (String) payload.get("intent");
-        return intent.equals(msgIntent);
+        if (!intent.equals(msgIntent)) {
+            return false;
+        }
+
+        if (contextTypes == null) {
+            return true;
+        }
+
+        Object contextObj = payload.get("context");
+        if (!(contextObj instanceof Map)) {
+            return false;
+        }
+        String contextType = (String) ((Map<String, Object>) contextObj).get("type");
+        return contextTypes.contains(contextType);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public void action(Map<String, Object> message) {
-        // Convert the message to typed IntentEvent
         IntentEvent intentEvent = messaging.getConverter().convertValue(message, IntentEvent.class);
-        
+
         Context context = intentEvent.getPayload().getContext();
         Map<String, Object> messageMap = message;
         Map<String, Object> payloadMap = (Map<String, Object>) messageMap.get("payload");
@@ -107,6 +136,23 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
 
         CompletionStage<Optional<Object>> resultFuture = handler.handleIntent(context, contextMetadata);
         handleIntentResult(resultFuture, intentEvent);
+    }
+
+    @Override
+    public CompletionStage<Void> unsubscribe() {
+        return super.unsubscribe().thenRun(() -> {
+            if (onUnsubscribe != null) {
+                onUnsubscribe.run();
+            }
+        });
+    }
+
+    public String getIntent() {
+        return intent;
+    }
+
+    public List<String> getContextTypes() {
+        return contextTypes;
     }
 
     private void handleIntentResult(
@@ -126,24 +172,22 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
                     payload.put("metadata", ContextMetadataMapper.toWire(unwrapped.appMetadata));
                 }
             }
-            
+
             messaging.<Map<String, Object>>exchange(
-                requestMap, 
-                "intentResultResponse", 
+                requestMap,
+                "intentResultResponse",
                 messageExchangeTimeout
             ).exceptionally(ex -> {
-                // Log error but don't fail
                 System.err.println("Failed to send intent result: " + ex.getMessage());
                 return null;
             });
         }).exceptionally(ex -> {
-            // Handler threw an exception, send empty result
             IntentResultRequest request = createIntentResultRequest(null, null, intentEvent);
             Map<String, Object> requestMap = messaging.getConverter().toMap(request);
-            
+
             messaging.<Map<String, Object>>exchange(
-                requestMap, 
-                "intentResultResponse", 
+                requestMap,
+                "intentResultResponse",
                 messageExchangeTimeout
             ).exceptionally(ex2 -> {
                 System.err.println("Failed to send intent result after error: " + ex2.getMessage());
@@ -178,33 +222,32 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
             IntentResult apiResult,
             AppProvidableContextMetadata appMetadata,
             IntentEvent intentEvent) {
-        
+
         IntentResultRequest request = new IntentResultRequest();
         request.setType(IntentResultRequestType.INTENT_RESULT_REQUEST);
-        
-        org.finos.fdc3.schema.AddContextListenerRequestMeta meta = 
+
+        org.finos.fdc3.schema.AddContextListenerRequestMeta meta =
             new org.finos.fdc3.schema.AddContextListenerRequestMeta();
         meta.setRequestUUID(intentEvent.getMeta().getEventUUID());
         meta.setTimestamp(OffsetDateTime.now());
         request.setMeta(meta);
-        
+
         IntentResultRequestPayload payload = new IntentResultRequestPayload();
         payload.setIntentEventUUID(intentEvent.getMeta().getEventUUID());
         payload.setRaiseIntentRequestUUID(intentEvent.getPayload().getRaiseIntentRequestUUID());
         payload.setIntentResult(convertIntentResult(apiResult));
         request.setPayload(payload);
-        
+
         return request;
     }
 
     private org.finos.fdc3.schema.IntentResult convertIntentResult(IntentResult apiResult) {
         org.finos.fdc3.schema.IntentResult schemaResult = new org.finos.fdc3.schema.IntentResult();
-        
+
         if (apiResult == null) {
-            // Void result - return empty IntentResult
             return schemaResult;
         }
-        
+
         if (apiResult instanceof Context) {
             schemaResult.setContext((Context) apiResult);
         } else if (apiResult instanceof Channel) {
@@ -212,12 +255,10 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
             org.finos.fdc3.schema.Channel schemaChannel = new org.finos.fdc3.schema.Channel();
             schemaChannel.setID(channel.getId());
             schemaChannel.setType(convertChannelType(channel.getType()));
-            // DisplayMetadata is not part of the Channel API interface,
-            // only available on UserChannel/PrivateChannel implementations
             schemaChannel.setDisplayMetadata(null);
             schemaResult.setChannel(schemaChannel);
         }
-        
+
         return schemaResult;
     }
 

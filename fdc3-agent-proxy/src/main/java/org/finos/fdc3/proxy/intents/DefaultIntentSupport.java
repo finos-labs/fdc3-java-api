@@ -16,7 +16,9 @@
 
 package org.finos.fdc3.proxy.intents;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -51,6 +53,7 @@ public class DefaultIntentSupport implements IntentSupport {
     private final IntentResolver intentResolver;
     private final long messageExchangeTimeout;
     private final long appLaunchTimeout;
+    private final List<DefaultIntentListener> intentListeners = new ArrayList<>();
 
     public DefaultIntentSupport(
             Messaging messaging,
@@ -120,23 +123,21 @@ public class DefaultIntentSupport implements IntentSupport {
 
                     if (typedResponse.getPayload() == null ||
                         typedResponse.getPayload().getAppIntents() == null ||
-                        typedResponse.getPayload().getAppIntents().length == 0) {
+                        typedResponse.getPayload().getAppIntents().isEmpty()) {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
-                    // Schema types now use fdc3-standard AppIntent directly
-                    return Arrays.asList(typedResponse.getPayload().getAppIntents());
+                    return typedResponse.getPayload().getAppIntents();
                 });
     }
 
     @Override
-    public CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app) {
-        return raiseIntent(intent, context, app, null);
-    }
-
-    @Override
     public CompletionStage<IntentResolution> raiseIntent(
-            String intent, Context context, AppIdentifier app, AppProvidableContextMetadata metadata) {
+            String intent,
+            Context context,
+            AppIdentifier app,
+            Boolean newInstance,
+            AppProvidableContextMetadata metadata) {
         AddContextListenerRequestMeta meta = messaging.createMeta();
 
         RaiseIntentRequest request = new RaiseIntentRequest();
@@ -155,6 +156,11 @@ public class DefaultIntentSupport implements IntentSupport {
         @SuppressWarnings("unchecked")
         Map<String, Object> payloadMap = (Map<String, Object>) requestMap.get("payload");
         if (payloadMap != null) {
+            if (newInstance != null) {
+                payloadMap.put("newInstance", newInstance);
+            } else {
+                payloadMap.remove("newInstance");
+            }
             payloadMap.put("metadata", ContextMetadataMapper.toWireForIntentRequest(metadata, messaging::createUUID));
         }
 
@@ -181,7 +187,11 @@ public class DefaultIntentSupport implements IntentSupport {
                                     if (choice == null) {
                                         throw new RuntimeException(ResolveError.UserCancelled.toString());
                                     }
-                                    return raiseIntent(intent, context, choice.getAppId(), metadata);
+                                    Boolean chosenNewInstance = choice.getAppId().getInstanceId() != null
+                                            ? null
+                                            : newInstance;
+                                    return raiseIntent(
+                                            intent, context, choice.getAppId(), chosenNewInstance, metadata);
                                 });
                     }
 
@@ -199,13 +209,11 @@ public class DefaultIntentSupport implements IntentSupport {
     }
 
     @Override
-    public CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app) {
-        return raiseIntentForContext(context, app, null);
-    }
-
-    @Override
     public CompletionStage<IntentResolution> raiseIntentForContext(
-            Context context, AppIdentifier app, AppProvidableContextMetadata metadata) {
+            Context context,
+            AppIdentifier app,
+            Boolean newInstance,
+            AppProvidableContextMetadata metadata) {
         AddContextListenerRequestMeta meta = messaging.createMeta();
 
         RaiseIntentForContextRequest request = new RaiseIntentForContextRequest();
@@ -223,6 +231,11 @@ public class DefaultIntentSupport implements IntentSupport {
         @SuppressWarnings("unchecked")
         Map<String, Object> raiseForContextPayload = (Map<String, Object>) requestMap.get("payload");
         if (raiseForContextPayload != null) {
+            if (newInstance != null) {
+                raiseForContextPayload.put("newInstance", newInstance);
+            } else {
+                raiseForContextPayload.remove("newInstance");
+            }
             raiseForContextPayload.put("metadata", ContextMetadataMapper.toWireForIntentRequest(metadata, messaging::createUUID));
         }
 
@@ -235,21 +248,25 @@ public class DefaultIntentSupport implements IntentSupport {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
-                    AppIntent[] schemaAppIntents = typedResponse.getPayload().getAppIntents();
+                    List<AppIntent> schemaAppIntents = typedResponse.getPayload().getAppIntents();
                     org.finos.fdc3.schema.IntentResolution schemaIntentResolution =
                             typedResponse.getPayload().getIntentResolution();
 
-                    if ((schemaAppIntents == null || schemaAppIntents.length == 0) && schemaIntentResolution == null) {
+                    if ((schemaAppIntents == null || schemaAppIntents.isEmpty()) && schemaIntentResolution == null) {
                         throw new RuntimeException(ResolveError.NoAppsFound.toString());
                     }
 
-                    if (schemaAppIntents != null && schemaAppIntents.length > 0) {
-                        return intentResolver.chooseIntent(Arrays.asList(schemaAppIntents), context)
+                    if (schemaAppIntents != null && !schemaAppIntents.isEmpty()) {
+                        return intentResolver.chooseIntent(schemaAppIntents, context)
                                 .thenCompose(choice -> {
                                     if (choice == null) {
                                         throw new RuntimeException(ResolveError.UserCancelled.toString());
                                     }
-                                    return raiseIntent(choice.getIntent(), context, choice.getAppId(), metadata);
+                                    Boolean chosenNewInstance = choice.getAppId().getInstanceId() != null
+                                            ? null
+                                            : newInstance;
+                                    return raiseIntent(
+                                            choice.getIntent(), context, choice.getAppId(), chosenNewInstance, metadata);
                                 });
                     }
 
@@ -268,8 +285,48 @@ public class DefaultIntentSupport implements IntentSupport {
 
     @Override
     public CompletionStage<Listener> addIntentListener(String intent, IntentHandler handler) {
-        DefaultIntentListener listener = new DefaultIntentListener(messaging, intent, handler, messageExchangeTimeout);
-        return listener.register().thenApply(v -> listener);
+        return registerIntentListener(intent, null, handler);
+    }
+
+    @Override
+    public CompletionStage<Listener> addIntentListenerWithContext(
+            String intent, List<String> contextTypes, IntentHandler handler) {
+        return registerIntentListener(intent, contextTypes, handler);
+    }
+
+    private CompletionStage<Listener> registerIntentListener(
+            String intent, List<String> contextTypes, IntentHandler handler) {
+        throwIfConflicting(intent, contextTypes);
+
+        DefaultIntentListener[] holder = new DefaultIntentListener[1];
+        holder[0] = new DefaultIntentListener(
+                messaging,
+                intent,
+                contextTypes,
+                handler,
+                messageExchangeTimeout,
+                () -> intentListeners.remove(holder[0]));
+        return holder[0].register().thenApply(v -> {
+            intentListeners.add(holder[0]);
+            return holder[0];
+        });
+    }
+
+    private void throwIfConflicting(String intent, List<String> contextTypes) {
+        boolean conflict = intentListeners.stream().anyMatch(existing -> {
+            if (!existing.getIntent().equals(intent)) {
+                return false;
+            }
+            List<String> existingTypes = existing.getContextTypes();
+            if (existingTypes == null || contextTypes == null) {
+                return true;
+            }
+            return existingTypes.stream().anyMatch(contextTypes::contains);
+        });
+
+        if (conflict) {
+            throw new RuntimeException(ResolveError.IntentListenerConflict.toString());
+        }
     }
 
     private static final class ResultPromises {

@@ -17,9 +17,12 @@
 package org.finos.fdc3.proxy.channels;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.channel.PrivateChannel;
+import org.finos.fdc3.api.errors.ChannelError;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
@@ -44,65 +47,73 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
 
     @Override
     public CompletionStage<Listener> addEventListener(String type, EventHandler handler) {
-        AbstractPrivateChannelEventListener listener;
-        
-        if (type == null) {
-            listener = new PrivateChannelNullEventListener(messaging, messageExchangeTimeout, getId(), handler);
-        } else {
-            switch (type) {
-                case "addContextListener":
-                    listener = new PrivateChannelAddContextEventListener(messaging, messageExchangeTimeout, getId(), handler);
-                    break;
-                case "unsubscribe":
-                    listener = new PrivateChannelUnsubscribeEventListener(messaging, messageExchangeTimeout, getId(), handler);
-                    break;
-                case "disconnect":
-                    listener = new PrivateChannelDisconnectEventListener(messaging, messageExchangeTimeout, getId(), handler);
-                    break;
-                default:
-                    throw new RuntimeException("Unsupported event type: " + type);
-            }
+        if ("contextCleared".equals(type)) {
+            return super.addEventListener(type, handler);
         }
-        
+
+        if (type == null) {
+            return addAllEventListener(handler);
+        }
+
+        AbstractPrivateChannelEventListener listener;
+        switch (type) {
+            case "addContextListener":
+                listener = new PrivateChannelAddContextEventListener(messaging, messageExchangeTimeout, getId(), handler);
+                break;
+            case "unsubscribe":
+                listener = new PrivateChannelUnsubscribeEventListener(messaging, messageExchangeTimeout, getId(), handler);
+                break;
+            case "disconnect":
+                listener = new PrivateChannelDisconnectEventListener(messaging, messageExchangeTimeout, getId(), handler);
+                break;
+            default:
+                throw new RuntimeException(ChannelError.InvalidArguments.toString());
+        }
+
         return listener.register().thenApply(v -> listener);
+    }
+
+    private CompletionStage<Listener> addAllEventListener(EventHandler handler) {
+        return super.addEventListener("contextCleared", handler).thenCompose(channelListener -> {
+            PrivateChannelNullEventListener privateChannelListener = new PrivateChannelNullEventListener(
+                    messaging, messageExchangeTimeout, getId(), handler);
+            return privateChannelListener.register()
+                    .thenApply(v -> (Listener) new Listener() {
+                        @Override
+                        public CompletionStage<Void> unsubscribe() {
+                            return channelListener.unsubscribe()
+                                    .thenCompose(ignored -> privateChannelListener.unsubscribe());
+                        }
+                    })
+                    .exceptionallyCompose(ex -> channelListener.unsubscribe().thenCompose(ignored -> {
+                        CompletableFuture<Listener> failed = new CompletableFuture<>();
+                        failed.completeExceptionally(ex);
+                        return failed;
+                    }));
+        });
     }
 
     @Override
     public CompletionStage<Listener> onAddContextListener(EventHandler handler) {
-        // Adapt handler type for differences between addEventListener and onAddContextListener handler types
         PrivateChannelAddContextEventListener listener = new PrivateChannelAddContextEventListener(
-                messaging, messageExchangeTimeout, getId(), 
-                event -> {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> details = (Map<String, Object>) event.getDetails();
-                    String contextType = details != null ? (String) details.get("contextType") : null;
-                    handler.handleEvent(new FDC3Event(FDC3Event.Type.ADD_CONTEXT_LISTENER, details));
-                });
-        // Register asynchronously (fire and forget) like TypeScript
+                messaging, messageExchangeTimeout, getId(),
+                event -> handler.handleEvent(new FDC3Event(FDC3Event.Type.ADD_CONTEXT_LISTENER, event.getDetails())));
         return listener.register().thenApply(v -> listener);
     }
 
     @Override
     public CompletionStage<Listener> onUnsubscribe(EventHandler handler) {
-        // Adapt handler type for differences between addEventListener and onUnsubscribe handler types
         PrivateChannelUnsubscribeEventListener listener = new PrivateChannelUnsubscribeEventListener(
                 messaging, messageExchangeTimeout, getId(),
-                event -> {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> details = (Map<String, Object>) event.getDetails();
-                    String contextType = details != null ? (String) details.get("contextType") : null;
-                    handler.handleEvent(new FDC3Event(FDC3Event.Type.ON_UNSUBSCRIBE, details));
-                });
-        // Register asynchronously (fire and forget) like TypeScript
+                event -> handler.handleEvent(new FDC3Event(FDC3Event.Type.ON_UNSUBSCRIBE, event.getDetails())));
         return listener.register().thenApply(v -> listener);
     }
 
     @Override
     public CompletionStage<Listener> onDisconnect(EventHandler handler) {
-        // Adapt handler type for differences between addEventListener and onDisconnect handler types
         PrivateChannelDisconnectEventListener listener = new PrivateChannelDisconnectEventListener(
                 messaging, messageExchangeTimeout, getId(),
-                event -> handler.handleEvent(new FDC3Event(FDC3Event.Type.ON_DISCONNECT, null)));
+                event -> handler.handleEvent(new FDC3Event(FDC3Event.Type.ON_DISCONNECT, event.getDetails())));
         return listener.register().thenApply(v -> listener);
     }
 

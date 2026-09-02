@@ -53,44 +53,34 @@ public interface IntentSupport {
     /**
      * Raise an intent.
      *
-     * @param intent  the intent name
-     * @param context the context to pass
-     * @param app     optional target application
-     * @return a CompletionStage containing the intent resolution
-     */
-    CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app);
-
-    /**
-     * Raise an intent with app-provided metadata.
-     *
-     * @param intent   the intent name
-     * @param context  the context to pass
-     * @param app      optional target application
-     * @param metadata optional app-provided metadata
+     * @param intent      the intent name
+     * @param context     the context to pass
+     * @param app         optional target application
+     * @param newInstance optional instance selection preference
+     * @param metadata    optional app-provided metadata
      * @return a CompletionStage containing the intent resolution
      */
     CompletionStage<IntentResolution> raiseIntent(
-            String intent, Context context, AppIdentifier app, AppProvidableContextMetadata metadata);
+            String intent,
+            Context context,
+            AppIdentifier app,
+            Boolean newInstance,
+            AppProvidableContextMetadata metadata);
 
     /**
      * Raise an intent for a context.
      *
-     * @param context the context
-     * @param app     optional target application
-     * @return a CompletionStage containing the intent resolution
-     */
-    CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app);
-
-    /**
-     * Raise an intent for a context with app-provided metadata.
-     *
-     * @param context  the context
-     * @param app      optional target application
-     * @param metadata optional app-provided metadata
+     * @param context     the context
+     * @param app         optional target application
+     * @param newInstance optional instance selection preference
+     * @param metadata    optional app-provided metadata
      * @return a CompletionStage containing the intent resolution
      */
     CompletionStage<IntentResolution> raiseIntentForContext(
-            Context context, AppIdentifier app, AppProvidableContextMetadata metadata);
+            Context context,
+            AppIdentifier app,
+            Boolean newInstance,
+            AppProvidableContextMetadata metadata);
 
     /**
      * Add an intent listener.
@@ -100,4 +90,15 @@ public interface IntentSupport {
      * @return a CompletionStage containing the listener
      */
     CompletionStage<Listener> addIntentListener(String intent, IntentHandler handler);
+
+    /**
+     * Add an intent listener filtered by context type(s).
+     *
+     * @param intent       the intent to listen for
+     * @param contextTypes one or more context types to filter by
+     * @param handler      the intent handler
+     * @return a CompletionStage containing the listener
+     */
+    CompletionStage<Listener> addIntentListenerWithContext(
+            String intent, List<String> contextTypes, IntentHandler handler);
 }

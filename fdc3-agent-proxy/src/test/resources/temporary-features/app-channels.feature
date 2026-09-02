@@ -39,22 +39,6 @@ Feature: Channel Listeners Support
       | {null}            | {null}              | contextListenerUnsubscribeRequest |
 
   Scenario: I can create a listener which listens for any context type
-        In this version we are using the deprecated 1-arg approach
-    When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
-    And I refer to "{result}" as "channel1"
-    And I call "{channel1}" with "addContextListener" using argument "{resultHandler}"
-    And messaging receives "{instrumentMessageOne}"
-    And messaging receives "{countryMessageOne}"
-    Then "{contexts}" is an array of objects with the following contents
-      | type            | name   |
-      | fdc3.instrument | Apple  |
-      | fdc3.country    | Sweden |
-    And messaging will have posts
-      | payload.channelId | payload.contextType | matches_type              |
-      | channel-name      | {null}              | getOrCreateChannelRequest |
-      | channel-name      | {null}              | addContextListenerRequest |
-
-  Scenario: I can create a listener which listens for any context type
         In this version we are using the non-deprecated 2 args approach
     When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
     And I refer to "{result}" as "channel1"
@@ -79,6 +63,12 @@ Feature: Channel Listeners Support
     Then "{result}" is an error
     And I call "{channel1}" with "addContextListener" using arguments "{null}" and "{true}"
     Then "{result}" is an error
+
+  Scenario: Passing an invalid event type to an app Channel returns InvalidArguments
+    When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
+    And I refer to "{result}" as "channel1"
+    And I call "{channel1}" with "addEventListener" using arguments "unsupported" and "{resultHandler}"
+    Then "{result}" is an error with message "InvalidArguments"
 
   Scenario: Destructured channel methods - broadcast and addContextListener
     When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"

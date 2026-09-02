@@ -24,6 +24,7 @@ import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.DisplayMetadata;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.ContextWithMetadata;
+import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.IntentResult;
 import org.finos.fdc3.api.types.Listener;
 
@@ -114,6 +115,12 @@ public interface Channel extends IntentResult {
    */
   CompletionStage<Listener> addContextListener(String contextType, ContextHandler handler);
   
+  /**
+   * Register a handler for events from the Channel. Whenever the handler function
+   * is called it will be passed an event object with details related to the event.
+   */
+  CompletionStage<Listener> addEventListener(String type, EventHandler handler);
+
   @Deprecated
   CompletionStage<Listener> addContextListener(ContextHandler handler);
 

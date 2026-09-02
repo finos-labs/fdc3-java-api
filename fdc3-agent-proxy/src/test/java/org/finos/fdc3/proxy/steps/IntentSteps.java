@@ -34,6 +34,7 @@ import org.finos.fdc3.proxy.support.ParseAntiReplayClaims;
 import org.finos.fdc3.api.metadata.DisplayMetadata;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
+import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.IntentHandler;
 import org.finos.fdc3.api.types.IntentResult;
 import org.finos.fdc3.api.types.Listener;
@@ -44,6 +45,7 @@ import org.finos.fdc3.proxy.world.CustomWorld;
 import org.finos.fdc3.api.channel.Channel;
 
 import io.cucumber.java.en.Given;
+import io.cucumber.java.en.When;
 
 import static io.github.robmoffat.support.MatchingUtils.handleResolve;
 
@@ -68,6 +70,54 @@ public class IntentSteps {
         world.getMessaging().addAppIntentDetail(createIntentDetail(app, null, null, null));
         if (instanceId != null) {
             world.set(instanceId, app);
+        }
+    }
+
+    @Given("{string} is app identifier {string}")
+    public void isAppIdentifier(String field, String appId) {
+        world.set(field, new AppIdentifier(appId));
+    }
+
+    @Given("{string} is an array of contexts including {string} and {string}")
+    public void isArrayOfContextsIncluding(String field, String valueOne, String valueTwo) {
+        world.set(field, List.of(valueOne, valueTwo));
+    }
+
+    @When("I call {string} with {string} using arguments {string}, {string}, {string}, {string}, and {string}")
+    public void callWithFiveArguments(
+            String field,
+            String methodName,
+            String param1,
+            String param2,
+            String param3,
+            String param4,
+            String param5) {
+        invokeMethod(field, methodName, param1, param2, param3, param4, param5);
+    }
+
+    private void invokeMethod(String field, String methodName, String... params) {
+        try {
+            Object object = handleResolve(field, world);
+            Object[] args = new Object[params.length];
+            for (int i = 0; i < params.length; i++) {
+                args[i] = handleResolve(params[i], world);
+            }
+            java.lang.reflect.Method method = io.github.robmoffat.steps.GenericSteps.findMethod(
+                    object.getClass(), methodName, args);
+            if (method == null) {
+                throw new NoSuchMethodException("Method not found: " + methodName);
+            }
+            method.setAccessible(true);
+            Object result = method.invoke(object, args);
+            if (result instanceof java.util.concurrent.CompletionStage) {
+                result = ((java.util.concurrent.CompletionStage<?>) result).toCompletableFuture().get();
+            }
+            if (result instanceof java.util.Optional) {
+                result = ((java.util.Optional<?>) result).orElse(null);
+            }
+            world.set("result", result);
+        } catch (Exception e) {
+            world.set("result", e);
         }
     }
 
@@ -340,6 +390,11 @@ public class IntentSteps {
 
 					@Override
 					public CompletionStage<Listener> addContextListener(ContextHandler handler) {
+						return null;
+					}
+
+					@Override
+					public CompletionStage<Listener> addEventListener(String type, EventHandler handler) {
 						return null;
 					}
 

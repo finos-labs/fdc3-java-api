@@ -37,6 +37,7 @@ import org.finos.fdc3.proxy.messaging.AbstractMessaging;
 import org.finos.fdc3.proxy.support.responses.AddEventListenerResponse;
 import org.finos.fdc3.proxy.support.responses.AutomaticResponse;
 import org.finos.fdc3.proxy.support.responses.ChannelStateResponse;
+import org.finos.fdc3.proxy.support.responses.CloseResponse;
 import org.finos.fdc3.proxy.support.responses.CreatePrivateChannelResponse;
 import org.finos.fdc3.proxy.support.responses.DisconnectPrivateChannelResponse;
 import org.finos.fdc3.proxy.support.responses.FindInstancesResponse;
@@ -67,6 +68,7 @@ public class TestMessaging extends AbstractMessaging {
     
     private Channel currentChannel;
     private PossibleIntentResult intentResult;
+    private boolean closeShouldFail;
 
     public TestMessaging(Map<String, List<Context>> channelState) {
         this(channelState, null);
@@ -87,6 +89,7 @@ public class TestMessaging extends AbstractMessaging {
         this.automaticResponses.add(new GetInfoResponse());
         this.automaticResponses.add(new FindInstancesResponse());
         this.automaticResponses.add(new OpenResponse());
+        this.automaticResponses.add(new CloseResponse());
         this.automaticResponses.add(new GetOrCreateChannelResponse());
         this.automaticResponses.add(new ChannelStateResponse(this.channelState, initialChannelId));
         this.automaticResponses.add(new GetUserChannelsResponse());
@@ -224,6 +227,14 @@ public class TestMessaging extends AbstractMessaging {
 
     public void setCurrentChannel(Channel channel) {
         this.currentChannel = channel;
+    }
+
+    public boolean isCloseShouldFail() {
+        return closeShouldFail;
+    }
+
+    public void setCloseShouldFail(boolean closeShouldFail) {
+        this.closeShouldFail = closeShouldFail;
     }
 
     public Map<String, List<Context>> getChannelState() {

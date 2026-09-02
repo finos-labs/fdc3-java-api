@@ -53,6 +53,7 @@ public class PrivateChannelUnsubscribeEventListener extends AbstractPrivateChann
         if ("privateChannelOnUnsubscribeEvent".equals(type)) {
             Map<String, Object> payload = (Map<String, Object>) message.get("payload");
             Map<String, Object> details = new HashMap<>();
+            details.put("channelId", payload.get("privateChannelId"));
             details.put("contextType", payload.get("contextType"));
             
             FDC3Event event = new FDC3Event(FDC3Event.Type.ON_UNSUBSCRIBE, details);

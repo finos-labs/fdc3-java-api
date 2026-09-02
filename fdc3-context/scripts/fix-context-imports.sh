@@ -15,13 +15,13 @@ for f in *.java; do
   # Cross-platform in-place edit (GNU sed vs BSD sed)
   if sed --version 2>/dev/null | grep -q GNU; then
     sed -i -e 's/ContextElement/Context/g' "$f"
-    if grep -qE '(private|public) Context |Context get|Context\[\]|ContextFromJsonString' "$f"; then
+    if grep -qE '(private|public) Context |Context get|Context\[\]|ContextFromJsonString|List<Context>|Map<[^>]*Context>' "$f"; then
       sed -i '/^package org.finos.fdc3.context;$/a\
 import org.finos.fdc3.api.context.Context;' "$f"
     fi
   else
     sed -i '' -e 's/ContextElement/Context/g' "$f"
-    if grep -qE '(private|public) Context |Context get|Context\[\]|ContextFromJsonString' "$f"; then
+    if grep -qE '(private|public) Context |Context get|Context\[\]|ContextFromJsonString|List<Context>|Map<[^>]*Context>' "$f"; then
       sed -i '' '/^package org.finos.fdc3.context;$/a\
 import org.finos.fdc3.api.context.Context;' "$f"
     fi

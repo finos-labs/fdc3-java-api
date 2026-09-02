@@ -24,7 +24,11 @@ public enum ResolveError
     ResolverTimeout("ResolverTimeout"),
     TargetAppUnavailable("TargetAppUnavailable"),
     TargetInstanceUnavailable("TargetInstanceUnavailable"),
-    IntentDeliveryFailed("IntentDeliveryFailed");
+    IntentDeliveryFailed("IntentDeliveryFailed"),
+    MalformedContext("MalformedContext"),
+    IntentListenerConflict("IntentListenerConflict"),
+    ApiTimeout("ApiTimeout"),
+    InvalidArguments("InvalidArguments");
 private final String value;
 
 private ResolveError(String value)

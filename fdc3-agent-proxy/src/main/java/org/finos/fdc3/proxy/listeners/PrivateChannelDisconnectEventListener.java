@@ -17,6 +17,7 @@
 package org.finos.fdc3.proxy.listeners;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.finos.fdc3.api.types.EventHandler;
@@ -50,7 +51,10 @@ public class PrivateChannelDisconnectEventListener extends AbstractPrivateChanne
         String type = (String) message.get("type");
         
         if ("privateChannelOnDisconnectEvent".equals(type)) {
-            FDC3Event event = new FDC3Event(FDC3Event.Type.ON_DISCONNECT, null);
+            Map<String, Object> payload = (Map<String, Object>) message.get("payload");
+            Map<String, Object> details = new HashMap<>();
+            details.put("channelId", payload.get("privateChannelId"));
+            FDC3Event event = new FDC3Event(FDC3Event.Type.ON_DISCONNECT, details);
             handler.handleEvent(event);
         } else {
             Logger.error("PrivateChannelDisconnectEventListener was called for a different message type: " + type);

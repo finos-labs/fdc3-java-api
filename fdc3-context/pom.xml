@@ -61,44 +61,7 @@
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
-                <configuration>
-                    <source>${jdk.source.version}</source>
-                    <target>${jdk.target.version}</target>
-                    <!-- Generated quicktype output is many files; avoid stale incremental compiles -->
-                    <useIncrementalCompilation>false</useIncrementalCompilation>
-                </configuration>
-            </plugin>
-
-            <!-- Populate target/schemas-work for round-trip tests (download or local profile source) -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
-                <executions>
-                    <execution>
-                        <id>populate-schemas-work</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${fdc3.context.schemas.work.dir}/context</outputDirectory>
-                            <overwrite>true</overwrite>
-                            <resources>
-                                <resource>
-                                    <directory>${fdc3.context.source.dir}</directory>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- Create directories before npm runs -->
+            <!-- Must run before compiler in process-classes to drop IDE-stale .class files -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
@@ -128,7 +91,82 @@
                             <target>
                                 <delete dir="${project.build.directory}/generated-sources/fdc3" includeemptydirs="true" quiet="true"/>
                                 <mkdir dir="${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context"/>
+                                <!-- Drop stale .class files (e.g. from IDE auto-build) so hand-written
+                                     sources like ContextConverter are recompiled after quicktype runs -->
+                                <delete dir="${project.build.directory}/classes" includeemptydirs="true" quiet="true"/>
                             </target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>purge-stale-handwritten-classes</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <delete file="${project.build.directory}/classes/org/finos/fdc3/context/ContextConverter.class" quiet="true"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${jdk.source.version}</source>
+                    <target>${jdk.target.version}</target>
+                    <!-- Generated quicktype output is many files; avoid stale incremental compiles -->
+                    <useIncrementalCompilation>false</useIncrementalCompilation>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <configuration>
+                            <compileSourceRoots>
+                                <compileSourceRoot>${project.build.directory}/generated-sources/fdc3</compileSourceRoot>
+                            </compileSourceRoots>
+                        </configuration>
+                    </execution>
+                    <!-- Compile hand-written sources after generated types (and after purge-stale) -->
+                    <execution>
+                        <id>compile-handwritten-sources</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <compileSourceRoots>
+                                <compileSourceRoot>${project.basedir}/src/main/java</compileSourceRoot>
+                            </compileSourceRoots>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Populate target/schemas-work for round-trip tests (download or local profile source) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>populate-schemas-work</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${fdc3.context.schemas.work.dir}/context</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <resources>
+                                <resource>
+                                    <directory>${fdc3.context.source.dir}</directory>
+                                </resource>
+                            </resources>
                         </configuration>
                     </execution>
                 </executions>

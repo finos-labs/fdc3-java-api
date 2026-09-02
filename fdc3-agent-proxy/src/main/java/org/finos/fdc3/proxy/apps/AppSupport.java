@@ -49,24 +49,13 @@ public interface AppSupport {
     /**
      * Open an application.
      *
-     * @param app     the application identifier
-     * @param context optional context to pass
+     * @param app      the application identifier
+     * @param context  optional context to pass
+     * @param metadata optional app-provided metadata
      * @return a CompletionStage containing the opened app identifier
      */
-    CompletionStage<AppIdentifier> open(AppIdentifier app, Context context);
-
-    CompletionStage<AppIdentifier> open(AppIdentifier app, Context context, AppProvidableContextMetadata metadata);
-
-    /**
-     * Open an application by name.
-     *
-     * @param name    the application name
-     * @param context optional context to pass
-     * @return a CompletionStage containing the opened app identifier
-     * @deprecated Use {@link #open(AppIdentifier, Context)} instead
-     */
-    @Deprecated
-    CompletionStage<AppIdentifier> open(String name, Context context);
+    CompletionStage<AppIdentifier> open(
+            AppIdentifier app, Context context, AppProvidableContextMetadata metadata);
 
     /**
      * Get implementation metadata for the Desktop Agent.
@@ -74,5 +63,6 @@ public interface AppSupport {
      * @return a CompletionStage containing the implementation metadata
      */
     CompletionStage<ImplementationMetadata> getImplementationMetadata();
-}
 
+    CompletionStage<Void> close();
+}
