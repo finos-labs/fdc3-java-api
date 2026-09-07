@@ -49,7 +49,7 @@ This project provides:
 
 ## Requirements
 
-- Java 11 or later
+- Java 17 or later
 - Maven 3.6+
 - A running FDC3 Desktop Agent that supports the [Desktop Agent Communication Protocol](https://fdc3.finos.org/docs/api/specs/desktopAgentCommunicationProtocol) (e.g., [FDC3 Sail](https://github.com/finos/FDC3-Sail))
 

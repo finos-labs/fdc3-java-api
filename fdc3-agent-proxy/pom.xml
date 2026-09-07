@@ -16,8 +16,8 @@
  
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jdk.source.version>11</jdk.source.version>
-        <jdk.target.version>11</jdk.target.version>
+        <jdk.source.version>17</jdk.source.version>
+        <jdk.target.version>17</jdk.target.version>
         <fdc3.features.source>src/test/resources/temporary-features</fdc3.features.source>
         <cucumber.version>7.15.0</cucumber.version>
         <spring.version>6.1.2</spring.version>

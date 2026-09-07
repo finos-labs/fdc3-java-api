@@ -31,8 +31,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jdk.source.version>11</jdk.source.version>
-        <jdk.target.version>11</jdk.target.version>
+        <jdk.source.version>17</jdk.source.version>
+        <jdk.target.version>17</jdk.target.version>
         <slf4j.version>1.7.25</slf4j.version>
     </properties>
 

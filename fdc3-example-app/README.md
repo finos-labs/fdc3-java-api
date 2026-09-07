@@ -12,7 +12,7 @@ A simple Java Swing application demonstrating FDC3 Desktop Agent connectivity vi
 
 ## Prerequisites
 
-- Java 11 or higher
+- Java 17 or higher
 - A running FDC3 Desktop Agent (e.g., FDC3-Sail)
 
 ## Building

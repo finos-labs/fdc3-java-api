@@ -85,9 +85,9 @@
     </profile>
   </profiles>
   <properties>
-    <jdk.source.version>11</jdk.source.version>
+    <jdk.source.version>17</jdk.source.version>
     <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jdk.target.version>11</jdk.target.version>
+    <jdk.target.version>17</jdk.target.version>
   </properties>
 </project>
