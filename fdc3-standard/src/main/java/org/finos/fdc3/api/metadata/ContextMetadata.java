@@ -16,9 +16,11 @@
 package org.finos.fdc3.api.metadata;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.finos.fdc3.api.types.AppIdentifier;
@@ -94,12 +96,12 @@ public class ContextMetadata extends HashMap<String, Object>
     }
 
     @Override
-    public String getAuthenticity() {
-        return (String) get("authenticity");
+    public MessageAuthenticity getAuthenticity() {
+        return getTyped("authenticity", MessageAuthenticity.class);
     }
 
     @Override
-    public void setAuthenticity(String authenticity) {
+    public void setAuthenticity(MessageAuthenticity authenticity) {
         putOrRemove("authenticity", authenticity);
     }
 
@@ -205,7 +207,12 @@ public class ContextMetadata extends HashMap<String, Object>
         if (custom instanceof Map) {
             setCustom(castMap(custom));
         }
-        setAuthenticity((String) map.get("authenticity"));
+        Object authenticity = map.get("authenticity");
+        if (authenticity instanceof MessageAuthenticity) {
+            setAuthenticity((MessageAuthenticity) authenticity);
+        } else if (authenticity instanceof Map) {
+            setAuthenticity(mapToMessageAuthenticity(castMap(authenticity)));
+        }
         setEncryption((String) map.get("encryption"));
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             if (!containsKey(entry.getKey())) {
@@ -234,6 +241,9 @@ public class ContextMetadata extends HashMap<String, Object>
             if (type == AntiReplayClaims.class) {
                 return type.cast(mapToAntiReplay(castMap(value)));
             }
+            if (type == MessageAuthenticity.class) {
+                return type.cast(mapToMessageAuthenticity(castMap(value)));
+            }
         }
         return null;
     }
@@ -248,6 +258,34 @@ public class ContextMetadata extends HashMap<String, Object>
         sig.setProtectedHeader((String) map.get("protected"));
         sig.setSignature((String) map.get("signature"));
         return sig;
+    }
+
+    private static MessageAuthenticity mapToMessageAuthenticity(Map<String, Object> map) {
+        MessageAuthenticity authenticity = new MessageAuthenticity();
+        Object signed = map.get("signed");
+        authenticity.setSigned(signed instanceof Boolean
+                ? (Boolean) signed
+                : Boolean.parseBoolean(String.valueOf(signed)));
+        authenticity.setValid((Boolean) map.get("valid"));
+        authenticity.setTrusted((Boolean) map.get("trusted"));
+        authenticity.setAlg((String) map.get("alg"));
+        authenticity.setKid((String) map.get("kid"));
+        authenticity.setJku((String) map.get("jku"));
+        Object claims = map.get("antiReplayClaims");
+        if (claims instanceof AntiReplayClaims) {
+            authenticity.setAntiReplayClaims((AntiReplayClaims) claims);
+        } else if (claims instanceof Map) {
+            authenticity.setAntiReplayClaims(mapToAntiReplay(castMap(claims)));
+        }
+        Object errors = map.get("errors");
+        if (errors instanceof List) {
+            List<String> messages = new ArrayList<>();
+            for (Object error : (List<?>) errors) {
+                messages.add(error == null ? null : String.valueOf(error));
+            }
+            authenticity.setErrors(messages);
+        }
+        return authenticity;
     }
 
     private static AntiReplayClaims mapToAntiReplay(Map<String, Object> map) {

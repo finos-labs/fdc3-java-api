@@ -61,13 +61,14 @@ This project provides:
 mvn clean install
 ```
 
-This will download the schemas for the DACP / WCP / Contexts from NPM as it runs.  However, you can also run like this:
+The build downloads the DACP / WCP / Context schemas from npm as it runs, using the versions
+pinned by `fdc3.schema.version` and `fdc3.context.version` in the module POMs.
 
-```sh
-mvn clean install -Plocal
-```
-
-which will use local schemas inside the `src/main/schemas-temp` directories.  This is a temporary feature for unreleased versions of FDC3.
+A small number of API schemas have not yet reached a published release, and are needed by code
+in this project. Those are held in `fdc3-schema/src/main/schemas-overlay/api` and are copied
+over the downloaded set during the build; that directory's README lists exactly what it carries
+and when each file can be deleted. Everything else, including all context schemas, comes from
+npm unmodified.
 
 ### Maven Dependency
 

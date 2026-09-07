@@ -19,10 +19,14 @@
         <jdk.target.version>17</jdk.target.version>
         <node.version>v20.11.0</node.version>
         <npm.version>10.2.4</npm.version>
-        <fdc3.schema.version>2.2.3</fdc3.schema.version>
+        <fdc3.schema.version>3.0.0-alpha.2</fdc3.schema.version>
         <fdc3.schema.work.dir>${project.build.directory}/schema-work</fdc3.schema.work.dir>
         <fdc3.schema.source.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-schema/dist/schemas</fdc3.schema.source.dir>
         <fdc3.context.source.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-context/dist/schemas/context</fdc3.context.source.dir>
+        <!-- API schemas not yet in a published release; copied over the npm ones. See the
+             README in that overlay directory for what they carry and when to delete them.
+             Context schemas are taken from npm unmodified. -->
+        <fdc3.schema.overlay.dir>${project.basedir}/src/main/schemas-overlay/api</fdc3.schema.overlay.dir>
         <fdc3.api.schema.path>${fdc3.schema.work.dir}/api/api.schema.json</fdc3.api.schema.path>
         <fdc3.npm.schema.packages>install @finos/fdc3-schema@${fdc3.schema.version} @finos/fdc3-context@${fdc3.schema.version} quicktype --save</fdc3.npm.schema.packages>
     </properties>
@@ -78,7 +82,9 @@
                 </configuration>
             </plugin>
 
-            <!-- Populate target/schema-work from download or local profile source -->
+            <!-- Populate target/schema-work: npm-downloaded schemas first, then the
+                 unreleased overlay on top. Both run in process-sources, and executions
+                 within a plugin run in declaration order, so the overlay always wins. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
@@ -109,6 +115,26 @@
                                 <resource>
                                     <directory>${fdc3.context.source.dir}</directory>
                                     <targetPath>context</targetPath>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-api-overlay</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${fdc3.schema.work.dir}</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <resources>
+                                <resource>
+                                    <directory>${fdc3.schema.overlay.dir}</directory>
+                                    <targetPath>api</targetPath>
+                                    <excludes>
+                                        <exclude>README.md</exclude>
+                                    </excludes>
                                 </resource>
                             </resources>
                         </configuration>
@@ -195,7 +221,7 @@
                 </executions>
             </plugin>
 
-            <!-- Frontend plugin for npm/node (quicktype; @finos/fdc3-schema in download profile) -->
+            <!-- Frontend plugin for npm/node: installs quicktype and the published FDC3 schemas -->
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
@@ -293,24 +319,4 @@ import org.finos.fdc3.api.types.AppIdentifier;</value>
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <!-- Use published schemas from npm: mvn -Pdownload -->
-        <profile>
-            <id>download</id>
-        </profile>
-
-        <!-- Default: use unreleased schemas from src/main/schemas-temp -->
-        <profile>
-            <id>local</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-                <fdc3.schema.source.dir>${project.basedir}/src/main/schemas-temp/3.0.0</fdc3.schema.source.dir>
-                <fdc3.context.source.dir>${project.basedir}/../fdc3-context/src/schemas-temp/3.0.0/context</fdc3.context.source.dir>
-                <fdc3.npm.schema.packages>install quicktype --save</fdc3.npm.schema.packages>
-            </properties>
-        </profile>
-    </profiles>
 </project>

@@ -31,9 +31,9 @@ public interface SecurityMetadata {
     /**
      * Result of signature verification by the receiving app's security layer.
      */
-    String getAuthenticity();
+    MessageAuthenticity getAuthenticity();
 
-    void setAuthenticity(String authenticity);
+    void setAuthenticity(MessageAuthenticity authenticity);
 
     /**
      * Result of decryption by the receiving app's security layer.

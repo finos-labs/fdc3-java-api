@@ -36,7 +36,7 @@ public class ContextRoundTripTest {
     @BeforeAll
     static void setUp() {
         String basePath = System.getProperty("user.dir");
-        // Prefer unified schemas-work layout (used by both default and local-schemas profiles)
+        // Prefer schemas-work, which holds the npm schemas with the overlay applied
         schemasDir = Paths.get(basePath, "target", "schemas-work", "context");
 
         if (!Files.exists(schemasDir)) {
@@ -102,30 +102,22 @@ public class ContextRoundTripTest {
         
         assertNotNull(type, "Example should have a 'type' field");
         
-        // Get the Java class for this type
+        // Every type with schema examples must be registered, otherwise ContextConverter.fromJson
+        // rejects it as unknown and the type is unreachable through the public dispatch API.
         Class<?> clazz = ContextConverter.getClassForType(type);
-        
-        if (clazz == null) {
-            // Skip unknown types (like context.schema.json which is the base type)
-            System.out.println("Skipping unknown type: " + type + " from " + schemaName);
-            return;
-        }
+        assertNotNull(clazz, "Context type '" + type + "' (from " + schemaName
+                + ".schema.json) is not registered in ContextConverter.TYPE_MAP, so it cannot be "
+                + "deserialized via ContextConverter.fromJson(String)");
 
         // Parse the JSON into the Java object
-        Object parsed;
-        try {
-            parsed = ContextConverter.fromJson(originalJson, clazz);
-        } catch (Exception e) {
-            // TODO: Check if this is a known issue with malformed example data
-            // fixed in current, unreleased FDC3.
-            if (e.getMessage() != null && e.getMessage().contains("23:59:59ZS")) {
-                System.out.println("  [KNOWN ISSUE] Skipping " + schemaName + 
-                        " example with malformed datetime (trailing 'S' in schema example)");
-                return;
-            }
-            throw e;
-        }
+        Object parsed = ContextConverter.fromJson(originalJson, clazz);
         assertNotNull(parsed, "Should be able to parse " + type);
+
+        // The type-dispatching overload must resolve to the same class without being told it
+        Object dispatched = ContextConverter.fromJson(originalJson);
+        assertNotNull(dispatched, "Should be able to parse " + type + " via type dispatch");
+        assertEquals(clazz, dispatched.getClass(),
+                "Type dispatch should select " + clazz.getSimpleName() + " for " + type);
 
         // Re-serialize to JSON
         String reserialized = ContextConverter.toJson(parsed);

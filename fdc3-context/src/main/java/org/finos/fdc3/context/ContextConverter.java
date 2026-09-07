@@ -59,6 +59,11 @@ public class ContextConverter {
         TYPE_MAP.put("fdc3.portfolio", Portfolio.class);
         TYPE_MAP.put("fdc3.position", Position.class);
         TYPE_MAP.put("fdc3.product", Product.class);
+        TYPE_MAP.put("fdc3.security.encryptedContext", EncryptedContextWrapper.class);
+        TYPE_MAP.put("fdc3.security.symmetricKeyRequest", SymmetricKeyRequest.class);
+        TYPE_MAP.put("fdc3.security.symmetricKeyResponse", SymmetricKeyResponse.class);
+        TYPE_MAP.put("fdc3.security.user", User.class);
+        TYPE_MAP.put("fdc3.security.userRequest", UserRequest.class);
         TYPE_MAP.put("fdc3.timeRange", TimeRange.class);
         TYPE_MAP.put("fdc3.trade", Trade.class);
         TYPE_MAP.put("fdc3.tradeList", TradeList.class);
