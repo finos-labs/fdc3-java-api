@@ -38,7 +38,7 @@ public interface IntentResolver extends Connectable {
      *
      * @param appIntents the available intents and apps that can handle them
      * @param context the context being passed to the intent
-     * @return a CompletionStage containing the user's choice, or null if the operation was cancelled
+     * @return a CompletionStage containing the user's choice; the stage may complete with {@code null} to indicate cancellation
      */
     CompletionStage<IntentResolutionChoice> chooseIntent(List<AppIntent> appIntents, Context context);
 }
