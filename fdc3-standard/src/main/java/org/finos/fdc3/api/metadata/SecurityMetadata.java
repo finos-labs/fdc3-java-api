@@ -16,7 +16,11 @@
 package org.finos.fdc3.api.metadata;
 
 /**
- * Security-related metadata fields shared across context and intent metadata types.
+ * Signing fields that a sending app may attach to context and intent metadata.
+ * <p>
+ * These are the only security fields the DACP schemas carry. The outcome of verifying a
+ * signature is not metadata and is never transmitted: it is produced locally by the
+ * receiving app's security layer, and belongs in a security library rather than here.
  */
 public interface SecurityMetadata {
 
@@ -27,18 +31,4 @@ public interface SecurityMetadata {
     AntiReplayClaims getAntiReplay();
 
     void setAntiReplay(AntiReplayClaims antiReplay);
-
-    /**
-     * Result of signature verification by the receiving app's security layer.
-     */
-    MessageAuthenticity getAuthenticity();
-
-    void setAuthenticity(MessageAuthenticity authenticity);
-
-    /**
-     * Result of decryption by the receiving app's security layer.
-     */
-    String getEncryption();
-
-    void setEncryption(String encryption);
 }

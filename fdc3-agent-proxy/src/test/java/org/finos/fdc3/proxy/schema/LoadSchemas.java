@@ -115,6 +115,21 @@ public final class LoadSchemas {
         return SCHEMA_BASE + schemaId + ".schema.json";
     }
 
+    /** The directory the API schemas were loaded from, or {@code null} if none was found. */
+    public static Path apiSchemaDirectory() {
+        return resolveApiSchemaDirectory();
+    }
+
+    /**
+     * A validator for a named definition inside {@code api.schema.json}, e.g.
+     * {@code AppProvidableContextMetadata}.
+     */
+    public static JsonSchema definitionValidator(String definitionName) throws IOException {
+        loadSchemaValidators();
+        return schemaFactory.getSchema(
+                SchemaLocation.of(SCHEMA_BASE + "api.schema.json#/definitions/" + definitionName));
+    }
+
     private static Map<String, String> loadSchemaDocuments(Path apiDir, Path contextSchemaFile) throws IOException {
         Map<String, String> schemasByIri = new HashMap<>();
 

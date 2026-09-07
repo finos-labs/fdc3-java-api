@@ -38,6 +38,11 @@ public final class ContextMetadataMapper {
 
     /**
      * Outbound metadata for DACP request payloads (reference TS: {@code metadata ?? {}}).
+     * <p>
+     * Emits only {@code traceId}, {@code signature}, {@code antiReplay} and {@code custom}: the
+     * {@code AppProvidableContextMetadata} schema declares {@code additionalProperties: false}
+     * over exactly those fields. Receive-side verification results are not reachable through
+     * {@link AppProvidableContextMetadata}, so there is nothing further to drop here.
      */
     public static Map<String, Object> toWire(AppProvidableContextMetadata metadata) {
         return toWire(metadata, false, null);

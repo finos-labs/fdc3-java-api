@@ -42,5 +42,3 @@ generated from these, so the build cannot succeed without them.
   `DesktopAgent.addIntentListenerWithContext`.
 - `raiseIntentRequest.schema.json` — adds `newInstance`.
 - `raiseIntentForContextRequest.schema.json` — adds `newInstance`.
-- `api.schema.json` — adds `authenticity` to `ContextMetadata`, used by
-  `SecurityMetadata` for signature verification results.
