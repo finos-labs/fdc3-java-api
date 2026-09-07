@@ -18,7 +18,11 @@ import org.finos.fdc3.proxy.support.TestMessaging;
  */
 public class ResponseSupport {
     
-    private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "fdc3-test-response-scheduler");
+        t.setDaemon(true);
+        return t;
+    });
     
     /**
      * Creates response metadata from request metadata.
