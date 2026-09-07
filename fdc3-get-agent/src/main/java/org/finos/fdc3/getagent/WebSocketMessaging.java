@@ -25,6 +25,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import jakarta.websocket.ClientEndpoint;
 import jakarta.websocket.CloseReason;
@@ -54,6 +55,7 @@ public class WebSocketMessaging extends AbstractMessaging {
     private final Map<String, RegisterableListener> listeners = new ConcurrentHashMap<>();
     private Session session;
     private CompletableFuture<Void> connectionFuture;
+    private volatile CompletableFuture<Void> disconnectFuture;
     private volatile boolean connected = false;
 
     /**
@@ -126,6 +128,10 @@ public class WebSocketMessaging extends AbstractMessaging {
         Logger.info("WebSocket connection closed: {}", closeReason.getReasonPhrase());
         this.connected = false;
         this.session = null;
+        CompletableFuture<Void> pendingDisconnect = disconnectFuture;
+        if (pendingDisconnect != null) {
+            pendingDisconnect.complete(null);
+        }
     }
 
     @OnError
@@ -176,11 +182,17 @@ public class WebSocketMessaging extends AbstractMessaging {
 
     @Override
     public CompletionStage<Void> disconnect() {
-        if (session == null || !session.isOpen()) {
+        Session openSession = session;
+        if (openSession == null || !openSession.isOpen()) {
+            listeners.clear();
+            connected = false;
             return CompletableFuture.completedFuture(null);
         }
 
-        // Send WSCPGoodbye message before closing
+        CompletableFuture<Void> closed = new CompletableFuture<>();
+        disconnectFuture = closed;
+
+        // Send WSCPGoodbye and let the Desktop Agent close the socket (WSCP acceptor role).
         Map<String, Object> goodbye = new HashMap<>();
         goodbye.put("type", "WSCPGoodbye");
         Map<String, Object> meta = new HashMap<>();
@@ -190,20 +202,36 @@ public class WebSocketMessaging extends AbstractMessaging {
         try {
             String json = getConverter().toJson(goodbye);
             Logger.debug("Sending message: {}", json);
-            session.getBasicRemote().sendText(json);
+            openSession.getBasicRemote().sendText(json);
         } catch (Exception e) {
             Logger.error("Failed to send WSCPGoodbye: {}", e.getMessage());
+            try {
+                openSession.close();
+            } catch (IOException closeError) {
+                Logger.error("Error closing WebSocket: {}", closeError.getMessage());
+                closed.complete(null);
+            }
         }
 
-        try {
-            session.close();
-        } catch (IOException e) {
-            Logger.error("Error closing WebSocket: {}", e.getMessage());
-        }
-
-        listeners.clear();
-        connected = false;
-        return CompletableFuture.completedFuture(null);
+        return closed
+                .orTimeout(5, TimeUnit.SECONDS)
+                .handle((ignored, error) -> {
+                    if (error != null) {
+                        Logger.warn("Timed out waiting for Desktop Agent to close after WSCPGoodbye: {}",
+                                error.getMessage());
+                        try {
+                            if (session != null && session.isOpen()) {
+                                session.close();
+                            }
+                        } catch (IOException e) {
+                            Logger.error("Error closing WebSocket after timeout: {}", e.getMessage());
+                        }
+                    }
+                    listeners.clear();
+                    connected = false;
+                    disconnectFuture = null;
+                    return null;
+                });
     }
 
     /**

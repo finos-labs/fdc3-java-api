@@ -149,9 +149,21 @@ public class MockWebSocketServer {
                 instance.lastApplicationConnect = connect;
                 instance.handleConnectRequest(connect, session);
             } else if ("WSCPGoodbye".equals(type)) {
-                WebSocketConnectionProtocolGoodbye goodbye =
-                        converter.fromJson(message, WebSocketConnectionProtocolGoodbye.class);
-                instance.lastGoodbye = goodbye;
+                try {
+                    instance.lastGoodbye =
+                            converter.fromJson(message, WebSocketConnectionProtocolGoodbye.class);
+                } catch (IOException parseError) {
+                    // Still record that goodbye was received even if typed parse fails
+                    WebSocketConnectionProtocolGoodbye goodbye = new WebSocketConnectionProtocolGoodbye();
+                    goodbye.setType(org.finos.fdc3.schema.WebSocketConnectionProtocolGoodbyeType.WSCP_GOODBYE);
+                    instance.lastGoodbye = goodbye;
+                }
+                // WSCP: the acceptor closes the connection after receiving goodbye
+                try {
+                    session.close();
+                } catch (IOException closeError) {
+                    closeError.printStackTrace();
+                }
             } else if ("getInfoRequest".equals(type)) {
                 GetInfoRequest request = converter.fromJson(message, GetInfoRequest.class);
                 instance.handleGetInfoRequest(request, session);

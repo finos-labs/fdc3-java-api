@@ -23,6 +23,7 @@ import org.finos.fdc3.getagent.GetAgent;
 import org.finos.fdc3.getagent.GetAgentParams;
 import org.finos.fdc3.getagent.support.MockWebSocketServer;
 
+import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import org.finos.cucumbertestingsteps.world.PropsWorld;
@@ -36,6 +37,7 @@ import java.util.function.Function;
 public class GetAgentSteps {
 
     private final PropsWorld world;
+    private MockWebSocketServer activeServer;
 
     public GetAgentSteps(PropsWorld world) {
         this.world = world;
@@ -46,10 +48,22 @@ public class GetAgentSteps {
         world.set("getAgent", (Function<GetAgentParams, CompletionStage<DesktopAgent>>) GetAgent::getAgent);
     }
 
+    @After
+    public void stopMockServer() {
+        if (activeServer != null) {
+            activeServer.stop();
+            activeServer = null;
+        }
+    }
+
     @Given("a mock WebSocket server in {string}")
     public void createMockServer(String name) throws Exception {
+        if (activeServer != null) {
+            activeServer.stop();
+        }
         MockWebSocketServer server = new MockWebSocketServer();
         server.start();
+        activeServer = server;
         world.put(name, server);
     }
 
