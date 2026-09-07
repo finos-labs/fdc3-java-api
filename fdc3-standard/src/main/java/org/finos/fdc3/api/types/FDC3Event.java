@@ -34,8 +34,10 @@ public class FDC3Event {
      */
     public enum Type {
         ADD_CONTEXT_LISTENER("addContextListener"),
-        ON_UNSUBSCRIBE("onUnsubscribe"),
-        ON_DISCONNECT("onDisconnect"),
+        /** Listener / event type string for PrivateChannel unsubscribe events. */
+        ON_UNSUBSCRIBE("unsubscribe"),
+        /** Listener / event type string for PrivateChannel disconnect events. */
+        ON_DISCONNECT("disconnect"),
         USER_CHANNEL_CHANGED("userChannelChanged"),
         CONTEXT_CLEARED("contextCleared");
 

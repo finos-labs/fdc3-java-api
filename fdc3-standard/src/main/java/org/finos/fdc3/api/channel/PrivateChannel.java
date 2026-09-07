@@ -37,19 +37,22 @@ public interface PrivateChannel extends Channel {
      * 
      * <pre>
      * // any event type
-     * Listener listener = await myPrivateChannel.addEventListener(null, event -> {
+     * Listener listener = myPrivateChannel.addEventListener(null, event -> {
      *   System.out.println("Received event " + event.getType() + "\n\tDetails: " + event.getDetails());
      * }).toCompletableFuture().join();
      * 
      * // listener for a specific event type
-     * Listener channelChangedListener = await myPrivateChannel.addEventListener(
-     *    "addContextListener",
+     * Listener channelChangedListener = myPrivateChannel.addEventListener(
+     *    org.finos.fdc3.api.types.FDC3Event.Type.ADD_CONTEXT_LISTENER.getValue(),
      *    event -> { ... }
      * ).toCompletableFuture().join();
      * </pre>
      * 
      * @param type If non-null, only events of the specified type will be received by the handler.
-     *             Valid types are: "addContextListener", "unsubscribe", "disconnect", or null for all events.
+     *             Valid types are {@link org.finos.fdc3.api.types.FDC3Event.Type#ADD_CONTEXT_LISTENER},
+     *             {@link org.finos.fdc3.api.types.FDC3Event.Type#ON_UNSUBSCRIBE},
+     *             {@link org.finos.fdc3.api.types.FDC3Event.Type#ON_DISCONNECT},
+     *             or null for all events (string values: "addContextListener", "unsubscribe", "disconnect").
      * @param handler A function that events received will be passed to.
      * @return A CompletionStage that resolves to a Listener object when the listener is successfully registered.
      */
