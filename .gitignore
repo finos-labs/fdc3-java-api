@@ -13,3 +13,13 @@ docs/contributing.md
 
 # We use YARN
 website/package-lock.json
+
+# Maven target
+target/
+
+# Eclipse Ignore
+.classpath
+.project
+.settings/*
+*/.settings
+fdc3-java-api.code-workspace

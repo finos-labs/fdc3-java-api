@@ -2,7 +2,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 <!--
- ~ Copyright 2023 Wellington Management Company LLP
+ ~ Copyright FINOS and its Contributors
  ~
  ~ Licensed under the Apache License, Version 2.0 (the "License");
  ~ you may not use this file except in compliance with the License.
@@ -18,21 +18,63 @@
  -->
  
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.finos.fdc3.api</groupId>
-    <artifactId>finos-bmo-hackathon</artifactId>
+    <groupId>org.finos.fdc3</groupId>
+    <artifactId>fdc3-parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>finos-bmo-hackathon</name>
+    <name>FDC3 Java API</name>
     <url>http://maven.apache.org</url>
     <modules>
-        <module>fdc3api</module>
-        <module>client</module>
-        <module>openfin-fdc3-adapter</module>
+        <module>fdc3-standard</module>
+        <module>fdc3-schema</module>
+        <module>fdc3-context</module>
+        <module>fdc3-agent-proxy</module>
+        <module>fdc3-get-agent</module>
+        <module>fdc3-example-app</module>
     </modules>
     <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <jacoco.version>0.8.12</jacoco.version>
     </properties>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/generated/**</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 
 </project>

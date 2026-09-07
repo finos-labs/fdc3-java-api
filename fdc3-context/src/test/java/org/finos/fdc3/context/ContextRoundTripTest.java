@@ -1,0 +1,207 @@
+package org.finos.fdc3.context;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Tests that verify round-trip serialization of FDC3 context types.
+ * 
+ * For each schema file:
+ * 1. Read the "examples" from the schema
+ * 2. Parse each example into the appropriate Java class
+ * 3. Re-serialize to JSON
+ * 4. Verify the re-serialized JSON matches the original
+ */
+public class ContextRoundTripTest {
+
+    private static final ObjectMapper mapper = new ObjectMapper();
+    private static Path schemasDir;
+
+    @BeforeAll
+    static void setUp() {
+        String basePath = System.getProperty("user.dir");
+        // Prefer schemas-work, which holds the npm schemas with the overlay applied
+        schemasDir = Paths.get(basePath, "target", "schemas-work", "context");
+
+        if (!Files.exists(schemasDir)) {
+            // Fallback for builds before prepare-schemas ran
+            schemasDir = Paths.get(basePath, "target", "npm-work", "node_modules",
+                    "@finos", "fdc3-context", "dist", "schemas", "context");
+        }
+
+        if (!Files.exists(schemasDir)) {
+            // Try relative to project root
+            schemasDir = Paths.get("fdc3-context", "target", "schemas-work", "context");
+        }
+    }
+
+    @TestFactory
+    Collection<DynamicTest> testAllContextTypesRoundTrip() throws IOException {
+        List<DynamicTest> tests = new ArrayList<>();
+
+        if (!Files.exists(schemasDir)) {
+            System.err.println("Schemas directory not found: " + schemasDir);
+            System.err.println("Run 'mvn generate-sources' first to download the schemas.");
+            return tests;
+        }
+
+        try (Stream<Path> paths = Files.list(schemasDir)) {
+            paths.filter(p -> p.toString().endsWith(".schema.json"))
+                 .forEach(schemaPath -> {
+                     String schemaName = schemaPath.getFileName().toString()
+                             .replace(".schema.json", "");
+                     
+                     try {
+                         JsonNode schema = mapper.readTree(schemaPath.toFile());
+                         JsonNode examples = schema.get("examples");
+                         
+                         if (examples != null && examples.isArray()) {
+                             int exampleIndex = 0;
+                             for (JsonNode example : examples) {
+                                 final int idx = exampleIndex++;
+                                 final String originalJson = mapper.writeValueAsString(example);
+                                 
+                                 tests.add(DynamicTest.dynamicTest(
+                                     schemaName + " - example " + idx,
+                                     () -> testRoundTrip(schemaName, originalJson)
+                                 ));
+                             }
+                         }
+                     } catch (IOException e) {
+                         tests.add(DynamicTest.dynamicTest(
+                             schemaName + " - FAILED TO READ",
+                             () -> fail("Failed to read schema: " + e.getMessage())
+                         ));
+                     }
+                 });
+        }
+
+        return tests;
+    }
+
+    private void testRoundTrip(String schemaName, String originalJson) throws Exception {
+        // Get the type from the JSON
+        JsonNode node = mapper.readTree(originalJson);
+        String type = node.has("type") ? node.get("type").asText() : null;
+        
+        assertNotNull(type, "Example should have a 'type' field");
+        
+        // Every type with schema examples must be registered, otherwise ContextConverter.fromJson
+        // rejects it as unknown and the type is unreachable through the public dispatch API.
+        Class<?> clazz = ContextConverter.getClassForType(type);
+        assertNotNull(clazz, "Context type '" + type + "' (from " + schemaName
+                + ".schema.json) is not registered in ContextConverter.TYPE_MAP, so it cannot be "
+                + "deserialized via ContextConverter.fromJson(String)");
+
+        // Parse the JSON into the Java object
+        Object parsed = ContextConverter.fromJson(originalJson, clazz);
+        assertNotNull(parsed, "Should be able to parse " + type);
+
+        // The type-dispatching overload must resolve to the same class without being told it
+        Object dispatched = ContextConverter.fromJson(originalJson);
+        assertNotNull(dispatched, "Should be able to parse " + type + " via type dispatch");
+        assertEquals(clazz, dispatched.getClass(),
+                "Type dispatch should select " + clazz.getSimpleName() + " for " + type);
+
+        // Re-serialize to JSON
+        String reserialized = ContextConverter.toJson(parsed);
+        assertNotNull(reserialized, "Should be able to serialize " + type);
+
+        // Parse both JSONs and compare (ignore formatting differences)
+        JsonNode originalNode = mapper.readTree(originalJson);
+        JsonNode reserializedNode = mapper.readTree(reserialized);
+
+        // Check that all original fields are preserved
+        // Note: The re-serialized version might have fewer fields if they were null
+        assertJsonContains(originalNode, reserializedNode, schemaName + " (" + type + ")");
+    }
+
+    /**
+     * Asserts that all non-null fields in the original JSON are present in the reserialized JSON.
+     */
+    private void assertJsonContains(JsonNode original, JsonNode reserialized, String context) {
+        original.fields().forEachRemaining(entry -> {
+            String fieldName = entry.getKey();
+            JsonNode originalValue = entry.getValue();
+            JsonNode reserializedValue = reserialized.get(fieldName);
+
+            if (originalValue != null && !originalValue.isNull()) {
+                assertNotNull(reserializedValue, 
+                    "Field '" + fieldName + "' should be present in reserialized JSON for " + context);
+                
+                if (originalValue.isObject()) {
+                    // Recursively check nested objects
+                    assertJsonContains(originalValue, reserializedValue, context + "." + fieldName);
+                } else if (originalValue.isArray()) {
+                    // Check array contents
+                    assertEquals(originalValue.size(), reserializedValue.size(),
+                        "Array '" + fieldName + "' should have same size for " + context);
+                } else if (originalValue.isNumber() && reserializedValue.isNumber()) {
+                    // Compare numeric values with tolerance for integer/double differences
+                    assertEquals(originalValue.doubleValue(), reserializedValue.doubleValue(), 0.0001,
+                        "Field '" + fieldName + "' should have same numeric value for " + context);
+                } else if (originalValue.isTextual() && reserializedValue.isTextual()) {
+                    // Compare string values, with special handling for date-times
+                    String orig = originalValue.asText();
+                    String reser = reserializedValue.asText();
+                    if (!orig.equals(reser) && isDateTimeString(orig)) {
+                        // Compare as date-times (handles +00:00 vs Z, .000Z vs Z, etc.)
+                        assertTrue(dateTimesEqual(orig, reser),
+                            "DateTime field '" + fieldName + "' should represent same instant for " + context +
+                            " (original: " + orig + ", reserialized: " + reser + ")");
+                    } else {
+                        assertEquals(orig, reser,
+                            "Field '" + fieldName + "' should have same value for " + context);
+                    }
+                } else {
+                    // Compare primitive values
+                    assertEquals(originalValue, reserializedValue,
+                        "Field '" + fieldName + "' should have same value for " + context);
+                }
+            }
+        });
+    }
+
+    /**
+     * Check if a string looks like an ISO 8601 date-time.
+     */
+    private boolean isDateTimeString(String s) {
+        return s != null && s.length() > 10 && s.contains("T") && 
+               (s.endsWith("Z") || s.contains("+") || s.contains("-"));
+    }
+
+    /**
+     * Compare two date-time strings, considering different representations of the same instant.
+     */
+    private boolean dateTimesEqual(String dt1, String dt2) {
+        try {
+            // Normalize: remove trailing S if present (malformed data in some examples)
+            String s1 = dt1.replaceAll("S$", "");
+            String s2 = dt2.replaceAll("S$", "");
+            
+            OffsetDateTime odt1 = OffsetDateTime.parse(s1);
+            OffsetDateTime odt2 = OffsetDateTime.parse(s2);
+            return odt1.toInstant().equals(odt2.toInstant());
+        } catch (DateTimeParseException e) {
+            // If we can't parse as date-time, fall back to string comparison
+            return dt1.equals(dt2);
+        }
+    }
+}
+

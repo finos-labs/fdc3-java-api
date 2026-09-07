@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.finos.fdc3</groupId>
+        <artifactId>fdc3-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>fdc3-schema</artifactId>
+    <name>FDC3 Schema Types</name>
+    <description>Generated Java classes for FDC3 API types from JSON Schema</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <jdk.source.version>17</jdk.source.version>
+        <jdk.target.version>17</jdk.target.version>
+        <node.version>v20.11.0</node.version>
+        <npm.version>10.2.4</npm.version>
+        <fdc3.schema.version>3.0.0-alpha.2</fdc3.schema.version>
+        <fdc3.schema.work.dir>${project.build.directory}/schema-work</fdc3.schema.work.dir>
+        <fdc3.schema.source.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-schema/dist/schemas</fdc3.schema.source.dir>
+        <fdc3.context.source.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-context/dist/schemas/context</fdc3.context.source.dir>
+        <!-- API schemas not yet in a published release; copied over the npm ones. See the
+             README in that overlay directory for what they carry and when to delete them.
+             Context schemas are taken from npm unmodified. -->
+        <fdc3.schema.overlay.dir>${project.basedir}/src/main/schemas-overlay/api</fdc3.schema.overlay.dir>
+        <fdc3.api.schema.path>${fdc3.schema.work.dir}/api/api.schema.json</fdc3.api.schema.path>
+        <fdc3.npm.schema.packages>install @finos/fdc3-schema@${fdc3.schema.version} @finos/fdc3-context@${fdc3.schema.version} quicktype --save</fdc3.npm.schema.packages>
+    </properties>
+
+    <dependencies>
+        <!-- FDC3 Standard (Context class lives here) -->
+        <dependency>
+            <groupId>org.finos.fdc3</groupId>
+            <artifactId>fdc3-standard</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Jackson for JSON processing -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>2.18.8</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.18.8</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>2.18.8</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jdk8</artifactId>
+            <version>2.18.8</version>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.1</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${jdk.source.version}</source>
+                    <target>${jdk.target.version}</target>
+                </configuration>
+            </plugin>
+
+            <!-- Populate target/schema-work: npm-downloaded schemas first, then the
+                 unreleased overlay on top. Both run in process-sources, and executions
+                 within a plugin run in declaration order, so the overlay always wins. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>populate-schema-work</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${fdc3.schema.work.dir}</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <resources>
+                                <resource>
+                                    <directory>${fdc3.schema.source.dir}/api</directory>
+                                    <targetPath>api</targetPath>
+                                </resource>
+                                <resource>
+                                    <directory>${fdc3.schema.source.dir}/bridging</directory>
+                                    <targetPath>bridging</targetPath>
+                                </resource>
+                                <resource>
+                                    <directory>${fdc3.schema.source.dir}/bridgingAsyncAPI</directory>
+                                    <targetPath>bridgingAsyncAPI</targetPath>
+                                </resource>
+                                <resource>
+                                    <directory>${fdc3.context.source.dir}</directory>
+                                    <targetPath>context</targetPath>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-api-overlay</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${fdc3.schema.work.dir}</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <resources>
+                                <resource>
+                                    <directory>${fdc3.schema.overlay.dir}</directory>
+                                    <targetPath>api</targetPath>
+                                    <excludes>
+                                        <exclude>README.md</exclude>
+                                    </excludes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>create-directories</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <mkdir dir="${project.build.directory}/npm-work"/>
+                                <mkdir dir="${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/schema/api"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>quicktype-api</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <pathconvert property="api.schema.src.args" pathsep=" ">
+                                    <fileset dir="${fdc3.schema.work.dir}/api">
+                                        <include name="*.schema.json"/>
+                                    </fileset>
+                                    <mapper type="regexp" from="^(.*)$$" to="--src \1"/>
+                                </pathconvert>
+                                <exec executable="${project.build.directory}/npm-work/node_modules/.bin/quicktype" failonerror="true">
+                                    <arg value="-s"/>
+                                    <arg value="schema"/>
+                                    <arg value="--quiet"/>
+                                    <arg value="--lang"/>
+                                    <arg value="java"/>
+                                    <arg value="--package"/>
+                                    <arg value="org.finos.fdc3.schema"/>
+                                    <arg value="--out"/>
+                                    <arg value="${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/schema/ApiTypes.java"/>
+                                    <arg value="-S"/>
+                                    <arg value="${fdc3.api.schema.path}"/>
+                                    <arg line="${api.schema.src.args}"/>
+                                </exec>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>delete-duplicate-classes</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <delete quiet="true">
+                                    <fileset dir="${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/schema">
+                                        <include name="Context.java"/>
+                                        <include name="ContextID.java"/>
+                                        <include name="ContextType.java"/>
+                                        <include name="Icon.java"/>
+                                        <include name="Image.java"/>
+                                        <include name="DisplayMetadata.java"/>
+                                        <include name="IntentMetadata.java"/>
+                                        <include name="ImplementationMetadata.java"/>
+                                        <include name="OptionalFeatures.java"/>
+                                        <include name="AppMetadata.java"/>
+                                        <include name="AppIntent.java"/>
+                                        <include name="AppIdentifier.java"/>
+                                    </fileset>
+                                </delete>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Frontend plugin for npm/node: installs quicktype and the published FDC3 schemas -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.15.0</version>
+                <configuration>
+                    <nodeVersion>${node.version}</nodeVersion>
+                    <npmVersion>${npm.version}</npmVersion>
+                    <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
+                    <installDirectory>${project.build.directory}/node-installation</installDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>npm-init</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>init -y</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-install-packages</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>${fdc3.npm.schema.packages}</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>com.google.code.maven-replacer-plugin</groupId>
+                <artifactId>replacer</artifactId>
+                <version>1.5.3</version>
+                <executions>
+                    <execution>
+                        <id>add-standard-imports</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>replace</goal>
+                        </goals>
+                        <configuration>
+                            <basedir>${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/schema</basedir>
+                            <includes>
+                                <include>*.java</include>
+                            </includes>
+                            <replacements>
+                                <replacement>
+                                    <token>^package org\.finos\.fdc3\.schema;</token>
+                                    <value>package org.finos.fdc3.schema;
+
+import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.*;
+import org.finos.fdc3.api.types.AppIdentifier;</value>
+                                </replacement>
+                            </replacements>
+                            <regex>true</regex>
+                            <regexFlags>
+                                <regexFlag>MULTILINE</regexFlag>
+                            </regexFlags>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>add-source</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/fdc3</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

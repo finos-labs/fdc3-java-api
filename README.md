@@ -1,121 +1,174 @@
-![badge-labs](https://user-images.githubusercontent.com/327285/230928932-7c75f8ed-e57b-41db-9fb7-a292a13a1e58.svg)
+[![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://community.finos.org/docs/governance/lifecycle-stages/incubating)
 
 # FDC3 Java API
 
-Standardized Java API to enable integration of FDC3 for Java Desktop Applications.
+A Java implementation of the [FDC3 Standard](https://fdc3.finos.org/) enabling Java desktop applications to interoperate with other FDC3-enabled applications via the [Desktop Agent Communication Protocol (DACP)](https://fdc3.finos.org/docs/api/specs/desktopAgentCommunicationProtocol).
 
-## Installation & Development Setup
+```mermaid
+sequenceDiagram
+    participant Sail as FDC3 Sail
+    participant App as Java App
 
-Prerequisite: Java 11
+    Note over Sail: Add connectionUrl to App Directory for native app
+    Note over Sail: Display WebSocket URL in UI
+    Sail-->>App: connectionUrl (advertised in UI for user to copy)
+    Note over App: Obtain webSocketUrl, build GetAgentParams
 
-#### FDC3 Java API
+    App->>Sail: WebSocket connect
+    Sail->>App: Connection accepted
+    App->>Sail: WCP4ValidateAppIdentity (identityURL: native)
+    Sail->>App: WCP5ValidateAppIdentityResponse (appId, instanceId, instanceUuid)
+    Note over App: Store appId, instanceId, instanceUuid for reconnection
 
-In a new terminal, navigate to the `fdc3api` directory
-
-Build Project
-
-```sh
-mvn clean compile
+    loop DACP message exchange
+        App->>Sail: broadcastRequest, addContextListenerRequest, etc.
+        Sail->>App: broadcastEvent, intentEvent, heartbeatEvent, etc.
+    end
 ```
 
-#### FDC3 Container
+**App Identity flow:** Sail adds a `connectionUrl` (WebSocket URL) to each native app's entry in the App Directory and displays it in the Sail UI so the user can copy it (or provide it via config/launch params). The Java app uses this URL in `GetAgentParams`. For a new connection, the app sends `WCP4ValidateAppIdentity` with `identityURL: "native"`. Sail matches this to the App Directory, assigns an `appId`, and returns `instanceId` and `instanceUuid` in `WCP5ValidateAppIdentityResponse`. The app stores these (via `getInfo()`) for reconnection. After handshake, all FDC3 API calls flow as DACP messages over the WebSocket.
 
-In a new terminal, navigate to the `fdc3container` directory
+## Overview
 
-Install Dependencies
+This project provides:
+
+- **FDC3 Standard API interfaces** — Java equivalents of the FDC3 TypeScript API
+- **Desktop Agent Proxy** — Client-side implementation that communicates with a Desktop Agent over WebSocket
+- **GetAgent factory** — Simple entry point for connecting to a Desktop Agent
+- **Cucumber testing framework** — Shared step definitions for conformance testing against the official FDC3 feature files
+
+## Modules
+
+| Module             | Description                                                                     |
+| ------------------ | ------------------------------------------------------------------------------- |
+| `fdc3-standard`    | Core FDC3 API interfaces (`DesktopAgent`, `Channel`, `Context`, `Intent`, etc.) |
+| `fdc3-schema`      | Generated schema types and JSON conversion utilities                            |
+| `fdc3-context`     | Context type conversion utilities                                               |
+| `fdc3-agent-proxy` | `DesktopAgentProxy` implementation using DACP messaging                         |
+| `fdc3-get-agent`   | `GetAgent` factory for obtaining a `DesktopAgent` connection via WebSocket      |
+
+## Requirements
+
+- Java 17 or later
+- Maven 3.6+
+- A running FDC3 Desktop Agent that supports the [Desktop Agent Communication Protocol](https://fdc3.finos.org/docs/api/specs/desktopAgentCommunicationProtocol) (e.g., [FDC3 Sail](https://github.com/finos/FDC3-Sail))
+
+## Installation
+
+### Building from Source
 
 ```sh
-npm i
+mvn clean install
 ```
 
-Run Application
+The build downloads the DACP / WCP / Context schemas from npm as it runs, using the versions
+pinned by `fdc3.schema.version` and `fdc3.context.version` in the module POMs.
 
-```sh
-npm start
+A small number of API schemas have not yet reached a published release, and are needed by code
+in this project. Those are held in `fdc3-schema/src/main/schemas-overlay/api` and are copied
+over the downloaded set during the build; that directory's README lists exactly what it carries
+and when each file can be deleted. Everything else, including all context schemas, comes from
+npm unmodified.
+
+### Maven Dependency
+
+Once published, add to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.finos.fdc3</groupId>
+    <artifactId>fdc3-get-agent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+</dependency>
 ```
 
-Runs on <localhost:8080>
+## Usage
 
-#### Client
+### Connecting to a Desktop Agent
 
-In a new terminal, navigate to the `client` directory
+````java
+import org.finos.fdc3.getagent.GetAgent;
+import org.finos.fdc3.getagent.GetAgentParams;
+import org.finos.fdc3.api.DesktopAgent;
+import java.util.UUID;
 
-Build Project:
+// Connect to a Desktop Agent via WebSocket
+GetAgentParams params = GetAgentParams.builder()
+    .webSocketUrl("ws://localhost:4475")           // Desktop Agent WebSocket URL (required)
+    .instanceId(desktopAgentProvidedInstanceId)    // Unique instance ID (required)
+    .instanceUuid(desktopAgentProvidedInstanceUuid)// Shared secret UUID (required)
+    .channelSelector(myChannelSelector)            // Optional: custom ChannelSelector
+    .intentResolver(myIntentResolver)              // Optional: custom IntentResolver
+    .build();
 
-```sh
-mvn clean compile package
+DesktopAgent agent = GetAgent.getAgent(params).toCompletableFuture().get();
+
+### Configuration via System Properties
+
+The following system properties can be used to provide default values for `GetAgentParams`.
+Values set via the builder will override these defaults.
+
+| System Property       | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `FDC3_WEBSOCKET_URL`  | Default WebSocket URL for the Desktop Agent      |
+| `FDC3_INSTANCE_ID`    | Instance ID for the application instance (if reconnecting)|
+| `FDC3_INSTANCE_UUID`  | Instance ID UUID (shared secret) (if reconnecting)            |
+
+This allows for simplified configuration when these values are provided externally:
+
+```java
+// If system properties are set, the builder can be used with minimal configuration
+// e.g., java -DFDC3_WEBSOCKET_URL=ws://localhost:4475 -DFDC3_INSTANCE_ID=my-app ...
+GetAgentParams params = GetAgentParams.builder()
+    .channelSelector(myChannelSelector)  // Only set optional overrides
+    .build();
 ```
 
-Run the executable from Target directory
+### Broadcasting Context
 
-```sh
-java -jar <Project.baseDirectory>\client\target\client-1.0.0-SNAPSHOT.jar
-  ```
+```java
+// Create and broadcast a context
+Context contact = new Contact("jane@example.com", "Jane Smith");
+agent.broadcast(contact);
+````
 
-#### Stock Search React Receiver Application
+### Listening for Context
 
-In a new terminal, navigate to the `fdcreceiver-react-trade-app` directory
-
-Install Dependencies
-
-```sh
-npm i
+```java
+// Add a context listener
+agent.addContextListener("fdc3.contact", context -> {
+    System.out.println("Received contact: " + context);
+});
 ```
 
-Run Application
+### Raising Intents
 
-```sh
-npm start
+```java
+// Raise an intent (null app lets the resolver choose)
+IntentResolution resolution = agent.raiseIntent("ViewChart", instrument, null)
+    .toCompletableFuture().get();
 ```
-
-Runs on <localhost:3000>
-
-## Usage with the Current State of this Repo
-
-With the goal of our use case being to enable integration of FDC3 for Java Desktop Applications, we developed the Java API in addition to several simple applications that demonstrate its functionality and potential. The components we developed are as follows:
-
-* Java API - Our implementation of the Java API. Located in `fdc3api`
-* Java Swing Sender - Client application to place orders. Located in `client`
-* Adapter - the OpenFin Adapter. Located in `openfin-fdc3-adapter`
-* Trade App - React based application enabled for receiving trade context from the sender. Located in `fdcreceiver-react-trade-app`
-* FDC3 Container - OpenFin based container hosting the receiver environment. Located in `fdc3container`
-
-As you interact with these applications, you will see our API in action. For example, say the user were to send the instruments from the Java Swing blotter, this action would then be reflected across the receiving web applications. In addition, we implemented a feature to allow the user to select what channel they are listening on to demonstrate the potential of our API.
-
-![Demo Screenshot](readme-images/demo_screenshot.png)
-
-## Usage in a Business Environment
-
-Some firms have existing Java desktop applications, and they want to use FDC3 to integrate with other apps that use JavaScript or other technologies.
-
-For example, a buy-side trader using an internal Java order management system selects an order on their blotter and wants to view related analytics in an external JavaScript app provided by a broker.
-
-This API will provide a standardized API for Java app developers to use, making it easier to switch the underlying technology that provides the FDC3 communication if required. By leveraging our FDC3 Java API in existing apps, developers will be able to create a user friendly workflow that favors shared context between applications as opposed to manual repetition by the user.
-
-## Roadmap
-
-1. Robust testing
-2. Acceptance as a FINOS standard
-3. The FDC3 Java API is leveraged in a production environment
-4. Review with OpenFin the FDC3 features not currently supported by their Java API. Discuss if they would be willing to implement this FDC3 Java API directly instead of using an adapter.
-5. If possible, write a fully open-source implementation of the API without any dependency on a specific desktop agent vendor. This may be possible using websocket with the new desktop agent bridging spec.
 
 ## Contributing
 
-1. Fork it (<https://github.com/finos-labs/fdc3-java-api/fork>)
+For any questions, bugs or feature requests please open an [issue](https://github.com/finos-labs/fdc3-java-api/issues).
+
+To submit a contribution:
+
+1. Fork the repository (<https://github.com/finos-labs/fdc3-java-api/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
-3. Read our [contribution guidelines](.github/CONTRIBUTING.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
+3. Read our [contribution guidelines](CONTRIBUTING.md) and [Community Code of Conduct](CODE_OF_CONDUCT.md)
 4. Commit your changes (`git commit -am 'Add some fooBar'`)
 5. Push to the branch (`git push origin feature/fooBar`)
 6. Create a new Pull Request
 
-_NOTE:_ Commits and pull requests to FINOS repositories will only be accepted from those contributors with an active, executed Individual Contributor License Agreement (ICLA) with FINOS OR who are covered under an existing and active Corporate Contribution License Agreement (CCLA) executed with FINOS. Commits from individuals not covered under an ICLA or CCLA will be flagged and blocked by the FINOS Clabot tool. Please note that some CCLAs require individuals/employees to be explicitly named on the CCLA.
+_NOTE:_ Pull requests must follow this repository's contribution policy. FINOS projects use **CLA** via [EasyCLA](https://community.finos.org/docs/governance/Software-Projects/easycla). Read [FINOS Contribution Requirements](https://community.finos.org/docs/governance/Software-Projects/contribution-compliance-requirements) and [CONTRIBUTING.md](CONTRIBUTING.md) before contributing.
 
-*Need an ICLA? Unsure if you are covered under an existing CCLA? Email [help@finos.org](mailto:help@finos.org)*
+_Need an ICLA? Unsure if you are covered under an existing CCLA? Email [help@finos.org](mailto:help@finos.org)_
 
 ## License
 
-Copyright 2023 Wellington Management Company LLP
+Copyright 2026 Fintech Open Source Foundation (FINOS)
 
 Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 

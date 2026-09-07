@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.finos.fdc3</groupId>
+        <artifactId>fdc3-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>fdc3-context</artifactId>
+    <name>FDC3 Context Types</name>
+    <description>Generated Java classes for FDC3 Context types from JSON Schema</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <jdk.source.version>17</jdk.source.version>
+        <jdk.target.version>17</jdk.target.version>
+        <node.version>v20.11.0</node.version>
+        <npm.version>10.2.4</npm.version>
+        <fdc3.context.version>3.0.0-alpha.2</fdc3.context.version>
+        <fdc3.context.schemas.work.dir>${project.build.directory}/schemas-work</fdc3.context.schemas.work.dir>
+        <!-- Published schemas from npm -->
+        <fdc3.context.npm.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-context/dist/schemas/context</fdc3.context.npm.dir>
+        <fdc3.api.npm.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-schema/dist/schemas/api</fdc3.api.npm.dir>
+        <!-- API schemas not yet in a published release; copied over the npm ones. See the
+             README in that overlay directory for what they carry and when to delete them.
+             Context schemas are taken from npm unmodified. -->
+        <fdc3.api.overlay.dir>${project.basedir}/../fdc3-schema/src/main/schemas-overlay/api</fdc3.api.overlay.dir>
+        <!-- quicktype and the round-trip tests read the merged result, never npm directly -->
+        <fdc3.context.source.dir>${fdc3.context.schemas.work.dir}/context</fdc3.context.source.dir>
+        <fdc3.api.schema.path>${fdc3.context.schemas.work.dir}/api/api.schema.json</fdc3.api.schema.path>
+        <fdc3.npm.context.packages>install @finos/fdc3-context@${fdc3.context.version} @finos/fdc3-schema@${fdc3.context.version} quicktype --save</fdc3.npm.context.packages>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.finos.fdc3</groupId>
+            <artifactId>fdc3-standard</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Jackson for JSON processing -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>2.18.8</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.18.8</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>2.18.8</version>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.1</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Must run before compiler in process-classes to drop IDE-stale .class files -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>create-directories</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <mkdir dir="${project.build.directory}/npm-work"/>
+                                <mkdir dir="${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <!-- Remove stale quicktype output so helper types (ActionType, etc.) stay in sync -->
+                    <execution>
+                        <id>clean-generated-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <delete dir="${project.build.directory}/generated-sources/fdc3" includeemptydirs="true" quiet="true"/>
+                                <mkdir dir="${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context"/>
+                                <!-- Drop stale .class files (e.g. from IDE auto-build) so hand-written
+                                     sources like ContextConverter are recompiled after quicktype runs -->
+                                <delete dir="${project.build.directory}/classes" includeemptydirs="true" quiet="true"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>purge-stale-handwritten-classes</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <delete file="${project.build.directory}/classes/org/finos/fdc3/context/ContextConverter.class" quiet="true"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${jdk.source.version}</source>
+                    <target>${jdk.target.version}</target>
+                    <!-- Generated quicktype output is many files; avoid stale incremental compiles -->
+                    <useIncrementalCompilation>false</useIncrementalCompilation>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <configuration>
+                            <compileSourceRoots>
+                                <compileSourceRoot>${project.build.directory}/generated-sources/fdc3</compileSourceRoot>
+                            </compileSourceRoots>
+                        </configuration>
+                    </execution>
+                    <!-- Compile hand-written sources after generated types (and after purge-stale) -->
+                    <execution>
+                        <id>compile-handwritten-sources</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <compileSourceRoots>
+                                <compileSourceRoot>${project.basedir}/src/main/java</compileSourceRoot>
+                            </compileSourceRoots>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Frontend plugin for npm/node -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.15.0</version>
+                <configuration>
+                    <nodeVersion>${node.version}</nodeVersion>
+                    <npmVersion>${npm.version}</npmVersion>
+                    <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
+                    <installDirectory>${project.build.directory}/node-installation</installDirectory>
+                </configuration>
+                <executions>
+                    <!-- Install Node and NPM -->
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                    </execution>
+                    <!-- Initialize npm project -->
+                    <execution>
+                        <id>npm-init</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>init -y</arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Install @finos/fdc3-context and quicktype -->
+                    <execution>
+                        <id>npm-install-packages</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>${fdc3.npm.context.packages}</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Populate target/schemas-work for quicktype and the round-trip tests:
+                 npm-downloaded schemas first, then the unreleased overlay on top.
+                 Declared after frontend-maven-plugin so the npm install has already run;
+                 within a plugin, executions run in declaration order, so the overlay wins. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>populate-schemas-work</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${fdc3.context.schemas.work.dir}</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <resources>
+                                <resource>
+                                    <directory>${fdc3.context.npm.dir}</directory>
+                                    <targetPath>context</targetPath>
+                                </resource>
+                                <resource>
+                                    <directory>${fdc3.api.npm.dir}</directory>
+                                    <targetPath>api</targetPath>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-api-overlay</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${fdc3.context.schemas.work.dir}</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <resources>
+                                <resource>
+                                    <directory>${fdc3.api.overlay.dir}</directory>
+                                    <targetPath>api</targetPath>
+                                    <excludes>
+                                        <exclude>README.md</exclude>
+                                    </excludes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Execute quicktype to generate Java (excluding action.schema.json which has external refs) -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.1</version>
+                <executions>
+                    <execution>
+                        <id>quicktype-context</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>/bin/sh</executable>
+                            <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument>node_modules/.bin/quicktype -s schema --quiet --lang java --package org.finos.fdc3.context --out ${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context/ContextTypes.java -S ${fdc3.api.schema.path} $(find ${fdc3.context.source.dir} -name "*.schema.json" -exec printf "%s %s " "--src" {} \;)</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Remove duplicate Context/ContextElement classes (use the one from fdc3-standard) and fix imports -->
+                    <execution>
+                        <id>fix-context-imports</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>sh</executable>
+                            <arguments>
+                                <argument>${project.basedir}/scripts/fix-context-imports.sh</argument>
+                                <argument>${project.build.directory}/generated-sources/fdc3/org/finos/fdc3/context</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Fail fast if quicktype helper types were not compiled (e.g. ActionType.class) -->
+                    <execution>
+                        <id>verify-generated-classes</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>sh</executable>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument>missing=0; for c in ActionType NothingType EmailRecipients ChartStyle; do \
+                                  if [ ! -f "${project.build.directory}/classes/org/finos/fdc3/context/$c.class" ]; then \
+                                    echo "Missing compiled class: org.finos.fdc3.context.$c"; missing=1; \
+                                  fi; \
+                                done; exit $missing</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Use newer surefire for JUnit 5 support -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.3</version>
+            </plugin>
+
+            <!-- Add generated sources to compilation -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>add-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/fdc3</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
