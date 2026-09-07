@@ -1,8 +1,0 @@
-{
-    "[java]": {
-        "editor.formatOnSave": false,
-        "editor.formatOnPaste": false,
-        "editor.formatOnType": false
-    },
-    "java.format.enabled": false
-}
