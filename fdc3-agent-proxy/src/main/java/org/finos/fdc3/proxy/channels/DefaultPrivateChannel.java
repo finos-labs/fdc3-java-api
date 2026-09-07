@@ -84,11 +84,17 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
                                     .thenCompose(ignored -> privateChannelListener.unsubscribe());
                         }
                     })
-                    .exceptionallyCompose(ex -> channelListener.unsubscribe().thenCompose(ignored -> {
-                        CompletableFuture<Listener> failed = new CompletableFuture<>();
-                        failed.completeExceptionally(ex);
-                        return failed;
-                    }));
+                    .handle((listener, ex) -> {
+                        if (ex == null) {
+                            return CompletableFuture.completedFuture(listener);
+                        }
+                        return channelListener.unsubscribe().thenCompose(ignored -> {
+                            CompletableFuture<Listener> failed = new CompletableFuture<>();
+                            failed.completeExceptionally(ex);
+                            return failed;
+                        });
+                    })
+                    .thenCompose(stage -> stage);
         });
     }
 
