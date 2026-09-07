@@ -93,7 +93,7 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
     }
 
     @Override
-    public void disconnect() {
+    public CompletionStage<Void> disconnect() {
         PrivateChannelDisconnectRequest request = new PrivateChannelDisconnectRequest();
         request.setType(PrivateChannelDisconnectRequestType.PRIVATE_CHANNEL_DISCONNECT_REQUEST);
         request.setMeta(messaging.createMeta());
@@ -104,12 +104,8 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
 
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
 
-        try {
-            messaging.<Map<String, Object>>exchange(requestMap, "privateChannelDisconnectResponse", messageExchangeTimeout)
-                    .toCompletableFuture().get();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to disconnect private channel", e);
-        }
+        return messaging.<Map<String, Object>>exchange(requestMap, "privateChannelDisconnectResponse", messageExchangeTimeout)
+                .thenApply(response -> null);
     }
 
     @Override

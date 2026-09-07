@@ -63,8 +63,10 @@ public interface PrivateChannel extends Channel {
      * Desktop Agents SHOULD prevent apps from broadcasting on this channel and MUST automatically call Listener.unsubscribe() for
      * each listener that they've added (causing any "unsubscribe" event handler added by the other party to fire) before triggering
      * any "disconnect" event handler added by the other party.
+     *
+     * @return a CompletionStage that completes when the disconnect has been acknowledged by the Desktop Agent
      */
-    void disconnect();
+    CompletionStage<Void> disconnect();
     
     @Override
     default Type getType() {
