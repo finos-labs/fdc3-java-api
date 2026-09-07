@@ -23,22 +23,39 @@ import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.ContextMetadata;
 
 /**
- * Describes a callback that handles a context event and may return a promise of a Context or Channel object to be returned to the
- * application that raised the intent. Used when attaching listeners for raised intents.
+ * Callback invoked when an intent is raised to this application.
+ * <p>
+ * Registered via {@link org.finos.fdc3.api.DesktopAgent#addIntentListener(String, IntentHandler)}
+ * (and related overloads). The handler receives the raised context and metadata about the
+ * message, and may return a result to the raising application through
+ * {@link org.finos.fdc3.api.metadata.IntentResolution}.
  */
 @FunctionalInterface
 public interface IntentHandler {
 
     /**
-     * Handles an intent
-     * 
-     * @param context the context event
-     * @param contextMetadata optional metadata
-     * @return A {@link CompletionStage} that will be used to publish the
-     *         intent result
-     */
-    /**
-     * @return context, channel, {@link org.finos.fdc3.api.types.ContextWithMetadata}, or empty for void
+     * Handles a raised intent.
+     *
+     * @param context         the context object supplied with the raised intent
+     * @param contextMetadata metadata for the raised intent (originating app, timestamp, and any
+     *                        app-providable fields forwarded by the Desktop Agent); never
+     *                        {@code null}, though individual fields may be absent
+     * @return a {@link CompletionStage} that completes with an optional result for the raising
+     *         app. Use {@link Optional#empty()} (or complete with {@code null} inside the
+     *         optional) when there is no result. A present value SHOULD be one of:
+     *         <ul>
+     *           <li>{@link Context} — context data returned to the raiser via
+     *               {@link org.finos.fdc3.api.metadata.IntentResolution#getResult()}</li>
+     *           <li>{@link ContextWithMetadata} — context plus app-providable metadata; the
+     *               Desktop Agent merges that metadata and exposes it via
+     *               {@link org.finos.fdc3.api.metadata.IntentResolution#getResultMetadata()},
+     *               while {@code getResult()} returns only the {@link Context}</li>
+     *           <li>{@link org.finos.fdc3.api.channel.Channel} or
+     *               {@link org.finos.fdc3.api.channel.PrivateChannel} — a channel over which
+     *               further responses will be streamed</li>
+     *         </ul>
+     *         If the stage completes exceptionally, the raiser's {@code getResult()} promise
+     *         is rejected with {@link org.finos.fdc3.api.errors.ResultError#IntentHandlerRejected}.
      */
     CompletionStage<Optional<Object>> handleIntent(Context context, ContextMetadata contextMetadata);
 
