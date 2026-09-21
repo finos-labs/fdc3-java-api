@@ -7,9 +7,9 @@ on:
       - main
   pull_request:
 
-# Allows Coverage to be written back as a PR comment
+# Least privilege by default; the test job widens this to what it actually needs.
 permissions:
-  pull-requests: write
+  contents: read
 
 # Define the jobs for this workflow
 jobs:
@@ -37,15 +37,14 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "20"
+      # No setup-node step: frontend-maven-plugin downloads its own pinned Node and npm into
+      # target/node-installation, so the build does not use a runner-provided Node at all.
 
       - name: Run tests with coverage
         run: mvn -B clean verify
 
       - name: Codecov
+        continue-on-error: true
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           use_oidc: true

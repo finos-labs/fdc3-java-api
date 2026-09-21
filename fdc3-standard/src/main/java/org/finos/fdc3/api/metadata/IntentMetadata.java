@@ -16,6 +16,8 @@
 
 package org.finos.fdc3.api.metadata;
 
+import java.util.Objects;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -61,5 +63,27 @@ public class IntentMetadata {
 
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+        IntentMetadata that = (IntentMetadata) other;
+        return Objects.equals(name, that.name) && Objects.equals(displayName, that.displayName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, displayName);
+    }
+
+    @Override
+    public String toString() {
+        return "IntentMetadata{name=" + name + ", displayName=" + displayName + "}";
     }
 }

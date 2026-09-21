@@ -16,6 +16,8 @@
 
 package org.finos.fdc3.api.types;
 
+import java.util.Objects;
+
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.ContextMetadata;
 
@@ -49,5 +51,31 @@ public class ContextWithMetadata {
 
     public void setMetadata(ContextMetadata metadata) {
         this.metadata = metadata;
+    }
+
+    /**
+     * Both {@link Context} and {@link ContextMetadata} extend {@code HashMap}, so they already
+     * compare by value and can be delegated to here.
+     */
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+        ContextWithMetadata that = (ContextWithMetadata) other;
+        return Objects.equals(context, that.context) && Objects.equals(metadata, that.metadata);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(context, metadata);
+    }
+
+    @Override
+    public String toString() {
+        return "ContextWithMetadata{context=" + context + ", metadata=" + metadata + "}";
     }
 }

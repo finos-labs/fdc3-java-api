@@ -32,6 +32,7 @@ import org.finos.fdc3.api.types.IntentHandler;
 import org.finos.fdc3.api.types.IntentResult;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.util.ContextMetadataMapper;
+import org.finos.fdc3.proxy.util.Logger;
 import org.finos.fdc3.schema.IntentEvent;
 import org.finos.fdc3.schema.IntentResultRequest;
 import org.finos.fdc3.schema.IntentResultRequestPayload;
@@ -132,7 +133,8 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
         Object messageTimestamp = messageMap.get("meta") != null
                 ? ((Map<String, Object>) messageMap.get("meta")).get("timestamp")
                 : null;
-        ContextMetadata contextMetadata = ContextMetadataMapper.fromWire(payloadMetadata, messageTimestamp);
+        ContextMetadata contextMetadata = ContextMetadataMapper.fromWire(
+                payloadMetadata, messageTimestamp, ContextMetadataMapper.MissingTraceId.GENERATE);
 
         CompletionStage<Optional<Object>> resultFuture = handler.handleIntent(context, contextMetadata);
         handleIntentResult(resultFuture, intentEvent);
@@ -178,21 +180,12 @@ public class DefaultIntentListener extends AbstractListener<IntentHandler> {
                 "intentResultResponse",
                 messageExchangeTimeout
             ).exceptionally(ex -> {
-                System.err.println("Failed to send intent result: " + ex.getMessage());
+                Logger.error("Failed to send the result of intent {}", intent, ex);
                 return null;
             });
         }).exceptionally(ex -> {
-            IntentResultRequest request = createIntentResultRequest(null, null, intentEvent);
-            Map<String, Object> requestMap = messaging.getConverter().toMap(request);
-
-            messaging.<Map<String, Object>>exchange(
-                requestMap,
-                "intentResultResponse",
-                messageExchangeTimeout
-            ).exceptionally(ex2 -> {
-                System.err.println("Failed to send intent result after error: " + ex2.getMessage());
-                return null;
-            });
+            // Do not send a void intentResultRequest on reject — that looks like success to the DA.
+            Logger.error("Handler for intent {} rejected; no intent result will be sent", intent, ex);
             return null;
         });
     }

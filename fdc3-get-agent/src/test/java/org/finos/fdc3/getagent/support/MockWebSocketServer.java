@@ -54,6 +54,9 @@ import org.glassfish.tyrus.server.Server;
 @ServerEndpoint("/fdc3/ws")
 public class MockWebSocketServer {
 
+    /** Tyrus's marker for "bind to any free port"; see {@link #start()}. */
+    private static final int EPHEMERAL_PORT = -1;
+
     private static final SchemaConverter converter = new SchemaConverter();
 
     private static final CopyOnWriteArrayList<Session> sessions = new CopyOnWriteArrayList<>();
@@ -73,11 +76,22 @@ public class MockWebSocketServer {
     private WebSocketConnectionProtocolApplicationConnect lastApplicationConnect;
     private WebSocketConnectionProtocolGoodbye lastGoodbye;
 
+    /**
+     * Starts on an ephemeral port.
+     * <p>
+     * Tyrus reads {@code -1} as "ask the operating system for a free port", and reports the port
+     * actually bound from {@link Server#getPort()} once started. Note that {@code 0} would not
+     * work here: Tyrus maps it to its own default of 8025.
+     * <p>
+     * Choosing a random port in a fixed range instead, as this once did, meant a run could
+     * collide with anything already listening there, including a concurrently running copy of
+     * this suite.
+     */
     public void start() throws Exception {
-        port = 8025 + (int) (Math.random() * 1000);
-        server = new Server("localhost", port, "/", null, MockWebSocketServer.class);
+        server = new Server("localhost", EPHEMERAL_PORT, "/", null, MockWebSocketServer.class);
         currentInstance = this;
         server.start();
+        port = server.getPort();
     }
 
     public void stop() {
@@ -234,7 +248,6 @@ public class MockWebSocketServer {
         implMeta.setAppMetadata(appMeta);
 
         ImplementationMetadata.OptionalFeatures optFeatures = new ImplementationMetadata.OptionalFeatures();
-        optFeatures.setOriginatingAppMetadata(true);
         optFeatures.setUserChannelMembershipAPIs(true);
         optFeatures.setDesktopAgentBridging(false);
         implMeta.setOptionalFeatures(optFeatures);

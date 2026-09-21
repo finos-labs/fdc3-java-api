@@ -45,10 +45,11 @@ public interface IntentSupport {
     /**
      * Find intents that can handle a specific context.
      *
-     * @param context the context to find intents for
+     * @param context    the context to find intents for
+     * @param resultType the required result type, or null for any
      * @return a CompletionStage containing the list of app intents
      */
-    CompletionStage<List<AppIntent>> findIntentsByContext(Context context);
+    CompletionStage<List<AppIntent>> findIntentsByContext(Context context, String resultType);
 
     /**
      * Raise an intent.

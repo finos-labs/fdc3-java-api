@@ -16,6 +16,8 @@
 
 package org.finos.fdc3.api.metadata;
 
+import java.util.Objects;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -54,7 +56,7 @@ public class Icon {
     }
 
     /**
-     * The icon dimension, formatted as `<height>x<width>`.
+     * The icon dimension, formatted as {@code <height>x<width>}.
      */
     @JsonProperty("size")
     public String getSize() {
@@ -75,5 +77,29 @@ public class Icon {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+        Icon that = (Icon) other;
+        return Objects.equals(src, that.src)
+                && Objects.equals(size, that.size)
+                && Objects.equals(type, that.type);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(src, size, type);
+    }
+
+    @Override
+    public String toString() {
+        return "Icon{src=" + src + ", size=" + size + ", type=" + type + "}";
     }
 }

@@ -24,29 +24,38 @@ import org.finos.fdc3.api.types.IntentResult;
 
 /**
  * IntentResolution provides a standard format for data returned upon resolving an intent.
- *
- * ```javascript
- * //resolve a "Chain" type intent
- * let resolution = await agent.raiseIntent("intentName", context);
- *
- * //resolve a "Client-Service" type intent with a data response or a Channel
- * let resolution = await agent.raiseIntent("intentName", context);
- * try {
- * 	   const result = await resolution.getResult();
- *     if (result && result.broadcast) {
- *         console.log(`${resoluion.source} returned a channel with id ${result.id}`);
- *     } else if (result){
- *         console.log(`${resolution.source} returned data: ${JSON.stringify(result)}`);
- *     } else {
- *         console.error(`${resolution.source} didn't return data`
- *     }
- * } catch(error) {
- *     console.error(`${resolution.source} returned an error: ${error}`);
- * }
- *
- * // Use metadata about the resolving app instance to target a further intent
- * await agent.raiseIntent("intentName", context, resolution.source);
- * ```
+ * <p>
+ * Resolving a "Chain" type intent, where the result is not of interest:
+ * <pre>{@code
+ * agent.raiseIntent("intentName", context);
+ * }</pre>
+ * <p>
+ * Resolving a "Client-Service" type intent, where the handler returns either data or a
+ * {@link org.finos.fdc3.api.channel.Channel}:
+ * <pre>{@code
+ * agent.raiseIntent("intentName", context)
+ *     .thenCompose(resolution -> resolution.getResult()
+ *         .thenAccept(result -> {
+ *             if (result instanceof Channel) {
+ *                 Channel channel = (Channel) result;
+ *                 System.out.println(resolution.getSource() + " returned channel " + channel.getId());
+ *             } else if (result != null) {
+ *                 System.out.println(resolution.getSource() + " returned data: " + result);
+ *             } else {
+ *                 System.out.println(resolution.getSource() + " did not return data");
+ *             }
+ *         })
+ *         .exceptionally(error -> {
+ *             System.out.println(resolution.getSource() + " returned an error: " + error.getMessage());
+ *             return null;
+ *         }));
+ * }</pre>
+ * <p>
+ * The resolving instance can then be targeted by a further intent, using the identifier this
+ * resolution reports as its source:
+ * <pre>{@code
+ * agent.raiseIntent("intentName", context, resolution.getSource());
+ * }</pre>
  */
 public interface IntentResolution {
   /**
@@ -61,11 +70,6 @@ public interface IntentResolution {
    * chose in response to `fdc3.raiseIntentForContext()`.
    */
   String getIntent();
-
-  /**
-   * The version number of the Intents schema being used.
-   */
-  Optional<String> getVersion();
 
   /**
    * Retrieves a promise that will resolve to either `Context` data returned

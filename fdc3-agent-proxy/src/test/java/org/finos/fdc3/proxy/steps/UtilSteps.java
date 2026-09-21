@@ -20,6 +20,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.finos.fdc3.api.errors.OpenError;
+import org.finos.fdc3.proxy.util.Logger;
+import org.finos.fdc3.proxy.util.ThrowIfUndefined;
 import org.finos.fdc3.proxy.world.CustomWorld;
 
 import io.cucumber.java.en.Given;
@@ -43,52 +50,78 @@ public class UtilSteps {
         }
     }
 
+    /**
+     * A schema-valid response whose payload is empty, which is the shape
+     * {@code throwIfUndefined} exists to catch.
+     */
+    private static Map<String, Object> dummyResponse() {
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("requestUuid", "123");
+        meta.put("responseUuid", "456");
+        meta.put("timestamp", Instant.now().toString());
+
+        Map<String, Object> message = new HashMap<>();
+        message.put("type", "broadcastResponse");
+        message.put("meta", meta);
+        message.put("payload", new HashMap<String, Object>());
+        return message;
+    }
+
     @When("I call throwIfUndefined it throws if a specified property is not defined")
     public void throwIfUndefinedThrows() {
+        Map<String, String> someObject = new HashMap<>();
+        someObject.put("someProperty", "value");
+
         Exception thrown = null;
         try {
-            Object value = null;
-            if (value == null) {
-                throw new IllegalArgumentException("OpenError.MalformedContext");
-            }
+            ThrowIfUndefined.throwIfUndefined(
+                    someObject.get("nonExistent"),
+                    "Deliberately undefined prop did not exist ;-)",
+                    dummyResponse(),
+                    OpenError.MalformedContext.toString());
         } catch (Exception e) {
             thrown = e;
         }
 
-        assertNotNull(thrown);
-        assertEquals("OpenError.MalformedContext", thrown.getMessage());
+        assertNotNull(thrown, "throwIfUndefined should throw for an absent property");
+        // The message has to be the bare FDC3 error name, since that is what applications match on.
+        assertEquals(OpenError.MalformedContext.toString(), thrown.getMessage());
     }
 
     @When("I call throwIfUndefined it does NOT throw if a specified property IS defined")
     public void throwIfUndefinedDoesNotThrow() {
+        Map<String, String> someObject = new HashMap<>();
+        someObject.put("someProperty", "value");
+
         Exception thrown = null;
         try {
-            Object value = "some-value";
-            if (value == null) {
-                throw new IllegalArgumentException("OpenError.MalformedContext");
-            }
+            ThrowIfUndefined.throwIfUndefined(
+                    someObject.get("someProperty"),
+                    "Deliberately undefined prop did not exist ;-)",
+                    dummyResponse(),
+                    OpenError.MalformedContext.toString());
         } catch (Exception e) {
             thrown = e;
         }
 
-        assertNull(thrown);
+        assertNull(thrown, "throwIfUndefined should not throw for a property that is present");
     }
 
     @When("All log functions are used with a message")
     public void allLogFunctionsWithMessage() {
-        System.out.println("[DEBUG] Debug msg");
-        System.out.println("[LOG] Log msg");
-        System.out.println("[WARN] Warning msg");
-        System.out.println("[ERROR] Error msg");
+        Logger.debug("Debug msg");
+        Logger.info("Log msg");
+        Logger.warn("Warning msg");
+        Logger.error("Error msg");
     }
 
     @When("All log functions are used with an error")
     public void allLogFunctionsWithError() {
         String testError = "Test error - This is expected on the console";
-        System.out.println("[DEBUG] debug-level error: " + new Exception(testError));
-        System.out.println("[LOG] log-level error: " + new Exception(testError));
-        System.out.println("[WARN] warn-level error: " + new Exception(testError));
-        System.out.println("[ERROR] error-level error: " + new Exception(testError));
+        Logger.debug("debug-level error: ", new Exception(testError));
+        Logger.info("log-level error: ", new Exception(testError));
+        Logger.warn("warn-level error: ", new Exception(testError));
+        Logger.error("error-level error: ", new Exception(testError));
     }
 }
 

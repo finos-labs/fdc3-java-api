@@ -23,17 +23,24 @@ import org.finos.fdc3.api.types.IntentResult;
 
 /**
  * The base FDC3 Context type.
- * 
- * This implementation extends HashMap to store all properties, which allows it to:
- * - Preserve all fields during serialization/deserialization (no data loss)
- * - Support any context type, including custom ones
- * - Be used directly as a Map
- * - Be converted to typed context classes using the {@link #as(Class)} method
- * 
- * The `fdc3.context` type defines the basic contract or "shape" for all data exchanged by
- * FDC3 operations. As such, it is not really meant to be used on its own, but is imported
- * by more specific type definitions (standardized or custom) to provide the structure and
- * properties shared by all FDC3 context data types.
+ * <p>
+ * The {@code fdc3.context} type defines the basic contract, or "shape", for all data exchanged
+ * by FDC3 operations. It is not usually used on its own: more specific type definitions,
+ * standardized or custom, build on it to provide the structure and properties shared by all
+ * FDC3 context data types.
+ * <p>
+ * This implementation extends {@link HashMap} rather than declaring fixed fields, which means
+ * it:
+ * <ul>
+ *   <li>preserves every field through serialization and deserialization, including properties
+ *       this version of the API does not know about, so no data is lost in transit;</li>
+ *   <li>accepts any context type, including custom ones;</li>
+ *   <li>can be used directly as a {@code Map}.</li>
+ * </ul>
+ * <p>
+ * To work with a context as a typed object, use the converter in the {@code fdc3-context}
+ * module, which maps between a {@code Context} and the generated type for its
+ * {@code type} value.
  */
 public class Context extends HashMap<String, Object> implements IntentResult {
 

@@ -17,10 +17,13 @@
 package org.finos.fdc3.proxy.listeners;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import org.finos.fdc3.api.errors.ChannelError;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
+import org.finos.fdc3.proxy.util.ThrowIfUndefined;
 
 /**
  * Common base for all listeners - handles registration and unregistration with messaging
@@ -107,7 +110,14 @@ public abstract class AbstractListener<H> implements RegisterableListener, Liste
     @Override
     @SuppressWarnings("unchecked")
     public CompletionStage<Void> register() {
-        Map<String, Object> request = buildSubscribeRequest();
+        Map<String, Object> request;
+        try {
+            request = buildSubscribeRequest();
+        } catch (RuntimeException e) {
+            // Subclasses validate their event type while building the payload. Report that as a
+            // rejected stage rather than throwing out of an async method.
+            return CompletableFuture.failedFuture(e);
+        }
         request.put("type", subscribeRequestType);
         request.put("meta", messaging.getConverter().toMap(messaging.createMeta()));
 
@@ -118,13 +128,14 @@ public abstract class AbstractListener<H> implements RegisterableListener, Liste
                     if (payload != null) {
                         this.id = (String) payload.get("listenerUUID");
                     }
-                    
-                    if (this.id == null) {
-                        throw new RuntimeException(
-                            "The Desktop Agent's response did not include a listenerUUID, " +
-                            "which means this listener can't be removed!");
-                    }
-                    
+
+                    ThrowIfUndefined.throwIfUndefined(
+                            this.id,
+                            "The Desktop Agent's response did not include a listenerUUID, "
+                                    + "which will mean this listener can't be removed!",
+                            response,
+                            ChannelError.CreationFailed.toString());
+
                     messaging.register(this);
                 });
     }
@@ -145,7 +156,8 @@ public abstract class AbstractListener<H> implements RegisterableListener, Liste
             return messaging.<Map<String, Object>>exchange(request, unsubscribeResponseType, messageExchangeTimeout)
                     .thenAccept(response -> { /* completed */ });
         } else {
-            throw new RuntimeException("This listener doesn't have an id and hence can't be removed!");
+            return CompletableFuture.failedFuture(new RuntimeException(
+                    "This listener doesn't have an id and hence can't be removed!"));
         }
     }
 }

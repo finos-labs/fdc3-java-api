@@ -101,18 +101,53 @@ public final class ContextMetadataMapper {
         return wire;
     }
 
-    public static ContextMetadata fromWire(Map<String, Object> payloadMetadata, Object messageTimestamp) {
-        return fromWire(payloadMetadata, messageTimestamp, null);
+    /**
+     * What to record when a received message carries no {@code traceId}.
+     * <p>
+     * The {@code ContextMetadata} schema makes {@code traceId} required, so something has to be
+     * supplied. Which fallback is correct depends on the receive path, and each one mirrors the
+     * reference implementation.
+     */
+    public enum MissingTraceId {
+
+        /**
+         * Leave it absent, as {@code DefaultContextListener} does.
+         */
+        LEAVE_ABSENT,
+
+        /**
+         * Record an empty string, as {@code DefaultChannel.getCurrentContext} and intent result
+         * metadata do. This satisfies the required field while still saying plainly that no
+         * trace id was received.
+         */
+        EMPTY,
+
+        /**
+         * Generate one, as {@code DefaultIntentListener} does. Only correct where the app is
+         * expected to continue a trace it cannot otherwise identify.
+         */
+        GENERATE
+    }
+
+    public static ContextMetadata fromWire(
+            Map<String, Object> payloadMetadata, Object messageTimestamp, MissingTraceId missingTraceId) {
+        return fromWire(payloadMetadata, messageTimestamp, null, missingTraceId);
     }
 
     /**
      * Builds listener metadata from wire payload fields and optional message {@code meta} (e.g. event source).
+     * <p>
+     * A {@code traceId} correlates a message across applications, so one is never invented here
+     * beyond what {@code missingTraceId} asks for. Generating a fresh identifier on every receive
+     * path, as this once did, produced trace ids that correlated with nothing and hid the
+     * difference between a sender that supplied one and a sender that did not.
      */
     @SuppressWarnings("unchecked")
     public static ContextMetadata fromWire(
             Map<String, Object> payloadMetadata,
             Object messageTimestamp,
-            Map<String, Object> messageMeta) {
+            Map<String, Object> messageMeta,
+            MissingTraceId missingTraceId) {
         ContextMetadata metadata = ContextMetadata.fromMap(payloadMetadata);
         if (metadata == null) {
             metadata = ContextMetadata.appProvidable();
@@ -125,7 +160,17 @@ public final class ContextMetadataMapper {
             }
         }
         if (metadata.getTraceId() == null || metadata.getTraceId().isEmpty()) {
-            metadata.setTraceId(UUID.randomUUID().toString());
+            switch (missingTraceId) {
+                case GENERATE:
+                    metadata.setTraceId(UUID.randomUUID().toString());
+                    break;
+                case EMPTY:
+                    metadata.setTraceId("");
+                    break;
+                case LEAVE_ABSENT:
+                default:
+                    break;
+            }
         }
         applyMetaSourceIfAbsent(metadata, messageMeta);
         return metadata;

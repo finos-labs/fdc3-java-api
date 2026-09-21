@@ -19,11 +19,13 @@ package org.finos.fdc3.proxy.steps;
 import static org.finos.cucumbertestingsteps.support.MatchingUtils.handleResolve;
 import static org.finos.cucumbertestingsteps.support.MatchingUtils.matchData;
 
+import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.ContextMetadata;
@@ -32,6 +34,7 @@ import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.proxy.support.ContextMap;
+import org.finos.fdc3.proxy.util.Logger;
 import org.finos.fdc3.proxy.world.CustomWorld;
 
 
@@ -323,8 +326,7 @@ public class ChannelSteps {
     public void messagingReceives(String field) {
         @SuppressWarnings("unchecked")
         Map<String, Object> message = (Map<String, Object>) handleResolve(field, world);
-        System.out.println("Sending: " + message);
-        world.getMessaging().receive(message, System.out::println);
+        world.getMessaging().receive(message, Logger::debug);
     }
 
     @Then("messaging will have posts")
@@ -412,13 +414,29 @@ public class ChannelSteps {
     }
 
     private void invokeDestructured(String methodName, Object... args) {
+        DestructuredMethod dm = (DestructuredMethod) world.get("destructured_" + methodName);
+        if (dm == null) {
+            // A harness problem, not a result: fail the scenario instead of storing it as though
+            // the API under test had rejected.
+            throw new IllegalStateException("No destructured method: " + methodName);
+        }
+
         try {
-            DestructuredMethod dm = (DestructuredMethod) world.get("destructured_" + methodName);
-            if (dm == null) {
-                throw new IllegalStateException("No destructured method: " + methodName);
-            }
             world.set("result", dm.invoke(args));
+        } catch (NoSuchMethodException e) {
+            throw new IllegalStateException(
+                    "Step refers to a method that does not exist: " + methodName, e);
+        } catch (InvocationTargetException e) {
+            world.set("result", e.getCause() != null ? e.getCause() : e);
+        } catch (ExecutionException e) {
+            world.set("result", e.getCause() != null ? e.getCause() : e);
+        } catch (IllegalAccessException | IllegalArgumentException e) {
+            throw new IllegalStateException("Step could not invoke " + methodName, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while invoking " + methodName, e);
         } catch (Exception e) {
+            // Anything the invoked method threw directly.
             world.set("result", e);
         }
     }

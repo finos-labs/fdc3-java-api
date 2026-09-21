@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Channels may be visualized and selectable by users. DisplayMetadata may be used to
@@ -97,5 +98,29 @@ public class DisplayMetadata {
         String color = (String) map.get("color");
         String glyph = (String) map.get("glyph");
         return new DisplayMetadata(name, color, glyph);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+        DisplayMetadata that = (DisplayMetadata) other;
+        return Objects.equals(name, that.name)
+                && Objects.equals(color, that.color)
+                && Objects.equals(glyph, that.glyph);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, color, glyph);
+    }
+
+    @Override
+    public String toString() {
+        return "DisplayMetadata{name=" + name + ", color=" + color + ", glyph=" + glyph + "}";
     }
 }

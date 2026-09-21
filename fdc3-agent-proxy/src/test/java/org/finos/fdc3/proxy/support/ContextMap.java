@@ -56,8 +56,25 @@ public final class ContextMap {
         // Utility class
     }
 
+    /**
+     * Returns a fresh copy of the named context.
+     * <p>
+     * {@link Context} extends {@code HashMap}, so handing out the stored instance let one
+     * scenario's mutations leak into every later scenario that asked for the same type, making
+     * results depend on execution order.
+     *
+     * @param type the context type, e.g. {@code fdc3.instrument}
+     * @return a copy that the caller may modify freely, or null if the type is unknown
+     */
     public static Context get(String type) {
-        return CONTEXTS.get(type);
+        Context template = CONTEXTS.get(type);
+        if (template == null) {
+            return null;
+        }
+
+        Context copy = new Context();
+        copy.putAll(template);
+        return copy;
     }
 
     public static boolean contains(String type) {

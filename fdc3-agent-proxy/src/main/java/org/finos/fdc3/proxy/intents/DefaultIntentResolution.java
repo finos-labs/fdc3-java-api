@@ -63,11 +63,6 @@ public class DefaultIntentResolution implements IntentResolution {
     }
 
     @Override
-    public Optional<String> getVersion() {
-        return Optional.empty();
-    }
-
-    @Override
     public CompletionStage<IntentResult> getResult() {
         return resultPromise;
     }

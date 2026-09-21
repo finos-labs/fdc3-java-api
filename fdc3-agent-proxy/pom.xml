@@ -14,17 +14,6 @@
     <name>FDC3 Desktop Agent Proxy</name>
     <description>Desktop Agent Proxy implementation for FDC3</description>
  
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jdk.source.version>17</jdk.source.version>
-        <jdk.target.version>17</jdk.target.version>
-        <fdc3.features.source>src/test/resources/temporary-features</fdc3.features.source>
-        <cucumber.version>7.15.0</cucumber.version>
-        <spring.version>6.1.2</spring.version>
-        <networknt.version>1.5.6</networknt.version>
-
-    </properties>
-
     <dependencies>
         <!-- FDC3 API -->
         <dependency>
@@ -43,7 +32,6 @@
         <dependency>
             <groupId>org.finos</groupId>
             <artifactId>cucumber-testing-steps</artifactId>
-            <version>1.2.3</version>
             <scope>test</scope>
         </dependency>
 
@@ -51,43 +39,36 @@
         <dependency>
             <groupId>io.cucumber</groupId>
             <artifactId>cucumber-spring</artifactId>
-            <version>${cucumber.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
-            <version>${spring.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
-            <version>${spring.version}</version>
             <scope>test</scope>
         </dependency>
             <dependency>
             <groupId>io.cucumber</groupId>
             <artifactId>cucumber-junit-platform-engine</artifactId>
-            <version>${cucumber.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.10.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-suite</artifactId>
-            <version>1.10.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
-            <version>2.0.9</version>
             <scope>test</scope>
         </dependency>
 
@@ -95,13 +76,11 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>2.0.9</version>
         </dependency>
 
         <dependency>
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>
-            <version>${networknt.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -109,55 +88,10 @@
     </dependencies>
 
     <build>
-        <testResources>
-            <testResource>
-                <directory>src/test/resources</directory>
-                <excludes>
-                    <!-- Features are copied from FDC3 repo -->
-                    <exclude>features/**</exclude>
-                </excludes>
-            </testResource>
-        </testResources>
         <plugins>
-            <!-- Copy feature files from FDC3 TypeScript repo -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
-                <executions>
-                    <execution>
-                        <id>copy-fdc3-features</id>
-                        <phase>generate-test-resources</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/test-classes/features</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${fdc3.features.source}</directory>
-                                    <includes>
-                                        <include>*.feature</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
-                <configuration>
-                    <source>${jdk.source.version}</source>
-                    <target>${jdk.target.version}</target>
-                </configuration>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.2</version>
                 <configuration>
                     <properties>
                         <configurationParameters>

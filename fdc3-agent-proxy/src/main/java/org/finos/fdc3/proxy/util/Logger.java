@@ -27,8 +27,34 @@ public final class Logger {
 
     private static final org.slf4j.Logger log = LoggerFactory.getLogger("fdc3.proxy");
 
+    /**
+     * Separate logger for full DACP message bodies, which carry application context and,
+     * during the WSCP handshake, the connection secret. Kept apart from {@link #log} so that
+     * enabling DEBUG on the proxy does not disclose message contents.
+     */
+    private static final org.slf4j.Logger payloadLog = LoggerFactory.getLogger("fdc3.proxy.payload");
+
     private Logger() {
         // Utility class
+    }
+
+    /**
+     * Whether full message bodies would be recorded. Callers should check this before doing
+     * the work of redacting and serialising a payload.
+     *
+     * @return true if the payload trace logger is enabled
+     */
+    public static boolean isPayloadEnabled() {
+        return payloadLog.isTraceEnabled();
+    }
+
+    /**
+     * Logs a full message body to the payload trace logger. Callers are responsible for
+     * redacting sensitive fields first; see
+     * {@link MessageLogging#redact(Object)}.
+     */
+    public static void payload(String message, Object... args) {
+        payloadLog.trace(message, args);
     }
 
     public static void debug(String message) {

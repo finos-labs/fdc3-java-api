@@ -23,7 +23,46 @@
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>FDC3 Java API</name>
-    <url>http://maven.apache.org</url>
+    <description>A Java implementation of the FDC3 standard for financial desktop
+        interoperability, providing the Desktop Agent API, its WebSocket transport and the
+        generated context and protocol types.</description>
+    <url>https://github.com/finos-labs/fdc3-java-api</url>
+    <inceptionYear>2025</inceptionYear>
+
+    <organization>
+        <name>FINOS</name>
+        <url>https://www.finos.org/</url>
+    </organization>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>FDC3 Maintainers</name>
+            <organization>FINOS</organization>
+            <organizationUrl>https://www.finos.org/</organizationUrl>
+            <url>https://github.com/finos-labs/fdc3-java-api/graphs/contributors</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/finos-labs/fdc3-java-api.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/finos-labs/fdc3-java-api.git</developerConnection>
+        <url>https://github.com/finos-labs/fdc3-java-api</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/finos-labs/fdc3-java-api/issues</url>
+    </issueManagement>
+
     <modules>
         <module>fdc3-standard</module>
         <module>fdc3-schema</module>
@@ -33,10 +72,128 @@
         <module>fdc3-example-app</module>
     </modules>
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- release rather than source/target: it also restricts the API the code links
+             against, so a build on a newer JDK cannot accidentally depend on newer methods and
+             produce a jar that fails at run time on Java 17. -->
+        <maven.compiler.release>17</maven.compiler.release>
         <jacoco.version>0.8.12</jacoco.version>
+        <maven.compiler.plugin.version>3.11.0</maven.compiler.plugin.version>
+        <maven.surefire.plugin.version>3.2.5</maven.surefire.plugin.version>
+        <maven.javadoc.plugin.version>3.6.3</maven.javadoc.plugin.version>
+        <maven.source.plugin.version>3.3.0</maven.source.plugin.version>
+
+        <!-- Third-party versions. Declared here so that a single dependency cannot be resolved
+             at two different versions across modules, which is what allowed slf4j 1.7 and 2.0,
+             and jackson 2.16 and 2.18, onto the same classpath. -->
+        <slf4j.version>2.0.9</slf4j.version>
+        <jackson.version>2.18.8</jackson.version>
+        <junit.jupiter.version>5.10.1</junit.jupiter.version>
+        <junit.platform.version>1.10.1</junit.platform.version>
+        <cucumber.version>7.15.0</cucumber.version>
+        <cucumber.testing.steps.version>1.2.3</cucumber.testing.steps.version>
+        <spring.version>6.1.2</spring.version>
+        <tyrus.version>2.1.5</tyrus.version>
+        <jakarta.websocket.version>2.1.1</jakarta.websocket.version>
+        <networknt.version>1.5.6</networknt.version>
+
+        <!-- Node toolchain used by the schema and context code generators. -->
+        <node.version>v20.11.0</node.version>
+        <npm.version>10.2.4</npm.version>
+        <quicktype.version>26.0.0</quicktype.version>
+
+        <!-- The published FDC3 npm packages the generated types are derived from. Both packages
+             are released together, so they share one version. -->
+        <fdc3.npm.version>3.0.0-alpha.2</fdc3.npm.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-simple</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.jupiter.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-suite</artifactId>
+                <version>${junit.platform.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.cucumber</groupId>
+                <artifactId>cucumber-spring</artifactId>
+                <version>${cucumber.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.cucumber</groupId>
+                <artifactId>cucumber-junit-platform-engine</artifactId>
+                <version>${cucumber.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.finos</groupId>
+                <artifactId>cucumber-testing-steps</artifactId>
+                <version>${cucumber.testing.steps.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-context</artifactId>
+                <version>${spring.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-test</artifactId>
+                <version>${spring.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>jakarta.websocket</groupId>
+                <artifactId>jakarta.websocket-client-api</artifactId>
+                <version>${jakarta.websocket.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.tyrus.bundles</groupId>
+                <artifactId>tyrus-standalone-client</artifactId>
+                <version>${tyrus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.tyrus</groupId>
+                <artifactId>tyrus-server</artifactId>
+                <version>${tyrus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.tyrus</groupId>
+                <artifactId>tyrus-container-grizzly-server</artifactId>
+                <version>${tyrus.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.networknt</groupId>
+                <artifactId>json-schema-validator</artifactId>
+                <version>${networknt.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <pluginManagement>
@@ -45,6 +202,42 @@
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
                     <version>${jacoco.version}</version>
+                </plugin>
+                <!-- Pinned and configured here so that every module compiles the same way.
+                     Without a version, Maven picks the default bound to whichever Maven is
+                     installed, which for older defaults means a source level that no longer
+                     compiles at all. -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven.compiler.plugin.version}</version>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven.surefire.plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>${maven.source.plugin.version}</version>
+                </plugin>
+                <!-- doclint is set to all,-missing: malformed HTML and broken references are
+                     real defects in published API documentation and should fail the build, but
+                     a missing @return on a trivial accessor should not. Modules whose sources
+                     are generated from external JSON Schema text turn this off entirely, since
+                     the comment content is not ours to correct. -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${maven.javadoc.plugin.version}</version>
+                    <configuration>
+                        <doclint>all,-missing</doclint>
+                        <quiet>true</quiet>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -76,5 +269,41 @@
         </plugins>
     </build>
 
+    <profiles>
+        <!-- Maven Central requires a sources jar and a javadoc jar alongside each artifact.
+             Building them is only needed when publishing, so they are kept out of the default
+             build to avoid paying for them on every local compile and CI run. -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

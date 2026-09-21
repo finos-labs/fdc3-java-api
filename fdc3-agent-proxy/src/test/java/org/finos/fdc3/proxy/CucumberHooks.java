@@ -16,8 +16,10 @@
 
 package org.finos.fdc3.proxy;
 
+import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.Scenario;
+import org.finos.fdc3.proxy.util.Logger;
 import org.finos.fdc3.proxy.world.CustomWorld;
 
 /**
@@ -37,6 +39,26 @@ public class CucumberHooks {
     @Before
     public void beforeScenario(Scenario scenario) {
         world.setScenario(scenario);
+    }
+
+    /**
+     * Disconnects the messaging created by a scenario.
+     * <p>
+     * Scenarios register listeners and start timeout tasks through the messaging instance. Left
+     * connected, those outlive the scenario and can still fire during later ones, so a failure
+     * appears in whichever scenario happens to be running rather than the one that caused it.
+     */
+    @After
+    public void afterScenario() {
+        if (!world.hasMessaging()) {
+            return;
+        }
+        try {
+            world.getMessaging().disconnect().toCompletableFuture().join();
+        } catch (RuntimeException e) {
+            // Teardown only. Reporting this as a failure would mask the scenario's own result.
+            Logger.warn("Failed to disconnect test messaging during teardown: {}", e.getMessage());
+        }
     }
 }
 

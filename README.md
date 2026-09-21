@@ -6,27 +6,34 @@ A Java implementation of the [FDC3 Standard](https://fdc3.finos.org/) enabling J
 
 ```mermaid
 sequenceDiagram
-    participant Sail as FDC3 Sail
+    participant DA as Desktop Agent
     participant App as Java App
 
-    Note over Sail: Add connectionUrl to App Directory for native app
-    Note over Sail: Display WebSocket URL in UI
-    Sail-->>App: connectionUrl (advertised in UI for user to copy)
-    Note over App: Obtain webSocketUrl, build GetAgentParams
+    Note over DA: Advertise WebSocket URL and a pairing secret in the UI
+    DA-->>App: webSocketUrl + sharedSecret (copied by user, or passed as launch params)
+    Note over App: Build GetAgentParams
 
-    App->>Sail: WebSocket connect
-    Sail->>App: Connection accepted
-    App->>Sail: WCP4ValidateAppIdentity (identityURL: native)
-    Sail->>App: WCP5ValidateAppIdentityResponse (appId, instanceId, instanceUuid)
-    Note over App: Store appId, instanceId, instanceUuid for reconnection
+    App->>DA: WebSocket connect
+    DA->>App: Connection accepted
+    App->>DA: WSCPApplicationConnect (sharedSecret)
+
+    alt secret recognised
+        DA->>App: WSCPDesktopAgentConnect (appMetadata: appId, instanceId)
+    else secret invalid/unknown
+        DA->>App: WSCPConnectFailed
+    end
 
     loop DACP message exchange
-        App->>Sail: broadcastRequest, addContextListenerRequest, etc.
-        Sail->>App: broadcastEvent, intentEvent, heartbeatEvent, etc.
+        App->>DA: broadcastRequest, addContextListenerRequest, etc.
+        DA->>App: broadcastEvent, intentEvent, heartbeatEvent, etc.
     end
+
+    App->>DA: WSCPGoodbye
 ```
 
-**App Identity flow:** Sail adds a `connectionUrl` (WebSocket URL) to each native app's entry in the App Directory and displays it in the Sail UI so the user can copy it (or provide it via config/launch params). The Java app uses this URL in `GetAgentParams`. For a new connection, the app sends `WCP4ValidateAppIdentity` with `identityURL: "native"`. Sail matches this to the App Directory, assigns an `appId`, and returns `instanceId` and `instanceUuid` in `WCP5ValidateAppIdentityResponse`. The app stores these (via `getInfo()`) for reconnection. After handshake, all FDC3 API calls flow as DACP messages over the WebSocket.
+**App identity flow:** this project implements the [WebSocket Connection Protocol (WSCP)](https://fdc3.finos.org/docs/api/specs/webSocketConnectionProtocol), which is how an application outside the browser connects to a Desktop Agent. It is a different protocol from the browser-resident Web Connection Protocol (WCP), and none of the WCP concepts — iframes, `identityUrl` origin matching, `instanceUuid` — apply here.
+
+Identity rests on a **pairing secret**. The Desktop Agent generates a secret and makes it available to the user together with its WebSocket URL, typically by displaying both in its UI; how it does this is up to the agent. The application supplies the two values in `GetAgentParams` and sends the secret in `WSCPApplicationConnect`. The Desktop Agent checks the secret and replies with `WSCPDesktopAgentConnect` carrying the `appId` and `instanceId` it has assigned, or rejects the connection with `WSCPConnectFailed`. The assigned identity is then available through `getInfo()`. After the handshake, all FDC3 API calls travel as DACP messages over the same WebSocket.
 
 ## Overview
 
@@ -53,6 +60,9 @@ This project provides:
 - Maven 3.6+
 - A running FDC3 Desktop Agent that supports the [Desktop Agent Communication Protocol](https://fdc3.finos.org/docs/api/specs/desktopAgentCommunicationProtocol) (e.g., [FDC3 Sail](https://github.com/finos/FDC3-Sail))
 
+Building additionally requires **network access to the npm registry**, and no Node installation
+of your own. See below.
+
 ## Installation
 
 ### Building from Source
@@ -61,8 +71,20 @@ This project provides:
 mvn clean install
 ```
 
-The build downloads the DACP / WCP / Context schemas from npm as it runs, using the versions
-pinned by `fdc3.schema.version` and `fdc3.context.version` in the module POMs.
+Two modules generate their Java types from the FDC3 JSON Schemas rather than carrying them by
+hand, so the build fetches those schemas as it runs and **cannot be run offline from a clean
+checkout**:
+
+- A pinned Node and npm are downloaded into `target/node-installation` by
+  `frontend-maven-plugin`. The build never uses a Node that happens to be on your `PATH`, so
+  the generated sources do not depend on what is installed locally.
+- `@finos/fdc3-schema` and `@finos/fdc3-context` are installed with `npm ci` from the committed
+  `package.json` and `package-lock.json` under each module's `src/main/npm`. The version is
+  pinned by `fdc3.npm.version` in the root POM, and `quicktype`, which does the code
+  generation, is pinned by `quicktype.version`.
+
+Once these have been downloaded, the npm cache and `target/node-installation` make repeat
+builds work without the network.
 
 A small number of API schemas have not yet reached a published release, and are needed by code
 in this project. Those are held in `fdc3-schema/src/main/schemas-overlay/api` and are copied
@@ -86,67 +108,81 @@ Once published, add to your `pom.xml`:
 
 ### Connecting to a Desktop Agent
 
-````java
+```java
+import org.finos.fdc3.api.DesktopAgent;
 import org.finos.fdc3.getagent.GetAgent;
 import org.finos.fdc3.getagent.GetAgentParams;
-import org.finos.fdc3.api.DesktopAgent;
-import java.util.UUID;
 
-// Connect to a Desktop Agent via WebSocket
+// Both values come from the Desktop Agent, which normally shows them in its UI.
 GetAgentParams params = GetAgentParams.builder()
-    .webSocketUrl("ws://localhost:4475")           // Desktop Agent WebSocket URL (required)
-    .instanceId(desktopAgentProvidedInstanceId)    // Unique instance ID (required)
-    .instanceUuid(desktopAgentProvidedInstanceUuid)// Shared secret UUID (required)
-    .channelSelector(myChannelSelector)            // Optional: custom ChannelSelector
-    .intentResolver(myIntentResolver)              // Optional: custom IntentResolver
+    .webSocketUrl("wss://desktop-agent.example.com/fdc3/ws") // required
+    .sharedSecret(pairingSecret)                             // required
+    .channelSelector(myChannelSelector)                      // optional
+    .intentResolver(myIntentResolver)                        // optional
     .build();
 
 DesktopAgent agent = GetAgent.getAgent(params).toCompletableFuture().get();
+```
+
+The connection is a WebSocket, so `webSocketUrl` must use the `wss` scheme. Plain `ws` is
+rejected unless the host is a loopback address, because the pairing secret and every
+subsequent message would otherwise cross the network in the clear. To use `ws` against a
+non-loopback host during development, opt in explicitly with
+`.allowInsecureTransport(true)`.
+
+#### Handling the pairing secret
+
+The pairing secret is a bearer credential: anything holding it can connect to the Desktop
+Agent as your application. Treat it accordingly.
+
+- Do not commit it, and do not write it to a log or an error message. This library redacts it
+  from its own logging, but it cannot redact what your application does with it.
+- Prefer passing it through a launch parameter, a prompt, or a secret store over a command-line
+  argument, since arguments are visible to other processes on the machine.
+- It is scoped to one app instance in one FDC3 session, so the same secret can be
+  reused to reconnect after an interruption. Persist it for the life of the instance;
+  this API cannot rotate it.
 
 ### Configuration via System Properties
 
-The following system properties can be used to provide default values for `GetAgentParams`.
-Values set via the builder will override these defaults.
+These system properties supply defaults for `GetAgentParams`. Anything set on the builder wins.
 
-| System Property       | Description                                      |
-| --------------------- | ------------------------------------------------ |
-| `FDC3_WEBSOCKET_URL`  | Default WebSocket URL for the Desktop Agent      |
-| `FDC3_INSTANCE_ID`    | Instance ID for the application instance (if reconnecting)|
-| `FDC3_INSTANCE_UUID`  | Instance ID UUID (shared secret) (if reconnecting)            |
+| System Property           | Description                                        |
+| ------------------------- | -------------------------------------------------- |
+| `FDC3_WEBSOCKET_URL`      | WebSocket endpoint of the Desktop Agent            |
+| `FDC3_CONNECTION_SECRET`  | Pairing secret issued by the Desktop Agent         |
 
-This allows for simplified configuration when these values are provided externally:
+With both set, only the optional overrides need to be given:
 
 ```java
-// If system properties are set, the builder can be used with minimal configuration
-// e.g., java -DFDC3_WEBSOCKET_URL=ws://localhost:4475 -DFDC3_INSTANCE_ID=my-app ...
 GetAgentParams params = GetAgentParams.builder()
-    .channelSelector(myChannelSelector)  // Only set optional overrides
+    .channelSelector(myChannelSelector)
     .build();
 ```
 
 ### Broadcasting Context
 
 ```java
-// Create and broadcast a context
-Context contact = new Contact("jane@example.com", "Jane Smith");
+Context contact = new Context("fdc3.contact", "Jane Smith",
+    Map.of("email", "jane@example.com"));
+
 agent.broadcast(contact);
-````
+```
 
 ### Listening for Context
 
 ```java
-// Add a context listener
-agent.addContextListener("fdc3.contact", context -> {
-    System.out.println("Received contact: " + context);
+agent.addContextListener("fdc3.contact", (context, metadata) -> {
+    System.out.println("Received contact: " + context.get("name"));
 });
 ```
 
 ### Raising Intents
 
 ```java
-// Raise an intent (null app lets the resolver choose)
-IntentResolution resolution = agent.raiseIntent("ViewChart", instrument, null)
-    .toCompletableFuture().get();
+// A null target app lets the Desktop Agent's resolver choose.
+IntentResolution resolution =
+    agent.raiseIntent("ViewChart", instrument, null).toCompletableFuture().get();
 ```
 
 ## Contributing

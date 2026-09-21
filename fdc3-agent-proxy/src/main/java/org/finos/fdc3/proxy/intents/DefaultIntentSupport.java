@@ -23,11 +23,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.errors.ResolveError;
+import org.finos.fdc3.api.errors.ResultError;
 import org.finos.fdc3.api.metadata.AppIntent;
 import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.ContextMetadata;
@@ -42,6 +44,7 @@ import org.finos.fdc3.proxy.channels.DefaultChannel;
 import org.finos.fdc3.proxy.channels.DefaultPrivateChannel;
 import org.finos.fdc3.proxy.listeners.DefaultIntentListener;
 import org.finos.fdc3.proxy.util.ContextMetadataMapper;
+import org.finos.fdc3.proxy.util.ThrowIfUndefined;
 import org.finos.fdc3.schema.*;
 
 /**
@@ -53,7 +56,14 @@ public class DefaultIntentSupport implements IntentSupport {
     private final IntentResolver intentResolver;
     private final long messageExchangeTimeout;
     private final long appLaunchTimeout;
-    private final List<DefaultIntentListener> intentListeners = new ArrayList<>();
+    /**
+     * Mutated on caller threads and iterated on the WebSocket receive thread, so it has to be
+     * safe for concurrent traversal.
+     */
+    private final List<DefaultIntentListener> intentListeners = new CopyOnWriteArrayList<>();
+
+    /** Guards the check-then-add in {@link #registerIntentListener}. */
+    private final Object intentListenerLock = new Object();
 
     public DefaultIntentSupport(
             Messaging messaging,
@@ -105,13 +115,14 @@ public class DefaultIntentSupport implements IntentSupport {
     }
 
     @Override
-    public CompletionStage<List<AppIntent>> findIntentsByContext(Context context) {
+    public CompletionStage<List<AppIntent>> findIntentsByContext(Context context, String resultType) {
         FindIntentsByContextRequest request = new FindIntentsByContextRequest();
         request.setType(FindIntentsByContextRequestType.FIND_INTENTS_BY_CONTEXT_REQUEST);
         request.setMeta(messaging.createMeta());
 
         FindIntentsByContextRequestPayload payload = new FindIntentsByContextRequestPayload();
         payload.setContext(context);
+        payload.setResultType(resultType);
         request.setPayload(payload);
 
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
@@ -169,17 +180,20 @@ public class DefaultIntentSupport implements IntentSupport {
                     RaiseIntentResponse typedResponse = messaging.getConverter()
                             .convertValue(response, RaiseIntentResponse.class);
 
-                    if (typedResponse.getPayload() == null) {
-                        throw new RuntimeException(ResolveError.NoAppsFound.toString());
-                    }
-
-                    AppIntent schemaAppIntent = typedResponse.getPayload().getAppIntent();
+                    AppIntent schemaAppIntent = typedResponse.getPayload() == null
+                            ? null
+                            : typedResponse.getPayload().getAppIntent();
                     org.finos.fdc3.schema.IntentResolution schemaIntentResolution =
-                            typedResponse.getPayload().getIntentResolution();
+                            typedResponse.getPayload() == null
+                                    ? null
+                                    : typedResponse.getPayload().getIntentResolution();
 
-                    if (schemaAppIntent == null && schemaIntentResolution == null) {
-                        throw new RuntimeException(ResolveError.NoAppsFound.toString());
-                    }
+                    ThrowIfUndefined.throwIfUndefined(
+                            schemaAppIntent != null ? schemaAppIntent : schemaIntentResolution,
+                            "Invalid response from Desktop Agent to raiseIntent, either "
+                                    + "payload.appIntent or payload.intentResolution must be set!",
+                            response,
+                            ResolveError.NoAppsFound.toString());
 
                     if (schemaAppIntent != null) {
                         return intentResolver.chooseIntent(List.of(schemaAppIntent), context)
@@ -244,17 +258,22 @@ public class DefaultIntentSupport implements IntentSupport {
                     RaiseIntentForContextResponse typedResponse = messaging.getConverter()
                             .convertValue(response, RaiseIntentForContextResponse.class);
 
-                    if (typedResponse.getPayload() == null) {
-                        throw new RuntimeException(ResolveError.NoAppsFound.toString());
-                    }
-
-                    List<AppIntent> schemaAppIntents = typedResponse.getPayload().getAppIntents();
+                    List<AppIntent> schemaAppIntents = typedResponse.getPayload() == null
+                            ? null
+                            : typedResponse.getPayload().getAppIntents();
                     org.finos.fdc3.schema.IntentResolution schemaIntentResolution =
-                            typedResponse.getPayload().getIntentResolution();
+                            typedResponse.getPayload() == null
+                                    ? null
+                                    : typedResponse.getPayload().getIntentResolution();
 
-                    if ((schemaAppIntents == null || schemaAppIntents.isEmpty()) && schemaIntentResolution == null) {
-                        throw new RuntimeException(ResolveError.NoAppsFound.toString());
-                    }
+                    ThrowIfUndefined.throwIfUndefined(
+                            schemaAppIntents != null && !schemaAppIntents.isEmpty()
+                                    ? schemaAppIntents
+                                    : schemaIntentResolution,
+                            "Invalid response from Desktop Agent to raiseIntentForContext, either "
+                                    + "payload.appIntents or payload.intentResolution must be set!",
+                            response,
+                            ResolveError.NoAppsFound.toString());
 
                     if (schemaAppIntents != null && !schemaAppIntents.isEmpty()) {
                         return intentResolver.chooseIntent(schemaAppIntents, context)
@@ -296,24 +315,41 @@ public class DefaultIntentSupport implements IntentSupport {
 
     private CompletionStage<Listener> registerIntentListener(
             String intent, List<String> contextTypes, IntentHandler handler) {
-        throwIfConflicting(intent, contextTypes);
-
         DefaultIntentListener[] holder = new DefaultIntentListener[1];
-        holder[0] = new DefaultIntentListener(
-                messaging,
-                intent,
-                contextTypes,
-                handler,
-                messageExchangeTimeout,
-                () -> intentListeners.remove(holder[0]));
-        return holder[0].register().thenApply(v -> {
+
+        // The conflict check and the insertion have to be one atomic step, otherwise two threads
+        // registering the same intent can both see no conflict and both register.
+        synchronized (intentListenerLock) {
+            if (hasConflictingListener(intent, contextTypes)) {
+                return CompletableFuture.failedFuture(
+                        new RuntimeException(ResolveError.IntentListenerConflict.toString()));
+            }
+
+            holder[0] = new DefaultIntentListener(
+                    messaging,
+                    intent,
+                    contextTypes,
+                    handler,
+                    messageExchangeTimeout,
+                    () -> intentListeners.remove(holder[0]));
             intentListeners.add(holder[0]);
-            return holder[0];
-        });
+        }
+
+        // If the Desktop Agent rejects the registration, undo the reservation made above.
+        return holder[0].register()
+                .handle((ignored, error) -> {
+                    if (error != null) {
+                        intentListeners.remove(holder[0]);
+                        throw error instanceof RuntimeException
+                                ? (RuntimeException) error
+                                : new RuntimeException(error);
+                    }
+                    return (Listener) holder[0];
+                });
     }
 
-    private void throwIfConflicting(String intent, List<String> contextTypes) {
-        boolean conflict = intentListeners.stream().anyMatch(existing -> {
+    private boolean hasConflictingListener(String intent, List<String> contextTypes) {
+        return intentListeners.stream().anyMatch(existing -> {
             if (!existing.getIntent().equals(intent)) {
                 return false;
             }
@@ -323,10 +359,6 @@ public class DefaultIntentSupport implements IntentSupport {
             }
             return existingTypes.stream().anyMatch(contextTypes::contains);
         });
-
-        if (conflict) {
-            throw new RuntimeException(ResolveError.IntentListenerConflict.toString());
-        }
     }
 
     private static final class ResultPromises {
@@ -349,13 +381,24 @@ public class DefaultIntentSupport implements IntentSupport {
                     String respRequestUuid = meta != null ? (String) meta.get("requestUuid") : null;
                     return "raiseIntentResultResponse".equals(type) && requestUuid.equals(respRequestUuid);
                 },
-                0,
-                null
+                // Bounded deliberately. waitFor only schedules a timeout when this is positive,
+                // so passing 0 left the listener registered forever whenever the resolving app
+                // never sent a result.
+                appLaunchTimeout,
+                ResultError.ApiTimeout.toString()
         ).thenApply(response -> {
             metadataFuture.complete(extractResultMetadata(response, source));
             Map<String, Object> payload = (Map<String, Object>) response.get("payload");
             return convertIntentResult(payload.get("intentResult"));
         });
+
+        // Without this the metadata stage stays pending forever when the result times out.
+        result.whenComplete((ignored, error) -> {
+            if (error != null) {
+                metadataFuture.completeExceptionally(error);
+            }
+        });
+
         return new ResultPromises(result, metadataFuture);
     }
 
@@ -365,7 +408,8 @@ public class DefaultIntentSupport implements IntentSupport {
         Map<String, Object> resultMetadata = payload != null
                 ? (Map<String, Object>) payload.get("resultMetadata")
                 : null;
-        ContextMetadata metadata = ContextMetadataMapper.fromWire(resultMetadata, null);
+        ContextMetadata metadata = ContextMetadataMapper.fromWire(
+                resultMetadata, null, ContextMetadataMapper.MissingTraceId.EMPTY);
         metadata.setSource(source);
         return metadata;
     }

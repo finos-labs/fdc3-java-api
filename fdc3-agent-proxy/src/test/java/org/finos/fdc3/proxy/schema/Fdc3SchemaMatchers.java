@@ -43,6 +43,9 @@ public final class Fdc3SchemaMatchers {
     private static final String PROTECTED_SUFFIX = ".protected";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    /** Browser WCP and native WSCP use different goodbye type names for the same disconnect. */
+    private static final Set<String> GOODBYE_SCHEMA_IDS = Set.of("WCP6Goodbye", "WSCPGoodbye");
+
     private static final RowFieldMatcher MATCHES_TYPE_MATCHER = new RowFieldMatcher() {
         @Override
         public boolean matchesField(String field) {
@@ -65,9 +68,10 @@ public final class Fdc3SchemaMatchers {
                 return false;
             }
 
-            JsonSchema schema = schemas.get(schemaId);
+            String resolvedSchemaId = resolveGoodbyeSchemaId(schemaId, value);
+            JsonSchema schema = schemas.get(resolvedSchemaId);
             if (schema == null) {
-                throw new IllegalStateException("No schema found for " + schemaId);
+                throw new IllegalStateException("No schema found for " + resolvedSchemaId);
             }
 
             try {
@@ -79,10 +83,10 @@ public final class Fdc3SchemaMatchers {
                 String messages = errors.stream()
                         .map(ValidationMessage::getMessage)
                         .collect(Collectors.joining("; "));
-                world.log("Schema validation failed for " + schemaId + ": " + messages);
+                world.log("Schema validation failed for " + resolvedSchemaId + ": " + messages);
                 return false;
             } catch (Exception e) {
-                world.log("Schema validation error for " + schemaId + ": " + e.getMessage());
+                world.log("Schema validation error for " + resolvedSchemaId + ": " + e.getMessage());
                 return false;
             }
         }
@@ -129,6 +133,23 @@ public final class Fdc3SchemaMatchers {
 
     public static void registerFdc3SchemaMatchers() {
         // Matcher registered in static initializer (same pattern as TypeScript side-effect import).
+    }
+
+    /**
+     * Feature files always name the browser goodbye ({@code WCP6Goodbye}). Java posts the WSCP
+     * equivalent ({@code WSCPGoodbye}). When either goodbye id is expected and the message carries
+     * the other, validate against the schema that matches the posted type.
+     */
+    @SuppressWarnings("unchecked")
+    private static String resolveGoodbyeSchemaId(String schemaId, Object value) {
+        if (!GOODBYE_SCHEMA_IDS.contains(schemaId) || !(value instanceof Map)) {
+            return schemaId;
+        }
+        Object type = ((Map<String, Object>) value).get("type");
+        if (type instanceof String && GOODBYE_SCHEMA_IDS.contains(type)) {
+            return (String) type;
+        }
+        return schemaId;
     }
 
     private static Object valueAtPath(Object data, String path) {

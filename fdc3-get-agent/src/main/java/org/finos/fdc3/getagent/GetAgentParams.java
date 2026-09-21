@@ -16,10 +16,15 @@
 
 package org.finos.fdc3.getagent;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Locale;
+
 import org.finos.fdc3.api.ui.ChannelSelector;
 import org.finos.fdc3.api.ui.IntentResolver;
 import org.finos.fdc3.getagent.ui.DefaultChannelSelector;
 import org.finos.fdc3.getagent.ui.DefaultIntentResolver;
+import org.finos.fdc3.proxy.util.Logger;
 
 /**
  * Parameters for obtaining a DesktopAgent connection via WebSocket.
@@ -47,6 +52,7 @@ public class GetAgentParams {
     private final long messageExchangeTimeout;
     private final long appLaunchTimeout;
     private final long heartbeatIntervalMs;
+    private final boolean allowInsecureTransport;
 
     private GetAgentParams(Builder builder) {
         this.webSocketUrl = builder.webSocketUrl;
@@ -57,6 +63,7 @@ public class GetAgentParams {
         this.messageExchangeTimeout = builder.messageExchangeTimeout;
         this.appLaunchTimeout = builder.appLaunchTimeout;
         this.heartbeatIntervalMs = builder.heartbeatIntervalMs;
+        this.allowInsecureTransport = builder.allowInsecureTransport;
     }
 
     public String getWebSocketUrl() {
@@ -91,6 +98,11 @@ public class GetAgentParams {
         return heartbeatIntervalMs;
     }
 
+    /** Whether plaintext {@code ws://} to a non-loopback host was explicitly permitted. */
+    public boolean isAllowInsecureTransport() {
+        return allowInsecureTransport;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -108,6 +120,7 @@ public class GetAgentParams {
         private long messageExchangeTimeout = 10000;
         private long appLaunchTimeout = 30000;
         private long heartbeatIntervalMs = 5000;
+        private boolean allowInsecureTransport = false;
 
         private static String firstNonEmpty(String a, String b) {
             if (a != null && !a.isEmpty()) {
@@ -159,6 +172,20 @@ public class GetAgentParams {
             return this;
         }
 
+        /**
+         * Permits a plaintext {@code ws://} URL to a non-loopback host.
+         * <p>
+         * The shared secret is sent in the first message of the connection, so without TLS it
+         * is readable by anything on the network path. Loopback URLs are always allowed and do
+         * not need this flag.
+         *
+         * @param allowInsecureTransport true to allow plaintext to a remote host
+         */
+        public Builder allowInsecureTransport(boolean allowInsecureTransport) {
+            this.allowInsecureTransport = allowInsecureTransport;
+            return this;
+        }
+
         public GetAgentParams build() {
             if (webSocketUrl == null || webSocketUrl.isEmpty()) {
                 throw new IllegalArgumentException("webSocketUrl is required");
@@ -166,7 +193,74 @@ public class GetAgentParams {
             if (sharedSecret == null || sharedSecret.isEmpty()) {
                 throw new IllegalArgumentException("sharedSecret is required");
             }
+            validateTransport(webSocketUrl, allowInsecureTransport);
             return new GetAgentParams(this);
         }
+    }
+
+    /**
+     * Checks that the WebSocket URL is well formed and that the shared secret will not be sent
+     * in clear text to a remote host.
+     * <p>
+     * The WSCP specification does not mandate transport security, so this is a hardening
+     * decision of this implementation rather than a conformance requirement.
+     */
+    private static void validateTransport(String webSocketUrl, boolean allowInsecureTransport) {
+        URI uri;
+        try {
+            uri = new URI(webSocketUrl);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("webSocketUrl is not a valid URI: " + webSocketUrl, e);
+        }
+
+        String scheme = uri.getScheme();
+        if (scheme == null) {
+            throw new IllegalArgumentException(
+                    "webSocketUrl must specify a scheme of ws or wss: " + webSocketUrl);
+        }
+
+        scheme = scheme.toLowerCase(Locale.ROOT);
+        if ("wss".equals(scheme)) {
+            return;
+        }
+        if (!"ws".equals(scheme)) {
+            throw new IllegalArgumentException(
+                    "webSocketUrl scheme must be ws or wss, but was " + scheme);
+        }
+
+        if (isLoopbackHost(uri.getHost())) {
+            return;
+        }
+
+        if (!allowInsecureTransport) {
+            throw new IllegalArgumentException(
+                    "Refusing to send the shared secret in clear text to a remote host. Use a wss:// "
+                            + "URL, or call allowInsecureTransport(true) to accept the risk: "
+                            + webSocketUrl);
+        }
+
+        Logger.warn("Connecting over plaintext ws:// to {}. The shared secret will be sent "
+                + "unencrypted and is readable on the network path.", uri.getHost());
+    }
+
+    /**
+     * Whether a host refers to the local machine, in which case plaintext traffic does not
+     * leave the host. Deliberately a literal comparison: resolving names here would make
+     * validation depend on DNS.
+     */
+    private static boolean isLoopbackHost(String host) {
+        if (host == null || host.isEmpty()) {
+            return false;
+        }
+
+        String candidate = host.toLowerCase(Locale.ROOT);
+        if (candidate.startsWith("[") && candidate.endsWith("]")) {
+            candidate = candidate.substring(1, candidate.length() - 1);
+        }
+
+        return "localhost".equals(candidate)
+                || "::1".equals(candidate)
+                || "0:0:0:0:0:0:0:1".equals(candidate)
+                || candidate.startsWith("127.");
     }
 }

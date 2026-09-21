@@ -25,7 +25,11 @@ import org.finos.fdc3.proxy.support.TestMessaging.PossibleIntentResult;
  */
 public class RaiseIntentResponse implements AutomaticResponse {
     
-    private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "fdc3-test-raise-intent");
+        t.setDaemon(true);
+        return t;
+    });
     
     @Override
     public boolean filter(String messageType) {

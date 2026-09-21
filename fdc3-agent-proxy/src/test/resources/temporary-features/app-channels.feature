@@ -64,6 +64,55 @@ Feature: Channel Listeners Support
     And I call "{channel1}" with "addContextListener" using arguments "{null}" and "{true}"
     Then "{result}" is an error
 
+  Scenario: Adding a contextCleared event listener registers it with the Desktop Agent, scoped to the channel
+    Given "typesHandler" pipes events to "types"
+    When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
+    And I refer to "{result}" as "channel1"
+    And I call "{channel1}" with "addEventListener" using arguments "contextCleared" and "{typesHandler}"
+    And we wait for a period of "100" ms
+    Then messaging will have posts
+      | payload.type    | payload.channelId | matches_type            |
+      | CONTEXT_CLEARED | channel-name      | addEventListenerRequest |
+
+  Scenario: Adding a "null" (wildcard) event listener on a channel registers a channel-scoped registration
+    Given "typesHandler" pipes events to "types"
+    When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
+    And I refer to "{result}" as "channel1"
+    And I call "{channel1}" with "addEventListener" using arguments "{null}" and "{typesHandler}"
+    And we wait for a period of "100" ms
+    Then messaging will have posts
+      | payload.type | payload.channelId | matches_type            |
+      | {null}       | channel-name      | addEventListenerRequest |
+
+  Scenario: A channel contextCleared listener receives only events for its channel
+    Given "typesHandler" pipes events to "types"
+    And "contextClearedMessage" is a ContextClearedEvent message on channel "channel-name" with contextType as "fdc3.instrument"
+    And "otherContextClearedMessage" is a ContextClearedEvent message on channel "other-channel" with contextType as "fdc3.country"
+    When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
+    And I refer to "{result}" as "channel1"
+    And I call "{channel1}" with "addEventListener" using arguments "contextCleared" and "{typesHandler}"
+    And messaging receives "{otherContextClearedMessage}"
+    And messaging receives "{contextClearedMessage}"
+    Then "{types}" is an array of objects with the following contents
+      | channelId    | contextType     |
+      | channel-name | fdc3.instrument |
+
+  Scenario: Unsubscribing a channel contextCleared listener stops event delivery and notifies the Desktop Agent
+    Given "typesHandler" pipes events to "types"
+    And "contextClearedMessage" is a ContextClearedEvent message on channel "channel-name" with contextType as "fdc3.instrument"
+    When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
+    And I refer to "{result}" as "channel1"
+    And I call "{channel1}" with "addEventListener" using arguments "contextCleared" and "{typesHandler}"
+    And I refer to "{result}" as "theListener"
+    And we wait for a period of "100" ms
+    And I call "{theListener}" with "unsubscribe"
+    And messaging receives "{contextClearedMessage}"
+    Then "{types}" is an array of objects with length "0"
+    And messaging will have posts
+      | payload.channelId | payload.listenerUUID | matches_type                    |
+      | channel-name      | {null}               | addEventListenerRequest         |
+      | {null}            | {theListener.id}     | eventListenerUnsubscribeRequest |
+
   Scenario: Passing an invalid event type to an app Channel returns InvalidArguments
     When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
     And I refer to "{result}" as "channel1"
@@ -117,3 +166,85 @@ Feature: Channel Listeners Support
     And "{metadatas}" is an array of objects with the following contents
       | source.appId      | source.instanceId     |
       | cucumber-app   | cucumber-instance |
+
+  Scenario: Adding a context listener with an array of context types receives matching contexts
+    Given "contextTypes" is an array of context types "fdc3.instrument, fdc3.country"
+    When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
+    And I refer to "{result}" as "channel1"
+    And I call "{channel1}" with "addContextListener" using arguments "{contextTypes}" and "{resultHandler}"
+    And messaging receives "{instrumentMessageOne}"
+    And messaging receives "{countryMessageOne}"
+    Then "{contexts}" is an array of objects with the following contents
+      | type            | name   |
+      | fdc3.instrument | Apple  |
+      | fdc3.country    | Sweden |
+
+  Scenario: Adding a context listener with an array of context types filters non-matching contexts
+    Given "unsupportedMessage" is a BroadcastEvent message on channel "channel-name" with context "fdc3.unsupported"
+    Given "contextTypes" is an array of context types "fdc3.instrument, fdc3.country"
+    When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
+    And I refer to "{result}" as "channel1"
+    And I call "{channel1}" with "addContextListener" using arguments "{contextTypes}" and "{resultHandler}"
+    And messaging receives "{instrumentMessageOne}"
+    And messaging receives "{unsupportedMessage}"
+    And messaging receives "{countryMessageOne}"
+    Then "{contexts}" is an array of objects with the following contents
+      | type            | name   |
+      | fdc3.instrument | Apple  |
+      | fdc3.country    | Sweden |
+
+  Scenario: Adding a context listener with an empty array throws error
+    Given "emptyArray" is an empty array
+    When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
+    And I refer to "{result}" as "channel1"
+    And I call "{channel1}" with "addContextListener" using arguments "{emptyArray}" and "{resultHandler}"
+    Then "{result}" is an error with message "InvalidArguments"
+
+  Scenario: Adding a context listener with array containing null throws error
+    Given "arrayWithNull" is an array of context types with null "fdc3.instrument, {null}"
+    When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
+    And I refer to "{result}" as "channel1"
+    And I call "{channel1}" with "addContextListener" using arguments "{arrayWithNull}" and "{resultHandler}"
+    Then "{result}" is an error with message "InvalidArguments"
+
+  Scenario: Clearing a specific context type leaves other types on the channel
+    Given "countryContext" is a "fdc3.country" context
+    When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
+    And I refer to "{result}" as "channel1"
+    And I call "{channel1}" with "broadcast" using argument "{instrumentContext}"
+    And I call "{channel1}" with "broadcast" using argument "{countryContext}"
+    And I call "{channel1}" with "clearContext" using argument "fdc3.instrument"
+    And I call "{channel1}" with "getCurrentContext" using argument "fdc3.instrument"
+    Then "{result}" is empty
+    When I call "{channel1}" with "getCurrentContext" using argument "fdc3.country"
+    Then "{result}" is an object with the following contents
+      | type         | name   |
+      | fdc3.country | Sweden |
+    And messaging will have posts
+      | payload.channelId | payload.contextType | matches_type              |
+      | channel-name      | {null}              | getOrCreateChannelRequest |
+      | channel-name      | {null}              | broadcastRequest          |
+      | channel-name      | {null}              | broadcastRequest          |
+      | channel-name      | fdc3.instrument     | clearContextRequest       |
+      | channel-name      | fdc3.instrument     | getCurrentContextRequest  |
+      | channel-name      | fdc3.country        | getCurrentContextRequest  |
+
+  Scenario: Clearing without a context type clears every type on the channel
+    Given "countryContext" is a "fdc3.country" context
+    When I call "{api1}" with "getOrCreateChannel" using argument "channel-name"
+    And I refer to "{result}" as "channel1"
+    And I call "{channel1}" with "broadcast" using argument "{instrumentContext}"
+    And I call "{channel1}" with "broadcast" using argument "{countryContext}"
+    And I call "{channel1}" with "clearContext"
+    And I call "{channel1}" with "getCurrentContext" using argument "fdc3.instrument"
+    Then "{result}" is empty
+    When I call "{channel1}" with "getCurrentContext" using argument "fdc3.country"
+    Then "{result}" is empty
+    And messaging will have posts
+      | payload.channelId | payload.contextType | matches_type              |
+      | channel-name      | {null}              | getOrCreateChannelRequest |
+      | channel-name      | {null}              | broadcastRequest          |
+      | channel-name      | {null}              | broadcastRequest          |
+      | channel-name      | {null}              | clearContextRequest       |
+      | channel-name      | fdc3.instrument     | getCurrentContextRequest  |
+      | channel-name      | fdc3.country        | getCurrentContextRequest  |

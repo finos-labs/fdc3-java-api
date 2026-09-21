@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Identifies an application, or instance of an application, and is used to target FDC3 API calls,
@@ -118,5 +119,47 @@ public class AppIdentifier {
         String desktopAgent = (String) map.get("desktopAgent");
         
         return new AppIdentifier(appID, instanceID, desktopAgent);
+    }
+
+    /**
+     * Compares the identity fields only: {@code appId}, {@code instanceId} and
+     * {@code desktopAgent}.
+     * <p>
+     * Deliberately accepts any {@code AppIdentifier}, including an {@link
+     * org.finos.fdc3.api.metadata.AppMetadata}, rather than requiring an exact class match.
+     * {@code findInstances} returns app metadata upcast to {@code AppIdentifier}, so requiring
+     * an exact match would mean a plain identifier could never be found in its result. The
+     * descriptive fields {@code AppMetadata} adds come from an app directory and describe an
+     * app rather than identifying it, which is why subclasses do not refine this comparison.
+     */
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof AppIdentifier)) {
+            return false;
+        }
+        AppIdentifier that = (AppIdentifier) other;
+        return Objects.equals(appID, that.appID)
+                && Objects.equals(instanceID, that.instanceID)
+                && Objects.equals(desktopAgent, that.desktopAgent);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(appID, instanceID, desktopAgent);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder text = new StringBuilder("AppIdentifier{appId=").append(appID);
+        if (instanceID != null) {
+            text.append(", instanceId=").append(instanceID);
+        }
+        if (desktopAgent != null) {
+            text.append(", desktopAgent=").append(desktopAgent);
+        }
+        return text.append('}').toString();
     }
 }

@@ -42,12 +42,12 @@ import org.finos.fdc3.api.metadata.DesktopAgentProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.DetachedSignature;
 import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.util.ContextMetadataMapper;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -68,12 +68,23 @@ class MetadataSchemaConformanceTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static JsonNode apiSchema;
 
+    /**
+     * Fails rather than skips when the schemas are absent.
+     * <p>
+     * This test exists to catch drift between the hand-written metadata types and the schemas
+     * that define them. Skipping when it cannot find the schemas would make that drift invisible
+     * exactly when the check matters: a green build would say the types conform when nothing had
+     * been compared at all.
+     */
     @BeforeAll
     static void loadApiSchema() throws IOException {
         Path apiDir = LoadSchemas.apiSchemaDirectory();
-        Assumptions.assumeTrue(apiDir != null, "API schemas not available; build fdc3-schema first");
+        assertNotNull(apiDir,
+                "API schemas not found. Run 'mvn install' in fdc3-schema before running these tests.");
+
         Path apiSchemaFile = apiDir.resolve("api.schema.json");
-        Assumptions.assumeTrue(Files.isRegularFile(apiSchemaFile), "api.schema.json not found in " + apiDir);
+        assertTrue(Files.isRegularFile(apiSchemaFile), () -> "api.schema.json not found in " + apiDir);
+
         apiSchema = MAPPER.readTree(apiSchemaFile.toFile());
     }
 
@@ -141,7 +152,8 @@ class MetadataSchemaConformanceTest {
         incoming.put("antiReplay", antiReplay);
         incoming.put("custom", custom);
 
-        ContextMetadata metadata = ContextMetadataMapper.fromWire(incoming, Instant.now());
+        ContextMetadata metadata = ContextMetadataMapper.fromWire(
+                incoming, Instant.now(), ContextMetadataMapper.MissingTraceId.LEAVE_ABSENT);
         metadata.setSource(new AppIdentifier("app-1", "instance-1"));
 
         assertEquals("trace-1", metadata.getTraceId());

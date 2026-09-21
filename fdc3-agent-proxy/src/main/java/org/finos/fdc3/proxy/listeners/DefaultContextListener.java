@@ -25,6 +25,7 @@ import org.finos.fdc3.api.metadata.ContextMetadata;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.util.ContextMetadataMapper;
+import org.finos.fdc3.proxy.util.Logger;
 
 /**
  * Default implementation of a context listener.
@@ -81,6 +82,12 @@ public class DefaultContextListener extends AbstractListener<ContextHandler> {
             channel.getCurrentContextWithMetadata(contextType)
                 .thenAccept(result -> {
                     result.ifPresent(cwm -> handler.handleContext(cwm.getContext(), cwm.getMetadata()));
+                })
+                .exceptionally(error -> {
+                    // Nothing awaits this replay, so report the failure rather than dropping it.
+                    Logger.error("Failed to replay current context of type {} from channel {}",
+                            contextType, this.channelId, error);
+                    return null;
                 });
         }
     }
@@ -131,7 +138,9 @@ public class DefaultContextListener extends AbstractListener<ContextHandler> {
         Map<String, Object> messageMeta = (Map<String, Object>) message.get("meta");
         Map<String, Object> payloadMetadata = (Map<String, Object>) payload.get("metadata");
         Object messageTimestamp = messageMeta != null ? messageMeta.get("timestamp") : null;
-        ContextMetadata metadata = ContextMetadataMapper.fromWire(payloadMetadata, messageTimestamp, messageMeta);
+        ContextMetadata metadata = ContextMetadataMapper.fromWire(
+                payloadMetadata, messageTimestamp, messageMeta,
+                ContextMetadataMapper.MissingTraceId.LEAVE_ABSENT);
         handler.handleContext(context, metadata);
     }
 }

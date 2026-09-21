@@ -114,11 +114,10 @@ public class TestMessaging extends AbstractMessaging {
 
     @Override
     public synchronized CompletionStage<Void> post(Map<String, Object> message) {
-    	System.out.println("Post: "+message.get("type"));
         allPosts.add(message);
-        
+
         String type = (String) message.get("type");
-        if (!"WCP6Goodbye".equals(type)) {
+        if (!isGoodbye(type)) {
             for (AutomaticResponse ar : automaticResponses) {
                 if (ar.filter(type)) {
                     return ar.action(message, this);
@@ -127,6 +126,10 @@ public class TestMessaging extends AbstractMessaging {
         }
         
         return CompletableFuture.completedFuture(null);
+    }
+
+    private static boolean isGoodbye(String type) {
+        return "WSCPGoodbye".equals(type) || "WCP6Goodbye".equals(type);
     }
 
     @Override
@@ -145,11 +148,11 @@ public class TestMessaging extends AbstractMessaging {
     @Override
     public CompletionStage<Void> disconnect() {
         Map<String, Object> bye = new HashMap<>();
-        bye.put("type", "WCP6Goodbye");
+        bye.put("type", "WSCPGoodbye");
         Map<String, Object> meta = new HashMap<>();
         meta.put("timestamp", OffsetDateTime.now().toString());
         bye.put("meta", meta);
-        return post(bye);
+        return post(bye).whenComplete((ignored, error) -> shutdownScheduler());
     }
 
     public void addAppIntentDetail(IntentDetail detail) {

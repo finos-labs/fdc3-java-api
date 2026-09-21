@@ -18,6 +18,7 @@ package org.finos.fdc3.proxy.channels;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
@@ -108,6 +109,11 @@ public class DefaultChannel implements Channel {
     @Override
     @JsonIgnore
     public CompletionStage<Void> broadcast(Context context, AppProvidableContextMetadata metadata) {
+        if (context == null || context.getType() == null) {
+            return CompletableFuture.failedFuture(
+                    new RuntimeException(ChannelError.MalformedContext.toString()));
+        }
+
         BroadcastRequest request = new BroadcastRequest();
         request.setType(BroadcastRequestType.BROADCAST_REQUEST);
         request.setMeta(messaging.createMeta());
@@ -185,14 +191,37 @@ public class DefaultChannel implements Channel {
                     Object messageTimestamp = typedResponse.getMeta() != null
                             ? typedResponse.getMeta().getTimestamp()
                             : null;
-                    ContextMetadata metadata = ContextMetadataMapper.fromWire(payloadMetadata, messageTimestamp);
+                    ContextMetadata metadata = ContextMetadataMapper.fromWire(
+                            payloadMetadata, messageTimestamp, ContextMetadataMapper.MissingTraceId.EMPTY);
                     return Optional.of(new ContextWithMetadata(context, metadata));
                 });
     }
 
     @Override
     @JsonIgnore
+    public CompletionStage<Void> clearContext(String contextType) {
+        ClearContextRequest request = new ClearContextRequest();
+        request.setType(ClearContextRequestType.CLEAR_CONTEXT_REQUEST);
+        request.setMeta(messaging.createMeta());
+
+        ClearContextRequestPayload payload = new ClearContextRequestPayload();
+        payload.setChannelID(id);
+        payload.setContextType(contextType);
+        request.setPayload(payload);
+
+        Map<String, Object> requestMap = messaging.getConverter().toMap(request);
+
+        return messaging.<Map<String, Object>>exchange(requestMap, "clearContextResponse", messageExchangeTimeout)
+                .thenApply(response -> null);
+    }
+
+    @Override
+    @JsonIgnore
     public CompletionStage<Listener> addContextListener(String contextType, ContextHandler handler) {
+        if (handler == null) {
+            return CompletableFuture.failedFuture(
+                    new RuntimeException(ChannelError.InvalidArguments.toString()));
+        }
         return addContextListenerInner(contextType, handler);
     }
 
@@ -209,19 +238,12 @@ public class DefaultChannel implements Channel {
 
     @Override
     public CompletionStage<Listener> addEventListener(String type, EventHandler handler) {
-        if ("contextCleared".equals(type) || type == null) {
-            ChannelEventListener listener = new ChannelEventListener(messaging, type, id, handler);
-            return listener.register().thenApply(v -> listener);
+        if (!"contextCleared".equals(type) && type != null) {
+            return CompletableFuture.failedFuture(
+                    new RuntimeException(ChannelError.InvalidArguments.toString()));
         }
-        throw new RuntimeException(ChannelError.InvalidArguments.toString());
-    }
-
-    /**
-     * Test compatibility overload: Cucumber handlers are often registered as {@link ContextHandler}
-     * but invalid-event-type scenarios invoke {@code addEventListener} with that same handler.
-     */
-    public CompletionStage<Listener> addEventListener(String type, ContextHandler handler) {
-        return addEventListener(type, event -> {});
+        ChannelEventListener listener = new ChannelEventListener(messaging, type, id, handler);
+        return listener.register().thenApply(v -> listener);
     }
 
     @SuppressWarnings("unchecked")

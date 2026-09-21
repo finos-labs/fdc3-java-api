@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Parses WSCP launch parameters from a custom protocol handler URL.
@@ -32,6 +33,10 @@ public final class ProtocolLaunchParams {
 
     /** Custom URL scheme registered with the OS for this application. */
     public static final String SCHEME = "fdc3-java-app";
+
+    /** Matches the {@code sharedSecret} query value, in either encoded or plain form. */
+    private static final Pattern SHARED_SECRET_VALUE =
+            Pattern.compile("(?i)(sharedSecret=)[^&#\\s]*");
 
     private final String webSocketUrl;
     private final String sharedSecret;
@@ -90,6 +95,20 @@ public final class ProtocolLaunchParams {
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Masks the {@code sharedSecret} query value so that a launch URL can be logged or shown
+     * on screen. The secret is the WSCP connection credential and must not be disclosed.
+     *
+     * @param uri a launch URI, which may be null
+     * @return the URI with the secret replaced, or null if the input was null
+     */
+    public static String redactLaunchUri(String uri) {
+        if (uri == null) {
+            return null;
+        }
+        return SHARED_SECRET_VALUE.matcher(uri).replaceAll("$1<redacted>");
     }
 
     private static boolean isSchemeUrl(String value) {

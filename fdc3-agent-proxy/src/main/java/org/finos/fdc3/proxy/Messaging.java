@@ -110,13 +110,5 @@ public interface Messaging {
      * @return the SchemaConverter instance
      */
     SchemaConverter getConverter();
-
-    /**
-     * Gets the instance UUID (shared secret) for this connection.
-     * This is used for reconnection to prove the app's identity.
-     *
-     * @return the instance UUID
-     */
-    String getInstanceUuid();
 }
 

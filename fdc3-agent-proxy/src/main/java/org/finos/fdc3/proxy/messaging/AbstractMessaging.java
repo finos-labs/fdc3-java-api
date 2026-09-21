@@ -19,6 +19,7 @@ package org.finos.fdc3.proxy.messaging;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -30,6 +31,7 @@ import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.RegisterableListener;
 import org.finos.fdc3.proxy.util.Logger;
+import org.finos.fdc3.proxy.util.MessageLogging;
 import org.finos.fdc3.schema.AddContextListenerRequestMeta;
 import org.finos.fdc3.schema.SchemaConverter;
 
@@ -39,10 +41,19 @@ import org.finos.fdc3.schema.SchemaConverter;
 public abstract class AbstractMessaging implements Messaging {
 
     private static final String API_TIMEOUT = "ApiTimeout";
-    private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+    /**
+     * Schedules the timeouts for {@link #waitFor}. Per instance and daemon so that an
+     * application which returns from {@code main} without calling {@link #disconnect()} still
+     * exits, and so that {@link #shutdownScheduler()} cannot affect another connection.
+     */
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread thread = new Thread(r, "fdc3-messaging-timeouts");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     private AppIdentifier appIdentifier;
-    private String instanceUuid;
     private final SchemaConverter converter;
 
     protected AbstractMessaging(AppIdentifier appIdentifier) {
@@ -51,21 +62,22 @@ public abstract class AbstractMessaging implements Messaging {
     }
 
     /**
-     * Sets the identity for this messaging instance after validation.
-     * This is called after the handshake when the Desktop Agent provides
-     * the validated AppIdentifier and instanceUuid.
-     *
-     * @param appIdentifier the validated app identifier
-     * @param instanceUuid the instance UUID (shared secret for reconnection)
+     * Stops the timeout scheduler. Subclasses must call this from {@link #disconnect()} so the
+     * thread does not outlive the connection.
      */
-    public void setIdentifier(AppIdentifier appIdentifier, String instanceUuid) {
-        this.appIdentifier = appIdentifier;
-        this.instanceUuid = instanceUuid;
+    protected void shutdownScheduler() {
+        scheduler.shutdownNow();
     }
 
-    @Override
-    public String getInstanceUuid() {
-        return instanceUuid;
+    /**
+     * Sets the identity for this messaging instance after validation.
+     * This is called after the handshake when the Desktop Agent provides
+     * the validated AppIdentifier.
+     *
+     * @param appIdentifier the validated app identifier
+     */
+    public void setIdentifier(AppIdentifier appIdentifier) {
+        this.appIdentifier = appIdentifier;
     }
 
     @Override
@@ -87,13 +99,14 @@ public abstract class AbstractMessaging implements Messaging {
         meta.setTimestamp(OffsetDateTime.now());
 
         if (appIdentifier != null) {
-            // Create a copy with desktopAgent set
-            AppIdentifier source = new AppIdentifier(
+            // Copied rather than shared so that a later setIdentifier cannot alter the source of
+            // a message already in flight. The desktopAgent field is carried through as the
+            // Desktop Agent supplied it during the handshake; inventing a value here would have
+            // every message misreport which agent it came from.
+            meta.setSource(new AppIdentifier(
                     appIdentifier.getAppId(),
                     appIdentifier.getInstanceId(),
-                    "testing-da"
-            );
-            meta.setSource(source);
+                    appIdentifier.getDesktopAgent()));
         }
         return meta;
     }
@@ -123,7 +136,10 @@ public abstract class AbstractMessaging implements Messaging {
 
             @Override
             public void action(Map<String, Object> message) {
-                Logger.debug("Received from DesktopAgent: {}", message);
+                Logger.debug("Received from DesktopAgent: {}", MessageLogging.summarise(message));
+                if (Logger.isPayloadEnabled()) {
+                    Logger.payload("Received from DesktopAgent: {}", MessageLogging.redact(message));
+                }
                 unregister(id);
                 if (timeoutFuture[0] != null) {
                     timeoutFuture[0].cancel(false);
@@ -177,8 +193,12 @@ public abstract class AbstractMessaging implements Messaging {
                 API_TIMEOUT
         );
 
-        Logger.debug("Sending to DesktopAgent: {}", message);
-        
+        Logger.debug("Sending to DesktopAgent: {}", MessageLogging.summarise(message));
+        if (Logger.isPayloadEnabled()) {
+            Logger.payload("Sending to DesktopAgent: {}", MessageLogging.redact(message));
+        }
+
+
         // Wait for post to complete before proceeding to ensure message is recorded
         return post(message).thenCompose(v -> promise).thenApply(response -> {
             Map<String, Object> resp = (Map<String, Object>) response;
@@ -188,10 +208,21 @@ public abstract class AbstractMessaging implements Messaging {
             }
             return response;
         }).exceptionally(error -> {
-            if (API_TIMEOUT.equals(error.getMessage())) {
+            // The stage hands us a CompletionException wrapping the real failure. Rethrowing it
+            // as-is would add a second wrapper, leaving callers to unwrap twice to reach the
+            // FDC3 error name they are supposed to match on.
+            Throwable cause = error instanceof CompletionException && error.getCause() != null
+                    ? error.getCause()
+                    : error;
+
+            if (API_TIMEOUT.equals(cause.getMessage())) {
                 Logger.error("Timed-out while waiting for {} with requestUuid {}", expectedTypeName, requestUuid);
             }
-            throw new RuntimeException(error);
+
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            }
+            throw new CompletionException(cause);
         });
     }
 

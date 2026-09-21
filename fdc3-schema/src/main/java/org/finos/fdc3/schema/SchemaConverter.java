@@ -1,3 +1,19 @@
+/**
+ * Copyright FINOS and its Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.finos.fdc3.schema;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -28,6 +44,7 @@ public class SchemaConverter {
         TYPE_MAP.put("addEventListenerRequest", AddEventListenerRequest.class);
         TYPE_MAP.put("addIntentListenerRequest", AddIntentListenerRequest.class);
         TYPE_MAP.put("broadcastRequest", BroadcastRequest.class);
+        TYPE_MAP.put("clearContextRequest", ClearContextRequest.class);
         TYPE_MAP.put("contextListenerUnsubscribeRequest", ContextListenerUnsubscribeRequest.class);
         TYPE_MAP.put("createPrivateChannelRequest", CreatePrivateChannelRequest.class);
         TYPE_MAP.put("eventListenerUnsubscribeRequest", EventListenerUnsubscribeRequest.class);
@@ -56,6 +73,7 @@ public class SchemaConverter {
         TYPE_MAP.put("addEventListenerResponse", AddEventListenerResponse.class);
         TYPE_MAP.put("addIntentListenerResponse", AddIntentListenerResponse.class);
         TYPE_MAP.put("broadcastResponse", BroadcastResponse.class);
+        TYPE_MAP.put("clearContextResponse", ClearContextResponse.class);
         TYPE_MAP.put("contextListenerUnsubscribeResponse", ContextListenerUnsubscribeResponse.class);
         TYPE_MAP.put("createPrivateChannelResponse", CreatePrivateChannelResponse.class);
         TYPE_MAP.put("eventListenerUnsubscribeResponse", EventListenerUnsubscribeResponse.class);
@@ -82,6 +100,7 @@ public class SchemaConverter {
         // Event messages
         TYPE_MAP.put("broadcastEvent", BroadcastEvent.class);
         TYPE_MAP.put("channelChangedEvent", ChannelChangedEvent.class);
+        TYPE_MAP.put("contextClearedEvent", ContextClearedEvent.class);
         TYPE_MAP.put("heartbeatEvent", HeartbeatEvent.class);
         TYPE_MAP.put("intentEvent", IntentEvent.class);
         TYPE_MAP.put("privateChannelOnAddContextListenerEvent", PrivateChannelOnAddContextListenerEvent.class);

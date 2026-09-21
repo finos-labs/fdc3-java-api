@@ -1,8 +1,8 @@
 # API schema overlay
 
-The build downloads `@finos/fdc3-schema` from npm (see `fdc3.schema.version` in
-`fdc3-schema/pom.xml`) and copies it into `target/schema-work`. The files in this
-directory are then copied over the top, replacing or adding to the published set.
+The build downloads `@finos/fdc3-schema` from npm (see `fdc3.npm.version` in the root
+`pom.xml`) and copies it into `target/schema-work`. The files in this directory are
+then copied over the top, replacing or adding to the published set.
 
 This directory exists only because the schemas below are not yet in a published
 release, and Java code in this project depends on what they add. Every file here is a

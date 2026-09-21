@@ -66,7 +66,8 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
                 listener = new PrivateChannelDisconnectEventListener(messaging, messageExchangeTimeout, getId(), handler);
                 break;
             default:
-                throw new RuntimeException(ChannelError.InvalidArguments.toString());
+                return CompletableFuture.failedFuture(
+                        new RuntimeException(ChannelError.InvalidArguments.toString()));
         }
 
         return listener.register().thenApply(v -> listener);

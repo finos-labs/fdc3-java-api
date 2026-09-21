@@ -1,3 +1,19 @@
+/**
+ * Copyright FINOS and its Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.finos.fdc3.schema;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -11,11 +27,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * 
  * In JSON Schema, optional fields (not in "required" array) that don't allow null
  * should be omitted when null, not serialized as "field": null.
- * These mix-ins apply @JsonInclude(NON_NULL) to those fields.
+ * These mix-ins apply {@code @JsonInclude(NON_NULL)} to those fields.
  * 
  * Note: Some types (AppIdentifier, AppMetadata, DisplayMetadata, Icon, Image, 
  * ImplementationMetadata, IntentMetadata) are now beans in fdc3-standard with 
- * @JsonInclude(NON_NULL) at class level, so they don't need mixins here.
+ * {@code @JsonInclude(NON_NULL)} at class level, so they don't need mixins here.
  */
 public final class NullHandlingMixin {
     

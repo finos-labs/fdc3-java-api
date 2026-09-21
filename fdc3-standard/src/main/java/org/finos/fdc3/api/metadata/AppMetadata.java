@@ -46,13 +46,6 @@ public class AppMetadata extends AppIdentifier {
     private Collection<Icon> icons;
     private Collection<Image> screenshots;
     private String resultType;
-    
-    /**
-     * The instance UUID (shared secret) for this connection.
-     * Used for reconnection to prove the app's identity.
-     * This is a local extension, not part of the standard FDC3 API.
-     */
-    private String instanceUuid;
 
     /**
      * Default constructor for Jackson deserialization.
@@ -162,12 +155,22 @@ public class AppMetadata extends AppIdentifier {
         this.resultType = resultType;
     }
 
-    @JsonProperty("instanceUuid")
-    public String getInstanceUuid() {
-        return instanceUuid;
-    }
-
-    public void setInstanceUuid(String instanceUuid) {
-        this.instanceUuid = instanceUuid;
+    /**
+     * Includes the descriptive fields for readability. Equality is deliberately not overridden:
+     * see {@link AppIdentifier#equals}, which compares identity only so that metadata returned
+     * by {@code findInstances} matches the identifier it describes.
+     */
+    @Override
+    public String toString() {
+        StringBuilder text = new StringBuilder("AppMetadata{appId=").append(getAppId());
+        if (getInstanceId() != null) {
+            text.append(", instanceId=").append(getInstanceId());
+        }
+        if (title != null) {
+            text.append(", title=").append(title);
+        } else if (name != null) {
+            text.append(", name=").append(name);
+        }
+        return text.append('}').toString();
     }
 }

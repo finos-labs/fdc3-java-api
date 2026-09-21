@@ -33,6 +33,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -127,7 +128,7 @@ public class ExampleApp extends JFrame {
             if (arg != null
                     && arg.regionMatches(true, 0, ProtocolLaunchParams.SCHEME + "://", 0,
                     ProtocolLaunchParams.SCHEME.length() + 3)) {
-                log("Protocol launch URL: " + arg);
+                log("Protocol launch URL: " + ProtocolLaunchParams.redactLaunchUri(arg));
             }
         }
 
@@ -190,8 +191,12 @@ public class ExampleApp extends JFrame {
             pendingOpenUri.set(uri);
             ExampleApp instance = activeInstance;
             if (instance != null) {
-                instance.log("Received open URI: " + uri);
-                SwingUtilities.invokeLater(() -> instance.handleOpenUri(uri));
+                // This callback does not run on the EDT, so all Swing access, including the
+                // log pane write, has to be dispatched.
+                SwingUtilities.invokeLater(() -> {
+                    instance.log("Received open URI: " + ProtocolLaunchParams.redactLaunchUri(uri));
+                    instance.handleOpenUri(uri);
+                });
             }
         });
     }
@@ -204,7 +209,8 @@ public class ExampleApp extends JFrame {
     private boolean applyProtocolLaunchUri(String uri, String source) {
         Optional<ProtocolLaunchParams> protocolLaunch = ProtocolLaunchParams.parseLaunchUri(uri);
         if (protocolLaunch.isEmpty()) {
-            log("No WSCP parameters parsed from " + source + ": " + uri);
+            log("No WSCP parameters parsed from " + source + ": "
+                    + ProtocolLaunchParams.redactLaunchUri(uri));
             return false;
         }
         applyProtocolLaunchParams(protocolLaunch.get(), source);
@@ -232,7 +238,7 @@ public class ExampleApp extends JFrame {
         }
         log("Launch arguments (" + launchArgs.length + "):");
         for (int i = 0; i < launchArgs.length; i++) {
-            log("  [" + i + "] " + launchArgs[i]);
+            log("  [" + i + "] " + ProtocolLaunchParams.redactLaunchUri(launchArgs[i]));
         }
     }
 
@@ -278,8 +284,7 @@ public class ExampleApp extends JFrame {
         }
         websocketUrl = url.trim();
 
-        String secret = JOptionPane.showInputDialog(this, "Enter shared secret:", "WSCP Shared Secret",
-                JOptionPane.QUESTION_MESSAGE);
+        String secret = promptForSharedSecret();
         if (secret == null || secret.trim().isEmpty()) {
             showConfigError("No shared secret provided.");
             return;
@@ -288,6 +293,34 @@ public class ExampleApp extends JFrame {
 
         log("Using user-provided WSCP connection config");
         connectToAgent();
+    }
+
+    /**
+     * Prompts for the shared secret using a masked field, so it is not echoed on screen and
+     * does not linger in the dialog's text.
+     *
+     * @return the entered secret, or null if the prompt was cancelled
+     */
+    private String promptForSharedSecret() {
+        JPasswordField secretField = new JPasswordField(32);
+        int choice = JOptionPane.showConfirmDialog(this,
+                new Object[] { "Enter shared secret:", secretField },
+                "WSCP Shared Secret",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+
+        if (choice != JOptionPane.OK_OPTION) {
+            return null;
+        }
+
+        char[] entered = secretField.getPassword();
+        try {
+            return new String(entered);
+        } finally {
+            // Clear the field's copy. The String above cannot be cleared, which is documented
+            // as a known limitation in the README.
+            Arrays.fill(entered, '\0');
+        }
     }
 
     private void showConfigError(String msg) {

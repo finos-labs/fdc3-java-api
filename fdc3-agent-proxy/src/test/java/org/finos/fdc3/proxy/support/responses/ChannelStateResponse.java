@@ -41,6 +41,7 @@ public class ChannelStateResponse implements AutomaticResponse {
     @Override
     public boolean filter(String messageType) {
         return "broadcastRequest".equals(messageType) ||
+               "clearContextRequest".equals(messageType) ||
                "joinUserChannelRequest".equals(messageType) ||
                "leaveCurrentChannelRequest".equals(messageType) ||
                "getCurrentChannelRequest".equals(messageType) ||
@@ -57,6 +58,9 @@ public class ChannelStateResponse implements AutomaticResponse {
         switch (type) {
             case "broadcastRequest":
                 response = createBroadcastResponse(message);
+                break;
+            case "clearContextRequest":
+                response = createClearContextResponse(message);
                 break;
             case "joinUserChannelRequest":
                 response = createJoinResponse(message);
@@ -106,6 +110,33 @@ public class ChannelStateResponse implements AutomaticResponse {
         return response;
     }
     
+    /**
+     * Drops the stored context so that a following {@code getCurrentContext} sees the channel as
+     * cleared. A null {@code contextType} clears every type, matching the standard.
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> createClearContextResponse(Map<String, Object> message) {
+        Map<String, Object> meta = (Map<String, Object>) message.get("meta");
+        Map<String, Object> payload = (Map<String, Object>) message.get("payload");
+        String channel = (String) payload.get("channelId");
+        String contextType = (String) payload.get("contextType");
+
+        List<Context> contexts = contextHistory.get(channel);
+        if (contexts != null) {
+            if (contextType == null) {
+                contexts.clear();
+            } else {
+                contexts.removeIf(context -> contextType.equals(context.getType()));
+            }
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("type", "clearContextResponse");
+        response.put("meta", createResponseMeta(meta));
+        response.put("payload", new HashMap<>());
+        return response;
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> createJoinResponse(Map<String, Object> message) {
         Map<String, Object> meta = (Map<String, Object>) message.get("meta");

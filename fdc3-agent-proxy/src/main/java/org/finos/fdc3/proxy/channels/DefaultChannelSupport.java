@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 import org.finos.fdc3.api.channel.Channel;
@@ -35,6 +36,7 @@ import org.finos.fdc3.api.ui.Connectable;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.listeners.DesktopAgentEventListener;
 import org.finos.fdc3.proxy.util.Logger;
+import org.finos.fdc3.proxy.util.ThrowIfUndefined;
 import org.finos.fdc3.schema.CreatePrivateChannelRequest;
 import org.finos.fdc3.schema.CreatePrivateChannelRequestPayload;
 import org.finos.fdc3.schema.CreatePrivateChannelRequestType;
@@ -68,7 +70,11 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
     private final long messageExchangeTimeout;
     private List<Channel> userChannels = null;
     private Channel currentChannel = null;
-    private final List<UserChannelContextListener> userChannelListeners = new ArrayList<>();
+    /**
+     * Mutated on caller threads and iterated on the WebSocket receive thread, so it has to be
+     * safe for concurrent traversal.
+     */
+    private final List<UserChannelContextListener> userChannelListeners = new CopyOnWriteArrayList<>();
     private boolean userChannelChangedListenerRegistered = false;
 
     public DefaultChannelSupport(Messaging messaging, ChannelSelector channelSelector, long messageExchangeTimeout) {
@@ -79,11 +85,15 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
         // Set up channel change callback
         channelSelector.setChannelChangeCallback(channelId -> {
             Logger.debug("Channel selector reports channel changed: {}", channelId);
-            if (channelId == null) {
-                leaveUserChannel();
-            } else {
-                joinUserChannel(channelId);
-            }
+            CompletionStage<Void> change = channelId == null
+                    ? leaveUserChannel()
+                    : joinUserChannel(channelId);
+            // The selector callback returns nothing, so log rather than discard the failure.
+            change.exceptionally(error -> {
+                Logger.error("Failed to change user channel to {} on behalf of the channel selector",
+                        channelId, error);
+                return null;
+            });
         });
     }
 
@@ -160,6 +170,11 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
                     notify = notify.thenCompose(v -> listener.changeChannel());
                 }
                 return notify;
+            }).exceptionally(error -> {
+                // This chain is not returned to anyone, so without this the failure would be
+                // discarded and the channel change would appear to have succeeded.
+                Logger.error("Failed to apply user channel change to {}", newChannelId, error);
+                return null;
             });
         }, "userChannelChanged").thenApply(listener -> null);
     }
@@ -171,8 +186,14 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
 
     @Override
     public CompletionStage<Listener> addEventListener(EventHandler handler, String type) {
-        DesktopAgentEventListener listener = new DesktopAgentEventListener(
-                messaging, messageExchangeTimeout, type, handler);
+        DesktopAgentEventListener listener;
+        try {
+            listener = new DesktopAgentEventListener(
+                    messaging, messageExchangeTimeout, type, handler);
+        } catch (RuntimeException e) {
+            // The constructor rejects unsupported event types. Surface that as a rejected stage.
+            return CompletableFuture.failedFuture(e);
+        }
         return listener.register().thenApply(v -> listener);
     }
 
@@ -191,6 +212,19 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
 
         return messaging.<Map<String, Object>>exchange(requestMap, "getCurrentChannelResponse", messageExchangeTimeout)
                 .thenApply(response -> {
+                    // Checked against the raw payload rather than the converted object, because
+                    // conversion collapses "channel was omitted" and "channel was null" into the
+                    // same Java null. The standard requires an explicit null when the app is not
+                    // joined to a channel, so only the omission is a Desktop Agent fault.
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> rawPayload = (Map<String, Object>) response.get("payload");
+                    ThrowIfUndefined.throwIfUndefined(
+                            rawPayload == null || rawPayload.containsKey("channel") ? Boolean.TRUE : null,
+                            "Invalid response from Desktop Agent to getCurrentChannel "
+                                    + "(channel should be explicitly null if no channel is set)!",
+                            response,
+                            ChannelError.NoChannelFound.toString());
+
                     GetCurrentChannelResponse typedResponse = messaging.getConverter()
                             .convertValue(response, GetCurrentChannelResponse.class);
 
@@ -246,6 +280,11 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
 
     @Override
     public CompletionStage<Channel> getOrCreate(String id) {
+        if (id == null || id.trim().isEmpty()) {
+            return CompletableFuture.failedFuture(
+                    new RuntimeException(ChannelError.InvalidArguments.toString()));
+        }
+
         GetOrCreateChannelRequest request = new GetOrCreateChannelRequest();
         request.setType(GetOrCreateChannelRequestType.GET_OR_CREATE_CHANNEL_REQUEST);
         request.setMeta(messaging.createMeta());
@@ -261,10 +300,11 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
                     GetOrCreateChannelResponse typedResponse = messaging.getConverter()
                             .convertValue(response, GetOrCreateChannelResponse.class);
 
-                    if (typedResponse.getPayload() == null ||
-                            typedResponse.getPayload().getChannel() == null) {
-                        throw new RuntimeException(ChannelError.CreationFailed.toString());
-                    }
+                    ThrowIfUndefined.throwIfUndefined(
+                            typedResponse.getPayload() == null ? null : typedResponse.getPayload().getChannel(),
+                            "Invalid response from Desktop Agent to getOrCreate!",
+                            response,
+                            ChannelError.CreationFailed.toString());
 
                     org.finos.fdc3.schema.Channel schemaChannel = typedResponse.getPayload().getChannel();
                     // Schema now uses fdc3-standard DisplayMetadata directly
@@ -288,10 +328,13 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
                     CreatePrivateChannelResponse typedResponse = messaging.getConverter()
                             .convertValue(response, CreatePrivateChannelResponse.class);
 
-                    if (typedResponse.getPayload() == null ||
-                            typedResponse.getPayload().getPrivateChannel() == null) {
-                        throw new RuntimeException(ChannelError.CreationFailed.toString());
-                    }
+                    ThrowIfUndefined.throwIfUndefined(
+                            typedResponse.getPayload() == null
+                                    ? null
+                                    : typedResponse.getPayload().getPrivateChannel(),
+                            "Invalid response from Desktop Agent to createPrivateChannel!",
+                            response,
+                            ChannelError.CreationFailed.toString());
 
                     String id = typedResponse.getPayload().getPrivateChannel().getID();
                     return new DefaultPrivateChannel(messaging, messageExchangeTimeout, id);

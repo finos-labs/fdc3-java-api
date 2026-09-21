@@ -106,7 +106,6 @@ public class ImplementationMetadata {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class OptionalFeatures {
 
-        private boolean originatingAppMetadata;
         private boolean userChannelMembershipAPIs;
         private boolean desktopAgentBridging;
 
@@ -114,19 +113,6 @@ public class ImplementationMetadata {
          * Default constructor for Jackson deserialization.
          */
         public OptionalFeatures() {
-        }
-
-        /**
-         * Used to indicate whether the exposure of 'originating app metadata' for
-         * context and intent messages is supported by the Desktop Agent.
-         */
-        @JsonProperty("OriginatingAppMetadata")
-        public boolean isOriginatingAppMetadata() {
-            return originatingAppMetadata;
-        }
-
-        public void setOriginatingAppMetadata(boolean originatingAppMetadata) {
-            this.originatingAppMetadata = originatingAppMetadata;
         }
 
         /**

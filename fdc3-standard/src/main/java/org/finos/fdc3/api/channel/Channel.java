@@ -107,6 +107,24 @@ public interface Channel extends IntentResult {
   CompletionStage<Optional<ContextWithMetadata>> getCurrentContextWithMetadata(String contextType);
 
   /**
+   * Clears context from the channel and fires the `contextCleared` event, notifying existing
+   * listeners that the context was cleared. Listeners added afterwards, and calls to
+   * `getCurrentContext`, will not receive any existing context until new context is broadcast
+   * to the channel.
+   *
+   * If a `contextType` is provided, only contexts of that type are cleared. If it is null, all
+   * contexts are cleared.
+   *
+   * @param contextType the context type to clear, or null to clear every type
+   */
+  CompletionStage<Void> clearContext(String contextType);
+
+  /** Clears every context type from the channel. */
+  default CompletionStage<Void> clearContext() {
+    return clearContext(null);
+  }
+
+  /**
    * Adds a listener for incoming contexts of the specified _context type_ whenever a broadcast happens on this channel.
    *
    * If, when this function is called, the channel already contains context that would be passed to the listener it is NOT called or passed this context automatically (this behavior differs from that of the [`fdc3.addContextListener`](DesktopAgent#addcontextlistener) function). Apps wishing to access to the current context of the channel should instead call the `getCurrentContext(contextType)` function.

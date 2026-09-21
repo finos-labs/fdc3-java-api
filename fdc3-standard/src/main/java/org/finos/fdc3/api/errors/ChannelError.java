@@ -1,4 +1,5 @@
 /**
+ * SPDX-License-Identifier: Apache-2.0
  * Copyright FINOS and its Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,23 +17,75 @@
 
 package org.finos.fdc3.api.errors;
 
-public enum ChannelError
-{
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
+/**
+ * Errors that can be encountered when calling channel-related methods.
+ */
+public enum ChannelError {
+
+    /**
+     * Returned if the specified channel is not found when attempting to join a channel via
+     * {@code joinUserChannel}.
+     */
     NoChannelFound("NoChannelFound"),
+
+    /**
+     * Should be returned when a request to join a user channel, or to retrieve a Channel object
+     * via {@code joinUserChannel} or {@code getOrCreateChannel}, is denied.
+     */
     AccessDenied("AccessDenied"),
+
+    /**
+     * Should be returned when a channel cannot be created or retrieved via
+     * {@code getOrCreateChannel}.
+     */
     CreationFailed("CreationFailed"),
+
+    /**
+     * Returned if a call to {@code broadcast} is made with an invalid context argument. Contexts
+     * should be objects with at least a {@code type} field that has a string value.
+     */
     MalformedContext("MalformedContext"),
+
+    /** Returned if a timeout occurs before any channel-related API call is resolved. */
     ApiTimeout("ApiTimeout"),
+
+    /** Returned when incorrect arguments are passed to API calls. */
     InvalidArguments("InvalidArguments");
-private final String value;
 
-private ChannelError(String value)
-{
-    this.value = value;
-}
+    private final String value;
 
-public String toString()
-{
-    return this.value;
-}
+    ChannelError(String value) {
+        this.value = value;
+    }
+
+    /** The value carried in DACP messages, which is not always the constant name. */
+    @JsonValue
+    public String getValue() {
+        return value;
+    }
+
+    /**
+     * Maps a value received from a Desktop Agent back to a constant.
+     *
+     * @param value the value as it appears on the wire
+     * @return the matching constant
+     * @throws IllegalArgumentException if no constant carries that value
+     */
+    @JsonCreator
+    public static ChannelError fromValue(String value) {
+        for (ChannelError candidate : values()) {
+            if (candidate.value.equals(value)) {
+                return candidate;
+            }
+        }
+        throw new IllegalArgumentException("Unknown ChannelError value: " + value);
+    }
+
+    @Override
+    public String toString() {
+        return value;
+    }
 }

@@ -1,4 +1,5 @@
 /**
+ * SPDX-License-Identifier: Apache-2.0
  * Copyright FINOS and its Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,19 +17,60 @@
 
 package org.finos.fdc3.api.errors;
 
-public enum ResultError
-{
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
+/**
+ * Errors that can be encountered when retrieving an intent result.
+ */
+public enum ResultError {
+
+    /**
+     * Returned if the intent handler exited without returning a valid result: a Context, a
+     * Channel, or nothing at all.
+     */
     NoResultReturned("NoResultReturned"),
-    IntentHandlerRejected("IntentHandlerRejected");
-private final String value;
 
-private ResultError(String value)
-{
-    this.value = value;
-}
+    /**
+     * Returned if the intent handler function processing the raised intent throws an error or
+     * rejects the promise it returned.
+     */
+    IntentHandlerRejected("IntentHandlerRejected"),
 
-public String toString()
-{
-    return this.value;
-}
+    /** Returned if a timeout occurs before the {@code getResult()} call is resolved. */
+    ApiTimeout("ApiTimeout");
+
+    private final String value;
+
+    ResultError(String value) {
+        this.value = value;
+    }
+
+    /** The value carried in DACP messages, which is not always the constant name. */
+    @JsonValue
+    public String getValue() {
+        return value;
+    }
+
+    /**
+     * Maps a value received from a Desktop Agent back to a constant.
+     *
+     * @param value the value as it appears on the wire
+     * @return the matching constant
+     * @throws IllegalArgumentException if no constant carries that value
+     */
+    @JsonCreator
+    public static ResultError fromValue(String value) {
+        for (ResultError candidate : values()) {
+            if (candidate.value.equals(value)) {
+                return candidate;
+            }
+        }
+        throw new IllegalArgumentException("Unknown ResultError value: " + value);
+    }
+
+    @Override
+    public String toString() {
+        return value;
+    }
 }

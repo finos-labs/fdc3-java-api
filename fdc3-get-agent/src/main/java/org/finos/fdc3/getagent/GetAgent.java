@@ -59,7 +59,8 @@ public class GetAgent {
         Logger.info("Initiating Desktop Agent connection to {}", params.getWebSocketUrl());
 
         AppIdentifier tempAppId = new AppIdentifier("pending", null, null);
-        WebSocketMessaging messaging = new WebSocketMessaging(params.getWebSocketUrl(), tempAppId);
+        WebSocketMessaging messaging = new WebSocketMessaging(
+                params.getWebSocketUrl(), tempAppId, params.getTimeoutMs());
 
         return messaging.connect()
                 .thenCompose(v -> performHandshake(messaging, params))
@@ -230,9 +231,6 @@ public class GetAgent {
         if (optFeatures != null) {
             ImplementationMetadata.OptionalFeatures features =
                     new ImplementationMetadata.OptionalFeatures();
-            if (optFeatures.get("OriginatingAppMetadata") != null) {
-                features.setOriginatingAppMetadata((Boolean) optFeatures.get("OriginatingAppMetadata"));
-            }
             if (optFeatures.get("UserChannelMembershipAPIs") != null) {
                 features.setUserChannelMembershipAPIs(
                         (Boolean) optFeatures.get("UserChannelMembershipAPIs"));
@@ -256,7 +254,7 @@ public class GetAgent {
                 validationResult.instanceId,
                 null);
 
-        messaging.setIdentifier(appIdentifier, validationResult.instanceId);
+        messaging.setIdentifier(appIdentifier);
 
         DefaultHeartbeatSupport heartbeatSupport = new DefaultHeartbeatSupport(
                 messaging, params.getHeartbeatIntervalMs());
@@ -281,7 +279,12 @@ public class GetAgent {
                 appSupport,
                 connectables);
 
-        proxy.connect();
+        proxy.connect().exceptionally(error -> {
+            // getAgent() has already resolved by this point, so the only useful thing left is to
+            // say why the proxy did not finish connecting.
+            Logger.error("DesktopAgent proxy failed to complete connection setup", error);
+            return null;
+        });
 
         Logger.info("DesktopAgent proxy created successfully");
         return proxy;

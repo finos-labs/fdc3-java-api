@@ -34,7 +34,6 @@ public class GetInfoResponse implements AutomaticResponse {
         
         Map<String, Object> optionalFeatures = new HashMap<>();
         optionalFeatures.put("DesktopAgentBridging", false);
-        optionalFeatures.put("OriginatingAppMetadata", true);
         optionalFeatures.put("UserChannelMembershipAPIs", true);
         
         Map<String, Object> implementationMetadata = new HashMap<>();

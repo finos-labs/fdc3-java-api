@@ -34,6 +34,7 @@ import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.proxy.util.ContextMetadataMapper;
 import org.finos.fdc3.proxy.Messaging;
 import org.finos.fdc3.proxy.util.Logger;
+import org.finos.fdc3.proxy.util.ThrowIfUndefined;
 import org.finos.fdc3.schema.*;
 
 /**
@@ -101,10 +102,13 @@ public class DefaultAppSupport implements AppSupport {
                     GetAppMetadataResponse typedResponse = messaging.getConverter()
                             .convertValue(response, GetAppMetadataResponse.class);
                     
-                    if (typedResponse.getPayload() == null || 
-                        typedResponse.getPayload().getAppMetadata() == null) {
-                        throw new RuntimeException(ResolveError.TargetAppUnavailable.toString());
-                    }
+                    ThrowIfUndefined.throwIfUndefined(
+                            typedResponse.getPayload() == null
+                                    ? null
+                                    : typedResponse.getPayload().getAppMetadata(),
+                            "Invalid response from Desktop Agent to getAppMetadata!",
+                            response,
+                            ResolveError.TargetAppUnavailable.toString());
 
                     // Schema now uses fdc3-standard AppMetadata directly
                     return typedResponse.getPayload().getAppMetadata();
@@ -137,10 +141,13 @@ public class DefaultAppSupport implements AppSupport {
                     OpenResponse typedResponse = messaging.getConverter()
                             .convertValue(response, OpenResponse.class);
                     
-                    if (typedResponse.getPayload() == null || 
-                        typedResponse.getPayload().getAppIdentifier() == null) {
-                        throw new RuntimeException(OpenError.AppNotFound.toString());
-                    }
+                    ThrowIfUndefined.throwIfUndefined(
+                            typedResponse.getPayload() == null
+                                    ? null
+                                    : typedResponse.getPayload().getAppIdentifier(),
+                            "Invalid response from Desktop Agent to open!",
+                            response,
+                            OpenError.AppNotFound.toString());
 
                     return typedResponse.getPayload().getAppIdentifier();
                 });
@@ -177,12 +184,7 @@ public class DefaultAppSupport implements AppSupport {
                         typedResponse.getPayload().getImplementationMetadata() != null) {
                         // Schema now uses fdc3-standard ImplementationMetadata directly
                         ImplementationMetadata metadata = typedResponse.getPayload().getImplementationMetadata();
-                        
-                        // Populate instanceUuid from messaging layer (local extension for reconnection)
-                        if (metadata.getAppMetadata() != null && messaging.getInstanceUuid() != null) {
-                            metadata.getAppMetadata().setInstanceUuid(messaging.getInstanceUuid());
-                        }
-                        
+
                         return metadata;
                     } else {
                         Logger.error("Invalid response from Desktop Agent to getInfo!");

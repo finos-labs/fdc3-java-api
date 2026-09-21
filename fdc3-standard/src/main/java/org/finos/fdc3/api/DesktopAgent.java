@@ -115,7 +115,7 @@ public interface DesktopAgent {
      * the app
      * will return a channel) or a string indicating a channel that returns a
      * specific type,
-     * e.g. "channel<fdc3.instrument>".
+     * e.g. {@code channel<fdc3.instrument>}.
      *
      * If intent resolution to an app returning a channel is requested, the desktop
      * agent
@@ -178,13 +178,13 @@ public interface DesktopAgent {
      * // }
      *
      * const appIntent = await fdc3.findIntent("QuoteStream", instrument,
-     * "channel<fdc3.Quote>");
+     * "channel&lt;fdc3.Quote&gt;");
      *
      * // returns only apps that return a channel which will receive the specified
      * input and result types:
      * // {
      * // intent: { name: "QuoteStream", displayName: "Quotes stream" },
-     * // apps: [{ appId: "MyOMS", resultType: "channel<fdc3.Quote>"}]
+     * // apps: [{ appId: "MyOMS", resultType: "channel&lt;fdc3.Quote&gt;"}]
      * // }
      * ```
      */
@@ -218,7 +218,7 @@ public interface DesktopAgent {
      * (which indicates that the app
      * should return a channel) or a string indicating a channel that returns a
      * specific type,
-     * e.g. "channel<fdc3.instrument>". If intent resolution to an app returning a
+     * e.g. {@code channel<fdc3.instrument>}. If intent resolution to an app returning a
      * channel is requested without
      * a specified context type, the desktop agent MUST also include apps that are
      * registered as returning a
@@ -397,24 +397,28 @@ public interface DesktopAgent {
      * }
      * ```
      */
-    CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app);
-
-    CompletionStage<IntentResolution> raiseIntent(
-            String intent, Context context, AppIdentifier app, AppProvidableContextMetadata metadata);
-
-    CompletionStage<IntentResolution> raiseIntent(
-            String intent, Context context, AppIdentifier app, Boolean newInstance);
-
-    CompletionStage<IntentResolution> raiseIntent(
-            String intent, Context context, AppIdentifier app, Boolean newInstance, AppProvidableContextMetadata metadata);
+    /**
+     * @param intent      the name of the intent to raise
+     * @param context     the context to send with the intent
+     * @param app         the app or app instance to target, or null to let the agent resolve
+     * @param newInstance true to require a new instance of the target app, or null for the
+     *                    agent's default behaviour
+     * @param metadata    optional metadata to pass to the receiving app
+     */
+    CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app,
+            Boolean newInstance, AppProvidableContextMetadata metadata);
 
     default CompletionStage<IntentResolution> raiseIntent(String intent, Context context) {
-        return raiseIntent(intent, context, (AppIdentifier) null);
+        return raiseIntent(intent, context, null, null, null);
     }
 
-    default CompletionStage<IntentResolution> raiseIntent(
-            String intent, Context context, AppProvidableContextMetadata metadata) {
-        return raiseIntent(intent, context, (AppIdentifier) null, metadata);
+    default CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app) {
+        return raiseIntent(intent, context, app, null, null);
+    }
+
+    default CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app,
+            Boolean newInstance) {
+        return raiseIntent(intent, context, app, newInstance, null);
     }
 
     /**
@@ -456,23 +460,27 @@ public interface DesktopAgent {
      * await fdc3.raiseIntentForContext(context, targetAppIdentifier);
      * ```
      */
-    CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app);
-
-    CompletionStage<IntentResolution> raiseIntentForContext(
-            Context context, AppIdentifier app, AppProvidableContextMetadata metadata);
-
-    CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app, Boolean newInstance);
-
-    CompletionStage<IntentResolution> raiseIntentForContext(
-            Context context, AppIdentifier app, Boolean newInstance, AppProvidableContextMetadata metadata);
+    /**
+     * @param context     the context whose type is used to resolve candidate intents
+     * @param app         the app or app instance to target, or null to let the agent resolve
+     * @param newInstance true to require a new instance of the target app, or null for the
+     *                    agent's default behaviour
+     * @param metadata    optional metadata to pass to the receiving app
+     */
+    CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app,
+            Boolean newInstance, AppProvidableContextMetadata metadata);
 
     default CompletionStage<IntentResolution> raiseIntentForContext(Context context) {
-        return raiseIntentForContext(context, (AppIdentifier) null);
+        return raiseIntentForContext(context, null, null, null);
     }
 
-    default CompletionStage<IntentResolution> raiseIntentForContext(
-            Context context, AppProvidableContextMetadata metadata) {
-        return raiseIntentForContext(context, (AppIdentifier) null, metadata);
+    default CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app) {
+        return raiseIntentForContext(context, app, null, null);
+    }
+
+    default CompletionStage<IntentResolution> raiseIntentForContext(Context context, AppIdentifier app,
+            Boolean newInstance) {
+        return raiseIntentForContext(context, app, newInstance, null);
     }
 
     /**
@@ -512,7 +520,7 @@ public interface DesktopAgent {
      *
      * //Handle a raised intent and return Context data via a promise
      * fdc3.addIntentListener("CreateOrder", (context) => {
-     * return new Promise<Context>((resolve) => {
+     * return new Promise&lt;Context&gt;((resolve) =&gt; {
      * // go create the order
      * resolve({type: "fdc3.order", id: { "orderId": 1234}});
      * });
@@ -723,12 +731,13 @@ public interface DesktopAgent {
     CompletionStage<PrivateChannel> createPrivateChannel();
 
     /**
-     * Optional function that returns the `Channel` object for the current User
-     * channel membership. In most cases, an application's membership of channels
-     * SHOULD be managed via UX provided to the application by the desktop agent,
-     * rather than calling this function directly.
+     * Optional function that returns the {@code Channel} object for the current User channel
+     * membership. In most cases an application's membership of channels SHOULD be managed
+     * through UX provided to the application by the Desktop Agent, rather than by calling this
+     * function directly.
      *
-     * Returns `null` if the app is not joined to a channel.
+     * @return an empty {@code Optional} if the app is not joined to a User channel, otherwise
+     *         the channel it is joined to
      */
     CompletionStage<Optional<Channel>> getCurrentChannel();
 
@@ -768,7 +777,7 @@ public interface DesktopAgent {
      * ```js
      * import {compareVersionNumbers, versionIsAtLeast} from '@finos/fdc3';
      *
-     * if (fdc3.getInfo && versionIsAtLeast(await fdc3.getInfo(), "1.2")) {
+     * if (fdc3.getInfo &amp;&amp; versionIsAtLeast(await fdc3.getInfo(), "1.2")) {
      * await fdc3.raiseIntentForContext(context);
      * } else {
      * await fdc3.raiseIntent("ViewChart", context);

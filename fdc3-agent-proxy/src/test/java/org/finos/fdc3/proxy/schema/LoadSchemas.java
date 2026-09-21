@@ -83,13 +83,24 @@ public final class LoadSchemas {
                 return schemaValidators;
             }
             Path apiDir = resolveApiSchemaDirectory();
-            if (apiDir == null || !Files.isDirectory(apiDir)) {
+            if (apiDir == null) {
                 throw new IllegalStateException(
-                        "Schema directory not found. Build fdc3-schema first (target/schema-work/api) or use FDC3 monorepo schemas at "
-                                + "../../../FDC3/packages/fdc3-schema/schemas/api");
+                        "API schemas not found at " + SCHEMA_WORK_DIR.resolve("api")
+                                + ". Build fdc3-schema first, which populates schema-work with the"
+                                + " npm-published schemas plus the unreleased overlay. Building"
+                                + " this module alone against a cleaned fdc3-schema/target is not"
+                                + " enough.");
             }
 
-            Map<String, String> schemasByIri = loadSchemaDocuments(apiDir, resolveContextSchemaFile());
+            Path contextSchema = resolveContextSchemaFile();
+            if (contextSchema == null) {
+                throw new IllegalStateException(
+                        "Context schema not found at "
+                                + SCHEMA_WORK_DIR.resolve("context/context.schema.json")
+                                + ". Build fdc3-schema first.");
+            }
+
+            Map<String, String> schemasByIri = loadSchemaDocuments(apiDir, contextSchema);
 
             JsonSchemaFactory factory = JsonSchemaFactory.builder(
                             JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7))
@@ -178,33 +189,30 @@ public final class LoadSchemas {
         return ordered;
     }
 
+    /**
+     * The directory the {@code fdc3-schema} build populates with the npm-published schemas and
+     * then the unreleased overlay on top. It is deliberately the only location consulted.
+     * <p>
+     * Earlier versions searched a list of fallbacks: a sibling checkout of the FDC3 monorepo,
+     * and the raw npm download under {@code npm-work/node_modules}. Both were harmful, because
+     * a test that cannot find the schemas it was written against does not fail — it silently
+     * validates against a different set. The npm download in particular has the overlay
+     * missing by construction, so schemas carrying unreleased fields such as
+     * {@code raiseIntentRequest.newInstance} appear not to permit them, and conformance results
+     * then depend on whether {@code fdc3-schema} happened to be rebuilt. Resolving one path and
+     * failing loudly is what makes these tests mean anything.
+     */
+    private static final Path SCHEMA_WORK_DIR = Paths.get("../fdc3-schema/target/schema-work");
+
     private static Path resolveApiSchemaDirectory() {
-        Path[] candidates = {
-                Paths.get("../fdc3-schema/target/schema-work/api"),
-                Paths.get("../../../FDC3/packages/fdc3-schema/schemas/api"),
-                Paths.get("../fdc3-schema/target/npm-work/node_modules/@finos/fdc3-schema/dist/schemas/api"),
-                Paths.get("../fdc3-schema/schemas/api"),
-        };
-        for (Path candidate : candidates) {
-            if (Files.isDirectory(candidate)) {
-                return candidate.normalize();
-            }
-        }
-        return null;
+        Path apiDir = SCHEMA_WORK_DIR.resolve("api");
+        return Files.isDirectory(apiDir) ? apiDir.normalize() : null;
     }
 
+    /** Locates the context schema, from the same single source as the API schemas. */
     private static Path resolveContextSchemaFile() {
-        Path[] candidates = {
-                Paths.get("../fdc3-schema/target/schema-work/context/context.schema.json"),
-                Paths.get("../../../FDC3/packages/fdc3-context/schemas/context/context.schema.json"),
-                Paths.get("../fdc3-context/target/npm-work/node_modules/@finos/fdc3-context/dist/schemas/context/context.schema.json"),
-        };
-        for (Path candidate : candidates) {
-            if (Files.isRegularFile(candidate)) {
-                return candidate.normalize();
-            }
-        }
-        return null;
+        Path contextSchema = SCHEMA_WORK_DIR.resolve("context/context.schema.json");
+        return Files.isRegularFile(contextSchema) ? contextSchema.normalize() : null;
     }
 
     private static String schemaIdFromFile(JsonNode schemaJson, String filename) {

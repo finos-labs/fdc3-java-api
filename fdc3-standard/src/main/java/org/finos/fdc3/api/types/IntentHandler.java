@@ -54,8 +54,8 @@ public interface IntentHandler {
      *               {@link org.finos.fdc3.api.channel.PrivateChannel} — a channel over which
      *               further responses will be streamed</li>
      *         </ul>
-     *         If the stage completes exceptionally, the raiser's {@code getResult()} promise
-     *         is rejected with {@link org.finos.fdc3.api.errors.ResultError#IntentHandlerRejected}.
+     *         If the stage completes exceptionally, no {@code intentResultRequest} is sent
+     *         ({@code IntentHandlerRejected} is a Desktop Agent concern, not reportable over DACP).
      */
     CompletionStage<Optional<Object>> handleIntent(Context context, ContextMetadata contextMetadata);
 
