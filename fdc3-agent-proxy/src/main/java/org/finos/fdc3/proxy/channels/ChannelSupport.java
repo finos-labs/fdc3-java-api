@@ -77,11 +77,11 @@ public interface ChannelSupport {
     /**
      * Add a context listener.
      *
-     * @param handler the context handler
-     * @param type    the context type to listen for, or null for all types
+     * @param handler      the context handler
+     * @param contextTypes types to listen for, or {@code null} for all types
      * @return a CompletionStage containing the listener
      */
-    CompletionStage<Listener> addContextListener(ContextHandler handler, String type);
+    CompletionStage<Listener> addContextListener(ContextHandler handler, List<String> contextTypes);
 
     /**
      * Add an event listener.

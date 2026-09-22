@@ -16,6 +16,7 @@
 
 package org.finos.fdc3.proxy.channels;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -24,9 +25,10 @@ import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.channel.PrivateChannel;
 import org.finos.fdc3.api.errors.ChannelError;
 import org.finos.fdc3.api.types.ContextHandler;
+import org.finos.fdc3.api.types.EventHandler;
+import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
-import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.proxy.listeners.AbstractPrivateChannelEventListener;
 import org.finos.fdc3.proxy.listeners.DefaultContextListener;
 import org.finos.fdc3.proxy.listeners.PrivateChannelAddContextEventListener;
@@ -46,7 +48,7 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
 
     @Override
     public CompletionStage<Listener> addEventListener(String type, EventHandler handler) {
-        if ("contextCleared".equals(type)) {
+        if (FDC3Event.Type.CONTEXT_CLEARED.getValue().equals(type)) {
             return super.addEventListener(type, handler);
         }
 
@@ -55,26 +57,31 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
         }
 
         AbstractPrivateChannelEventListener listener;
-        switch (type) {
-            case "addContextListener":
-                listener = new PrivateChannelAddContextEventListener(messaging, messageExchangeTimeout, getId(), handler);
-                break;
-            case "unsubscribe":
-                listener = new PrivateChannelUnsubscribeEventListener(messaging, messageExchangeTimeout, getId(), handler);
-                break;
-            case "disconnect":
-                listener = new PrivateChannelDisconnectEventListener(messaging, messageExchangeTimeout, getId(), handler);
-                break;
-            default:
-                return CompletableFuture.failedFuture(
-                        new RuntimeException(ChannelError.InvalidArguments.toString()));
+        try {
+            switch (FDC3Event.Type.fromValue(type)) {
+                case ADD_CONTEXT_LISTENER:
+                    listener = new PrivateChannelAddContextEventListener(messaging, messageExchangeTimeout, getId(), handler);
+                    break;
+                case ON_UNSUBSCRIBE:
+                    listener = new PrivateChannelUnsubscribeEventListener(messaging, messageExchangeTimeout, getId(), handler);
+                    break;
+                case ON_DISCONNECT:
+                    listener = new PrivateChannelDisconnectEventListener(messaging, messageExchangeTimeout, getId(), handler);
+                    break;
+                default:
+                    return CompletableFuture.failedFuture(
+                            new RuntimeException(ChannelError.InvalidArguments.toString()));
+            }
+        } catch (IllegalArgumentException e) {
+            return CompletableFuture.failedFuture(
+                    new RuntimeException(ChannelError.InvalidArguments.toString()));
         }
 
         return listener.register().thenApply(v -> listener);
     }
 
     private CompletionStage<Listener> addAllEventListener(EventHandler handler) {
-        return super.addEventListener("contextCleared", handler).thenCompose(channelListener -> {
+        return super.addEventListener(FDC3Event.Type.CONTEXT_CLEARED.getValue(), handler).thenCompose(channelListener -> {
             PrivateChannelNullEventListener privateChannelListener = new PrivateChannelNullEventListener(
                     messaging, messageExchangeTimeout, getId(), handler);
             return privateChannelListener.register()
@@ -116,12 +123,13 @@ public class DefaultPrivateChannel extends DefaultChannel implements PrivateChan
     }
 
     @Override
-    protected CompletionStage<Listener> addContextListenerInner(String contextType, ContextHandler handler) {
+    protected CompletionStage<Listener> addContextListenerInner(
+            List<String> contextTypes, ContextHandler handler) {
         DefaultContextListener listener = new DefaultContextListener(
                 messaging,
                 messageExchangeTimeout,
                 getId(),
-                contextType,
+                contextTypes,
                 handler
         );
         return listener.register().thenApply(v -> listener);

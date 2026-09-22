@@ -37,7 +37,9 @@ public final class ContextMetadataMapper {
     }
 
     /**
-     * Outbound metadata for DACP request payloads (reference TS: {@code metadata ?? {}}).
+     * Outbound metadata for DACP request payloads when the app supplied metadata.
+     * Callers must omit the field entirely when the app did not supply any
+     * (rather than sending an empty object).
      * <p>
      * Emits only {@code traceId}, {@code signature}, {@code antiReplay} and {@code custom}: the
      * {@code AppProvidableContextMetadata} schema declares {@code additionalProperties: false}
@@ -49,8 +51,12 @@ public final class ContextMetadataMapper {
     }
 
     /**
-     * Outbound metadata for intent raise requests (reference TS: always includes {@code traceId}).
+     * Outbound metadata for intent raise requests when the app supplied metadata.
+     * Prefer omitting the field when metadata is null (Desktop Agent owns traceId generation).
+     *
+     * @deprecated Prefer {@link #toWire(AppProvidableContextMetadata)} and omit when null.
      */
+    @Deprecated
     public static Map<String, Object> toWireForIntentRequest(
             AppProvidableContextMetadata metadata,
             Supplier<String> traceIdSupplier) {

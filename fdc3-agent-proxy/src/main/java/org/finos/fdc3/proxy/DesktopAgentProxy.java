@@ -98,7 +98,19 @@ public class DesktopAgentProxy implements DesktopAgent, Connectable {
 
     @Override
     public CompletionStage<Listener> addContextListener(String contextType, ContextHandler handler) {
-        return channels.addContextListener(handler, contextType);
+        List<String> types = contextType == null ? null : List.of(contextType);
+        return channels.addContextListener(handler, types);
+    }
+
+    @Override
+    public CompletionStage<Listener> addContextListener(List<String> contextTypes, ContextHandler handler) {
+        // null is the String-overload "all types" signal. Reflective callers (and Java
+        // invoke with a null literal) cannot distinguish the overloads, so treat null
+        // here the same way rather than as an empty list.
+        if (contextTypes == null) {
+            return channels.addContextListener(handler, null);
+        }
+        return channels.addContextListener(handler, contextTypes);
     }
 
     @Override

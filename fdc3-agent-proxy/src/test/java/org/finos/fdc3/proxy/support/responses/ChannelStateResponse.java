@@ -278,7 +278,14 @@ public class ChannelStateResponse implements AutomaticResponse {
             Map<String, String> custom = new HashMap<>();
             custom.put("key", "value");
             metadata.put("custom", custom);
+            Map<String, Object> antiReplay = new HashMap<>();
+            antiReplay.put("iat", 1234);
+            antiReplay.put("exp", 2345);
+            antiReplay.put("jti", "test-jti");
+            metadata.put("antiReplay", antiReplay);
             responsePayload.put("metadata", metadata);
+        } else {
+            responsePayload.put("metadata", null);
         }
 
         Map<String, Object> response = new HashMap<>();

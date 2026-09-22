@@ -149,6 +149,8 @@ public class DefaultIntentSupport implements IntentSupport {
             AppIdentifier app,
             Boolean newInstance,
             AppProvidableContextMetadata metadata) {
+        // When no context is provided, substitute fdc3.nothing so the wire message remains valid.
+        Context resolvedContext = context != null ? context : new Context("fdc3.nothing");
         AddContextListenerRequestMeta meta = messaging.createMeta();
 
         RaiseIntentRequest request = new RaiseIntentRequest();
@@ -157,7 +159,7 @@ public class DefaultIntentSupport implements IntentSupport {
 
         RaiseIntentRequestPayload payload = new RaiseIntentRequestPayload();
         payload.setIntent(intent);
-        payload.setContext(context);
+        payload.setContext(resolvedContext);
         if (app != null) {
             payload.setApp(app);
         }
@@ -172,7 +174,11 @@ public class DefaultIntentSupport implements IntentSupport {
             } else {
                 payloadMap.remove("newInstance");
             }
-            payloadMap.put("metadata", ContextMetadataMapper.toWireForIntentRequest(metadata, messaging::createUUID));
+            if (metadata != null) {
+                payloadMap.put("metadata", ContextMetadataMapper.toWire(metadata));
+            } else {
+                payloadMap.remove("metadata");
+            }
         }
 
         return messaging.<Map<String, Object>>exchange(requestMap, "raiseIntentResponse", appLaunchTimeout)
@@ -196,7 +202,7 @@ public class DefaultIntentSupport implements IntentSupport {
                             ResolveError.NoAppsFound.toString());
 
                     if (schemaAppIntent != null) {
-                        return intentResolver.chooseIntent(List.of(schemaAppIntent), context)
+                        return intentResolver.chooseIntent(List.of(schemaAppIntent), resolvedContext)
                                 .thenCompose(choice -> {
                                     if (choice == null) {
                                         throw new RuntimeException(ResolveError.UserCancelled.toString());
@@ -205,7 +211,7 @@ public class DefaultIntentSupport implements IntentSupport {
                                             ? null
                                             : newInstance;
                                     return raiseIntent(
-                                            intent, context, choice.getAppId(), chosenNewInstance, metadata);
+                                            intent, resolvedContext, choice.getAppId(), chosenNewInstance, metadata);
                                 });
                     }
 
@@ -250,7 +256,11 @@ public class DefaultIntentSupport implements IntentSupport {
             } else {
                 raiseForContextPayload.remove("newInstance");
             }
-            raiseForContextPayload.put("metadata", ContextMetadataMapper.toWireForIntentRequest(metadata, messaging::createUUID));
+            if (metadata != null) {
+                raiseForContextPayload.put("metadata", ContextMetadataMapper.toWire(metadata));
+            } else {
+                raiseForContextPayload.remove("metadata");
+            }
         }
 
         return messaging.<Map<String, Object>>exchange(requestMap, "raiseIntentForContextResponse", appLaunchTimeout)

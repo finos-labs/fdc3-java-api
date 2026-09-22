@@ -132,8 +132,10 @@ public class DefaultAppSupport implements AppSupport {
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
         @SuppressWarnings("unchecked")
         Map<String, Object> payloadMap = (Map<String, Object>) requestMap.get("payload");
-        if (payloadMap != null) {
+        if (payloadMap != null && metadata != null) {
             payloadMap.put("metadata", ContextMetadataMapper.toWire(metadata));
+        } else if (payloadMap != null) {
+            payloadMap.remove("metadata");
         }
 
         return messaging.<Map<String, Object>>exchange(requestMap, "openResponse", appLaunchTimeout)

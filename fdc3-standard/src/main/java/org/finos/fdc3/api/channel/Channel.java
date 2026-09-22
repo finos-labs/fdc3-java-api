@@ -16,6 +16,7 @@
 
 package org.finos.fdc3.api.channel;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
@@ -132,7 +133,13 @@ public interface Channel extends IntentResult {
    * Optional metadata about each context message received, including the app that originated the message, SHOULD be provided by the desktop agent implementation.
    */
   CompletionStage<Listener> addContextListener(String contextType, ContextHandler handler);
-  
+
+  /**
+   * Adds a listener for incoming contexts matching any of the specified context types
+   * whenever a broadcast happens on this channel.
+   */
+  CompletionStage<Listener> addContextListener(List<String> contextTypes, ContextHandler handler);
+
   /**
    * Register a handler for events from the Channel. Whenever the handler function
    * is called it will be passed an event object with details related to the event.

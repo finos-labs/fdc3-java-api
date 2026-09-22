@@ -395,9 +395,17 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
     }
 
     @Override
-    public CompletionStage<Listener> addContextListener(ContextHandler handler, String type) {
-        DefaultUserChannelContextListener listener = new DefaultUserChannelContextListener(this, messaging,
-                messageExchangeTimeout, type, handler);
+    public CompletionStage<Listener> addContextListener(ContextHandler handler, List<String> contextTypes) {
+        if (handler == null) {
+            return CompletableFuture.failedFuture(
+                    new RuntimeException("Invalid arguments passed to addContextListener!"));
+        }
+        if (contextTypes != null && contextTypes.isEmpty()) {
+            return CompletableFuture.failedFuture(
+                    new RuntimeException("Empty array passed to addContextListener"));
+        }
+        DefaultUserChannelContextListener listener = new DefaultUserChannelContextListener(
+                this, messaging, messageExchangeTimeout, contextTypes, handler);
         userChannelListeners.add(listener);
         return listener.register().thenApply(v -> listener);
     }

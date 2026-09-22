@@ -64,6 +64,35 @@ public class FDC3Event {
         }
 
         /**
+         * DACP wire enum value for {@code addEventListenerRequest.payload.type}
+         * (e.g. {@code USER_CHANNEL_CHANGED}).
+         */
+        public String toWireValue() {
+            return name();
+        }
+
+        /**
+         * DACP inbound agent event message {@code type}
+         * (e.g. {@code channelChangedEvent}).
+         */
+        public String toMessageType() {
+            switch (this) {
+                case USER_CHANNEL_CHANGED:
+                    return "channelChangedEvent";
+                case CONTEXT_CLEARED:
+                    return "contextClearedEvent";
+                case ADD_CONTEXT_LISTENER:
+                    return "privateChannelOnAddContextListenerEvent";
+                case ON_UNSUBSCRIBE:
+                    return "privateChannelOnUnsubscribeEvent";
+                case ON_DISCONNECT:
+                    return "privateChannelOnDisconnectEvent";
+                default:
+                    throw new IllegalStateException("No DACP message type for: " + this);
+            }
+        }
+
+        /**
          * Maps a DACP agent event message type to the corresponding API event type,
          * or {@code null} if the message is not a recognised FDC3 event.
          */
@@ -71,20 +100,12 @@ public class FDC3Event {
             if (messageType == null) {
                 return null;
             }
-            switch (messageType) {
-                case "channelChangedEvent":
-                    return USER_CHANNEL_CHANGED;
-                case "contextClearedEvent":
-                    return CONTEXT_CLEARED;
-                case "privateChannelOnAddContextListenerEvent":
-                    return ADD_CONTEXT_LISTENER;
-                case "privateChannelOnUnsubscribeEvent":
-                    return ON_UNSUBSCRIBE;
-                case "privateChannelOnDisconnectEvent":
-                    return ON_DISCONNECT;
-                default:
-                    return null;
+            for (Type type : Type.values()) {
+                if (type.toMessageType().equals(messageType)) {
+                    return type;
+                }
             }
+            return null;
         }
 
         @Override

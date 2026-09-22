@@ -61,6 +61,101 @@ public class ChannelSteps {
         world.set(field, ContextMap.get(type));
     }
 
+    @Given("{string} is an array of context types {string}")
+    public void isAnArrayOfContextTypes(String field, String types) {
+        List<String> list = new ArrayList<>();
+        for (String t : types.split(",")) {
+            list.add(t.trim());
+        }
+        world.set(field, list);
+    }
+
+    @Given("{string} is an array of context types with null {string}")
+    public void isAnArrayOfContextTypesWithNull(String field, String types) {
+        List<String> list = new ArrayList<>();
+        for (String t : types.split(",")) {
+            String trimmed = t.trim();
+            list.add("{null}".equals(trimmed) ? null : trimmed);
+        }
+        world.set(field, list);
+    }
+
+    @Given("{string} is an empty array")
+    public void isAnEmptyArray(String field) {
+        world.set(field, new ArrayList<>());
+    }
+
+    @Given("{string} is an app-provided metadata object")
+    public void isAnAppProvidedMetadataObject(String field) {
+        ContextMetadata metadata = ContextMetadata.appProvidable();
+        metadata.setTraceId("app-trace-id");
+        metadata.setSignature(new DetachedSignature("app-protected", "app-signature"));
+        metadata.setCustom(Map.of("region", "EMEA"));
+        world.set(field, metadata);
+    }
+
+    @Given("the next getCurrentContext response has payload {string}")
+    public void theNextGetCurrentContextResponseHasPayload(String shape) {
+        Context context = ContextMap.get("fdc3.instrument");
+        Map<String, Object> metadata = new HashMap<>();
+        Map<String, String> source = new HashMap<>();
+        source.put("appId", "test-app");
+        source.put("instanceId", "test-instance");
+        metadata.put("source", source);
+        metadata.put("timestamp", Instant.now().toString());
+        metadata.put("traceId", "test-trace-id");
+
+        Map<String, Object> payload;
+        switch (shape) {
+            case "null-without-metadata":
+                payload = new HashMap<>();
+                payload.put("context", null);
+                break;
+            case "null-with-metadata":
+                payload = new HashMap<>();
+                payload.put("context", null);
+                payload.put("metadata", metadata);
+                break;
+            case "context-with-null-metadata":
+                payload = new HashMap<>();
+                payload.put("context", context);
+                payload.put("metadata", null);
+                break;
+            case "context-without-metadata":
+                payload = new HashMap<>();
+                payload.put("context", context);
+                break;
+            case "missing-context":
+                payload = new HashMap<>();
+                payload.put("metadata", metadata);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown getCurrentContext response shape: " + shape);
+        }
+
+        final Map<String, Object> responsePayload = payload;
+        world.getMessaging().prependAutomaticResponse(new org.finos.fdc3.proxy.support.responses.AutomaticResponse() {
+            @Override
+            public boolean filter(String messageType) {
+                return "getCurrentContextRequest".equals(messageType);
+            }
+
+            @Override
+            public java.util.concurrent.CompletionStage<Void> action(
+                    Map<String, Object> message,
+                    org.finos.fdc3.proxy.support.TestMessaging messaging) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> meta = (Map<String, Object>) message.get("meta");
+                Map<String, Object> response = new HashMap<>();
+                response.put("type", "getCurrentContextResponse");
+                response.put("meta", org.finos.fdc3.proxy.support.responses.ResponseSupport.createResponseMeta(meta));
+                response.put("payload", responsePayload);
+                org.finos.fdc3.proxy.support.responses.ResponseSupport.scheduleReceive(messaging, response);
+                return java.util.concurrent.CompletableFuture.completedFuture(null);
+            }
+        });
+    }
+
     @Given("{string} is a BroadcastEvent message on channel {string} with context {string}")
     public void isABroadcastEventMessage(String field, String channel, String contextType) {
         ContextMetadata metadata = defaultBroadcastMetadata();
@@ -291,17 +386,20 @@ public class ChannelSteps {
     public void pipesContextTo(String contextHandlerName, String field) {
         List<Context> contexts = new ArrayList<>();
         world.set(field, contexts);
-        
-        ContextHandler ch = new ContextHandler() {
-			
-			@Override
-			public void handleContext(Context context, ContextMetadata metadata) {
-				contexts.add(context);
-				
-			}
-		};
-        
-        world.set(contextHandlerName, ch);
+
+        class DualHandler implements ContextHandler, EventHandler {
+            @Override
+            public void handleContext(Context context, ContextMetadata metadata) {
+                contexts.add(context);
+            }
+
+            @Override
+            public void handleEvent(FDC3Event event) {
+                // unused for context-pipe scenarios; present so addEventListener reflection matches
+            }
+        }
+
+        world.set(contextHandlerName, new DualHandler());
     }
 
     @Given("{string} pipes context and metadata to {string} and {string}")

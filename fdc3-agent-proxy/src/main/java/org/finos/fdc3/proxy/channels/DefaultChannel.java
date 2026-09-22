@@ -16,6 +16,7 @@
 
 package org.finos.fdc3.proxy.channels;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -31,10 +32,10 @@ import org.finos.fdc3.api.context.Context;
 import org.finos.fdc3.api.metadata.AppProvidableContextMetadata;
 import org.finos.fdc3.api.metadata.ContextMetadata;
 import org.finos.fdc3.api.metadata.DisplayMetadata;
-import org.finos.fdc3.api.types.AppIdentifier;
 import org.finos.fdc3.api.types.ContextHandler;
 import org.finos.fdc3.api.types.ContextWithMetadata;
 import org.finos.fdc3.api.types.EventHandler;
+import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.api.errors.ChannelError;
 import org.finos.fdc3.proxy.Messaging;
@@ -126,8 +127,10 @@ public class DefaultChannel implements Channel {
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
         @SuppressWarnings("unchecked")
         Map<String, Object> payloadMap = (Map<String, Object>) requestMap.get("payload");
-        if (payloadMap != null) {
+        if (payloadMap != null && metadata != null) {
             payloadMap.put("metadata", ContextMetadataMapper.toWire(metadata));
+        } else if (payloadMap != null) {
+            payloadMap.remove("metadata");
         }
 
         return messaging.<Map<String, Object>>exchange(requestMap, "broadcastResponse", messageExchangeTimeout)
@@ -156,8 +159,8 @@ public class DefaultChannel implements Channel {
 
         return messaging.<Map<String, Object>>exchange(requestMap, "getCurrentContextResponse", messageExchangeTimeout)
                 .thenApply(response -> {
-                    Context context = extractContextFromResponse(response);
-                    return context != null ? Optional.of(context) : Optional.empty();
+                    ContextWithMetadata parsed = parseCurrentContextResponse(response);
+                    return parsed != null ? Optional.of(parsed.getContext()) : Optional.empty();
                 });
     }
 
@@ -176,25 +179,7 @@ public class DefaultChannel implements Channel {
         Map<String, Object> requestMap = messaging.getConverter().toMap(request);
 
         return messaging.<Map<String, Object>>exchange(requestMap, "getCurrentContextResponse", messageExchangeTimeout)
-                .thenApply(response -> {
-                    Context context = extractContextFromResponse(response);
-                    if (context == null) {
-                        return Optional.empty();
-                    }
-
-                    GetCurrentContextResponse typedResponse = messaging.getConverter()
-                            .convertValue(response, GetCurrentContextResponse.class);
-                    Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
-                    Map<String, Object> payloadMetadata = responsePayload != null
-                            ? (Map<String, Object>) responsePayload.get("metadata")
-                            : null;
-                    Object messageTimestamp = typedResponse.getMeta() != null
-                            ? typedResponse.getMeta().getTimestamp()
-                            : null;
-                    ContextMetadata metadata = ContextMetadataMapper.fromWire(
-                            payloadMetadata, messageTimestamp, ContextMetadataMapper.MissingTraceId.EMPTY);
-                    return Optional.of(new ContextWithMetadata(context, metadata));
-                });
+                .thenApply(response -> Optional.ofNullable(parseCurrentContextResponse(response)));
     }
 
     @Override
@@ -222,15 +207,32 @@ public class DefaultChannel implements Channel {
             return CompletableFuture.failedFuture(
                     new RuntimeException(ChannelError.InvalidArguments.toString()));
         }
-        return addContextListenerInner(contextType, handler);
+        List<String> types = contextType == null ? null : List.of(contextType);
+        return addContextListenerInner(types, handler);
     }
 
-    protected CompletionStage<Listener> addContextListenerInner(String contextType, ContextHandler handler) {
+    @Override
+    @JsonIgnore
+    public CompletionStage<Listener> addContextListener(List<String> contextTypes, ContextHandler handler) {
+        // null is the String-overload "all types" signal; reflective callers cannot
+        // distinguish the overloads, so treat null here the same way.
+        if (contextTypes == null) {
+            return addContextListener((String) null, handler);
+        }
+        if (handler == null || contextTypes.isEmpty()) {
+            return CompletableFuture.failedFuture(
+                    new RuntimeException(ChannelError.InvalidArguments.toString()));
+        }
+        return addContextListenerInner(contextTypes, handler);
+    }
+
+    protected CompletionStage<Listener> addContextListenerInner(
+            List<String> contextTypes, ContextHandler handler) {
         DefaultContextListener listener = new DefaultContextListener(
                 messaging,
                 messageExchangeTimeout,
                 id,
-                contextType,
+                contextTypes,
                 handler
         );
         return listener.register().thenApply(v -> listener);
@@ -238,30 +240,74 @@ public class DefaultChannel implements Channel {
 
     @Override
     public CompletionStage<Listener> addEventListener(String type, EventHandler handler) {
-        if (!"contextCleared".equals(type) && type != null) {
-            return CompletableFuture.failedFuture(
-                    new RuntimeException(ChannelError.InvalidArguments.toString()));
+        if (type != null) {
+            try {
+                if (FDC3Event.Type.fromValue(type) != FDC3Event.Type.CONTEXT_CLEARED) {
+                    return CompletableFuture.failedFuture(
+                            new RuntimeException(ChannelError.InvalidArguments.toString()));
+                }
+            } catch (IllegalArgumentException e) {
+                return CompletableFuture.failedFuture(
+                        new RuntimeException(ChannelError.InvalidArguments.toString()));
+            }
         }
-        ChannelEventListener listener = new ChannelEventListener(messaging, type, id, handler);
+        ChannelEventListener listener = new ChannelEventListener(
+                messaging, messageExchangeTimeout, type, id, handler);
         return listener.register().thenApply(v -> listener);
     }
 
+    /**
+     * Parses a getCurrentContextResponse payload, mirroring TypeScript
+     * {@code parseCurrentContextResponse}.
+     */
     @SuppressWarnings("unchecked")
-    private static Context extractContextFromResponse(Map<String, Object> response) {
-        Map<String, Object> payload = (Map<String, Object>) response.get("payload");
-        if (payload == null) {
+    private ContextWithMetadata parseCurrentContextResponse(Map<String, Object> response) {
+        Map<String, Object> responsePayload = (Map<String, Object>) response.get("payload");
+        if (responsePayload == null) {
+            throw new RuntimeException(ChannelError.MalformedContext.toString());
+        }
+
+        boolean hasContextKey = responsePayload.containsKey("context");
+        Object ctxRaw = responsePayload.get("context");
+        boolean hasMetadataKey = responsePayload.containsKey("metadata");
+        Object metadataRaw = responsePayload.get("metadata");
+
+        if (ctxRaw == null) {
+            if (!hasContextKey) {
+                // missing context key — MalformedContext (TS: context === undefined)
+                throw new RuntimeException(ChannelError.MalformedContext.toString());
+            }
+            // context explicitly null: only valid when metadata is also explicitly null
+            // (TS treats absent metadata as undefined, which is !== null → MalformedContext)
+            if (!hasMetadataKey || metadataRaw != null) {
+                throw new RuntimeException(ChannelError.MalformedContext.toString());
+            }
             return null;
         }
-        Object ctx = payload.get("context");
-        if (ctx == null) {
-            return null;
+
+        if (!hasMetadataKey || metadataRaw == null) {
+            throw new RuntimeException(ChannelError.MalformedContext.toString());
         }
-        if (ctx instanceof Context) {
-            return (Context) ctx;
+
+        Context context;
+        if (ctxRaw instanceof Context) {
+            context = (Context) ctxRaw;
+        } else if (ctxRaw instanceof Map) {
+            context = Context.fromMap((Map<String, Object>) ctxRaw);
+        } else {
+            throw new RuntimeException(ChannelError.MalformedContext.toString());
         }
-        if (ctx instanceof Map) {
-            return Context.fromMap((Map<String, Object>) ctx);
-        }
-        return null;
+
+        GetCurrentContextResponse typedResponse = messaging.getConverter()
+                .convertValue(response, GetCurrentContextResponse.class);
+        Map<String, Object> payloadMetadata = metadataRaw instanceof Map
+                ? (Map<String, Object>) metadataRaw
+                : null;
+        Object messageTimestamp = typedResponse.getMeta() != null
+                ? typedResponse.getMeta().getTimestamp()
+                : null;
+        ContextMetadata metadata = ContextMetadataMapper.fromWire(
+                payloadMetadata, messageTimestamp, ContextMetadataMapper.MissingTraceId.EMPTY);
+        return new ContextWithMetadata(context, metadata);
     }
 }

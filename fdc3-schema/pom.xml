@@ -181,7 +181,8 @@
                                     </fileset>
                                     <mapper type="regexp" from="^(.*)$$" to="--src \1"/>
                                 </pathconvert>
-                                <exec executable="${project.build.directory}/npm-work/node_modules/.bin/quicktype" failonerror="true">
+                                <exec executable="${project.build.directory}/node-installation/node/node" failonerror="true">
+                                    <arg value="${project.build.directory}/npm-work/node_modules/quicktype/dist/index.js"/>
                                     <arg value="-s"/>
                                     <arg value="schema"/>
                                     <arg value="--quiet"/>

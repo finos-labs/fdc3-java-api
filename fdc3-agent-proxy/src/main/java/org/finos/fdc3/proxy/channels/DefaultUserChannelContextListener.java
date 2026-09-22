@@ -16,6 +16,7 @@
 
 package org.finos.fdc3.proxy.channels;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -38,9 +39,9 @@ public class DefaultUserChannelContextListener extends DefaultContextListener im
             DefaultChannelSupport channelSupport,
             Messaging messaging,
             long messageExchangeTimeout,
-            String contextType,
+            List<String> contextTypes,
             ContextHandler handler) {
-        super(messaging, messageExchangeTimeout, null, contextType, handler, "broadcastEvent");
+        super(messaging, messageExchangeTimeout, null, contextTypes, handler, "broadcastEvent");
         this.channelSupport = channelSupport;
     }
 
@@ -59,10 +60,7 @@ public class DefaultUserChannelContextListener extends DefaultContextListener im
         if (currentChannel == null) {
             return CompletableFuture.completedFuture(null);
         }
-        return currentChannel.getCurrentContextWithMetadata(contextType)
-                .thenAccept(resultOpt -> {
-                    resultOpt.ifPresent(cwm -> handler.handleContext(cwm.getContext(), cwm.getMetadata()));
-                });
+        return replayCurrentContext(currentChannel);
     }
 
     @Override
@@ -100,7 +98,6 @@ public class DefaultUserChannelContextListener extends DefaultContextListener im
         }
 
         String msgContextType = (String) context.get("type");
-        return contextType == null || contextType.equals(msgContextType);
+        return matchesContextType(msgContextType);
     }
 }
-

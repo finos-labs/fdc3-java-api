@@ -408,6 +408,10 @@ public interface DesktopAgent {
     CompletionStage<IntentResolution> raiseIntent(String intent, Context context, AppIdentifier app,
             Boolean newInstance, AppProvidableContextMetadata metadata);
 
+    default CompletionStage<IntentResolution> raiseIntent(String intent) {
+        return raiseIntent(intent, null, null, null, null);
+    }
+
     default CompletionStage<IntentResolution> raiseIntent(String intent, Context context) {
         return raiseIntent(intent, context, null, null, null);
     }
@@ -593,6 +597,11 @@ public interface DesktopAgent {
      * ```
      */
     CompletionStage<Listener> addContextListener(String contextType, ContextHandler handler);
+
+    /**
+     * Adds a listener for incoming contexts matching any of the specified context types.
+     */
+    CompletionStage<Listener> addContextListener(java.util.List<String> contextTypes, ContextHandler handler);
 
     /**
      * Registers a handler for non-context and non-intent events from the Desktop

@@ -17,7 +17,10 @@
 package org.finos.fdc3.proxy.listeners;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import org.finos.fdc3.api.channel.Channel;
 import org.finos.fdc3.api.context.Context;
@@ -30,27 +33,34 @@ import org.finos.fdc3.proxy.util.Logger;
 /**
  * Default implementation of a context listener.
  * Extends AbstractListener to handle registration/unregistration.
+ * <p>
+ * Context types are always held as a {@link List}{@code String}, or {@code null} for all types.
+ * On the wire, a single type (or all-types) uses {@code contextType}; multiple types use
+ * {@code contextTypes}.
  */
 public class DefaultContextListener extends AbstractListener<ContextHandler> {
 
     protected String channelId;
-    protected final String contextType;
+    /**
+     * Types to match, or {@code null} for all types.
+     */
+    protected final List<String> contextTypes;
     protected final String messageType;
 
     public DefaultContextListener(
             Messaging messaging,
             long messageExchangeTimeout,
             String channelId,
-            String contextType,
+            List<String> contextTypes,
             ContextHandler handler) {
-        this(messaging, messageExchangeTimeout, channelId, contextType, handler, "broadcastEvent");
+        this(messaging, messageExchangeTimeout, channelId, contextTypes, handler, "broadcastEvent");
     }
 
     public DefaultContextListener(
             Messaging messaging,
             long messageExchangeTimeout,
             String channelId,
-            String contextType,
+            List<String> contextTypes,
             ContextHandler handler,
             String messageType) {
         super(
@@ -63,14 +73,14 @@ public class DefaultContextListener extends AbstractListener<ContextHandler> {
             "contextListenerUnsubscribeResponse"
         );
         this.channelId = channelId;
-        this.contextType = contextType;
+        this.contextTypes = contextTypes;
         this.messageType = messageType;
     }
 
     /**
      * Update the channel this listener is listening to. This is used for non-user
      * channel listeners (e.g., app channels, private channels).
-     * 
+     *
      * @param channel the new channel to listen to
      */
     public void changeChannel(Channel channel) {
@@ -78,18 +88,40 @@ public class DefaultContextListener extends AbstractListener<ContextHandler> {
             this.channelId = null;
         } else {
             this.channelId = channel.getId();
-            // Get current context from the channel
-            channel.getCurrentContextWithMetadata(contextType)
-                .thenAccept(result -> {
-                    result.ifPresent(cwm -> handler.handleContext(cwm.getContext(), cwm.getMetadata()));
-                })
+            replayCurrentContext(channel)
                 .exceptionally(error -> {
-                    // Nothing awaits this replay, so report the failure rather than dropping it.
                     Logger.error("Failed to replay current context of type {} from channel {}",
-                            contextType, this.channelId, error);
+                            contextTypes, this.channelId, error);
                     return null;
                 });
         }
+    }
+
+    /**
+     * Replays matching current context from the given channel into the handler.
+     */
+    protected CompletionStage<Void> replayCurrentContext(Channel channel) {
+        if (contextTypes != null) {
+            CompletionStage<Void> chain = CompletableFuture.completedFuture(null);
+            for (String ct : contextTypes) {
+                chain = chain.thenCompose(ignored ->
+                        channel.getCurrentContextWithMetadata(ct).thenAccept(result -> {
+                            result.ifPresent(cwm -> handler.handleContext(cwm.getContext(), cwm.getMetadata()));
+                        }));
+            }
+            return chain;
+        }
+        return channel.getCurrentContextWithMetadata(null)
+                .thenAccept(result -> {
+                    result.ifPresent(cwm -> handler.handleContext(cwm.getContext(), cwm.getMetadata()));
+                });
+    }
+
+    protected boolean matchesContextType(String msgContextType) {
+        if (contextTypes == null) {
+            return true;
+        }
+        return contextTypes.contains(msgContextType);
     }
 
     @Override
@@ -97,7 +129,11 @@ public class DefaultContextListener extends AbstractListener<ContextHandler> {
         Map<String, Object> request = new HashMap<>();
         Map<String, Object> payload = new HashMap<>();
         payload.put("channelId", channelId);
-        payload.put("contextType", contextType);
+        if (contextTypes != null && contextTypes.size() > 1) {
+            payload.put("contextTypes", contextTypes);
+        } else {
+            payload.put("contextType", contextTypes == null ? null : contextTypes.get(0));
+        }
         request.put("payload", payload);
         return request;
     }
@@ -126,7 +162,7 @@ public class DefaultContextListener extends AbstractListener<ContextHandler> {
         }
 
         String msgContextType = (String) context.get("type");
-        return contextType == null || contextType.equals(msgContextType);
+        return matchesContextType(msgContextType);
     }
 
     @Override

@@ -99,6 +99,14 @@ public class TestMessaging extends AbstractMessaging {
         this.automaticResponses.add(new DisconnectPrivateChannelResponse());
     }
 
+    /**
+     * Prepends an automatic response so it is tried before the built-in handlers
+     * (mirrors TypeScript {@code automaticResponses.unshift}).
+     */
+    public void prependAutomaticResponse(AutomaticResponse response) {
+        automaticResponses.add(0, response);
+    }
+
     @Override
     public String createUUID() {
         return UUID.randomUUID().toString();

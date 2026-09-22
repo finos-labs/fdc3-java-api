@@ -18,42 +18,70 @@ package org.finos.fdc3.proxy.listeners;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
-import org.finos.fdc3.api.types.Listener;
 import org.finos.fdc3.proxy.Messaging;
 
 /**
- * Listener for channel events such as contextCleared.
+ * Listens to Channel-scoped events (currently {@code contextCleared}) for a specific Channel.
+ * Registration is sent to the Desktop Agent over DACP with the Channel's id so the Desktop
+ * Agent can route events to this app, and inbound events are additionally filtered locally by
+ * {@code channelId} so that only events for this Channel are delivered to the handler.
  */
-public class ChannelEventListener implements RegisterableListener, Listener {
+public class ChannelEventListener extends AbstractListener<EventHandler> {
 
-    private final Messaging messaging;
-    private final String type;
+    private final FDC3Event.Type type;
     private final String channelId;
-    private final EventHandler handler;
-    private final String id;
 
-    public ChannelEventListener(Messaging messaging, String type, String channelId, EventHandler handler) {
-        this.messaging = messaging;
-        this.type = type;
+    public ChannelEventListener(
+            Messaging messaging,
+            long messageExchangeTimeout,
+            String type,
+            String channelId,
+            EventHandler handler) {
+        super(
+            messaging,
+            messageExchangeTimeout,
+            handler,
+            "addEventListenerRequest",
+            "addEventListenerResponse",
+            "eventListenerUnsubscribeRequest",
+            "eventListenerUnsubscribeResponse"
+        );
+        this.type = parseChannelEventType(type);
         this.channelId = channelId;
-        this.handler = handler;
-        this.id = channelId + "-" + (type != null ? type : "all") + "-" + messaging.createUUID();
+    }
+
+    private static FDC3Event.Type parseChannelEventType(String type) {
+        if (type == null) {
+            return null;
+        }
+        try {
+            FDC3Event.Type parsed = FDC3Event.Type.fromValue(type);
+            if (parsed == FDC3Event.Type.CONTEXT_CLEARED) {
+                return parsed;
+            }
+        } catch (IllegalArgumentException e) {
+            // fall through
+        }
+        throw new RuntimeException("UnknownEventType");
     }
 
     @Override
-    public String getId() {
-        return id;
+    protected Map<String, Object> buildSubscribeRequest() {
+        Map<String, Object> request = new HashMap<>();
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", type != null ? type.toWireValue() : null);
+        payload.put("channelId", channelId);
+        request.put("payload", payload);
+        return request;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public boolean filter(Map<String, Object> message) {
-        if (!"contextClearedEvent".equals(message.get("type"))) {
+        if (!FDC3Event.Type.CONTEXT_CLEARED.toMessageType().equals(message.get("type"))) {
             return false;
         }
         Map<String, Object> payload = (Map<String, Object>) message.get("payload");
@@ -68,17 +96,5 @@ public class ChannelEventListener implements RegisterableListener, Listener {
         details.put("channelId", payload.get("channelId"));
         details.put("contextType", payload.get("contextType"));
         handler.handleEvent(new FDC3Event(FDC3Event.Type.CONTEXT_CLEARED, details));
-    }
-
-    @Override
-    public CompletionStage<Void> register() {
-        messaging.register(this);
-        return CompletableFuture.completedFuture(null);
-    }
-
-    @Override
-    public CompletionStage<Void> unsubscribe() {
-        messaging.unregister(id);
-        return CompletableFuture.completedFuture(null);
     }
 }

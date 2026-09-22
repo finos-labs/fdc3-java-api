@@ -22,7 +22,6 @@ import java.util.Map;
 import org.finos.fdc3.api.types.EventHandler;
 import org.finos.fdc3.api.types.FDC3Event;
 import org.finos.fdc3.proxy.Messaging;
-import org.finos.fdc3.schema.FDC3EventType;
 
 /**
  * Listener for Desktop Agent events.
@@ -30,7 +29,7 @@ import org.finos.fdc3.schema.FDC3EventType;
  */
 public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
 
-    private final String eventType;
+    private final FDC3Event.Type eventType;
 
     public DesktopAgentEventListener(
             Messaging messaging,
@@ -46,23 +45,28 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
             "eventListenerUnsubscribeRequest",
             "eventListenerUnsubscribeResponse"
         );
-        validateEventType(eventType);
-        this.eventType = eventType;
+        this.eventType = parseDesktopAgentEventType(eventType);
     }
 
     /**
-     * Validates that the event type is supported.
-     * Throws RuntimeException with "UnknownEventType" if not supported.
+     * Parses and validates a Desktop Agent event type string.
+     * {@code null} means listen to all events. Throws {@code RuntimeException}
+     * with message {@code UnknownEventType} if not a Desktop Agent event type.
      */
-    private static void validateEventType(String eventType) {
+    private static FDC3Event.Type parseDesktopAgentEventType(String eventType) {
         if (eventType == null) {
-            // null is allowed (listen to all events)
-            return;
+            return null;
         }
-        switch (eventType) {
-            case "userChannelChanged":
-                // Valid event type
-                return;
+        final FDC3Event.Type type;
+        try {
+            type = FDC3Event.Type.fromValue(eventType);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("UnknownEventType");
+        }
+        switch (type) {
+            case USER_CHANNEL_CHANGED:
+            case CONTEXT_CLEARED:
+                return type;
             default:
                 throw new RuntimeException("UnknownEventType");
         }
@@ -72,9 +76,9 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
     protected Map<String, Object> buildSubscribeRequest() {
         Map<String, Object> request = new HashMap<>();
         Map<String, Object> payload = new HashMap<>();
-        FDC3EventType fdc3EventType = toFDC3SchemaEventType(eventType);
-        // Explicitly set type to null if eventType is null, otherwise use the enum value
-        payload.put("type", fdc3EventType != null ? fdc3EventType.toValue() : null);
+        payload.put("type", eventType != null ? eventType.toWireValue() : null);
+        // Desktop Agent-level listeners are registered with a null channelId
+        payload.put("channelId", null);
         request.put("payload", payload);
         return request;
     }
@@ -89,23 +93,7 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
             // Wildcard listeners receive agent events only, not request/response traffic.
             return !messageType.endsWith("Response") && !messageType.endsWith("Request");
         }
-        return getExpectedMessageType().equals(messageType);
-    }
-
-    /**
-     * Maps FDC3 event types to their corresponding message types.
-     * e.g., "userChannelChanged" -> "channelChangedEvent"
-     */
-    private String getExpectedMessageType() {
-        if (eventType == null) {
-            return null;
-        }
-        switch (eventType) {
-            case "userChannelChanged":
-                return "channelChangedEvent";
-            default:
-                throw new RuntimeException("UnknownEventType");
-        }
+        return eventType.toMessageType().equals(messageType);
     }
 
     @Override
@@ -114,13 +102,13 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
         String messageType = (String) message.get("type");
         Map<String, Object> payload = (Map<String, Object>) message.get("payload");
 
-        FDC3Event.Type eventType = FDC3Event.Type.fromMessageType(messageType);
-        Object details = buildEventDetails(messageType, payload);
-        handler.handleEvent(new FDC3Event(eventType, details));
+        FDC3Event.Type resolvedType = FDC3Event.Type.fromMessageType(messageType);
+        Object details = buildEventDetails(resolvedType, payload);
+        handler.handleEvent(new FDC3Event(resolvedType, details));
     }
 
-    private static Object buildEventDetails(String messageType, Map<String, Object> payload) {
-        if ("channelChangedEvent".equals(messageType)) {
+    private static Object buildEventDetails(FDC3Event.Type type, Map<String, Object> payload) {
+        if (type == FDC3Event.Type.USER_CHANNEL_CHANGED) {
             Map<String, Object> details = new HashMap<>();
             Object currentChannelId = payload.get("currentChannelId");
             if (currentChannelId == null) {
@@ -129,19 +117,13 @@ public class DesktopAgentEventListener extends AbstractListener<EventHandler> {
             details.put("currentChannelId", currentChannelId);
             return details;
         }
+        if (type == FDC3Event.Type.CONTEXT_CLEARED) {
+            Map<String, Object> details = new HashMap<>();
+            details.put("channelId", payload.get("channelId"));
+            details.put("contextType", payload.get("contextType"));
+            return details;
+        }
         return payload;
-    }
-
-    private FDC3EventType toFDC3SchemaEventType(String eventType) {
-        if (eventType == null) {
-            return null;
-        }
-        switch (eventType) {
-            case "userChannelChanged":
-                return FDC3EventType.USER_CHANNEL_CHANGED;
-            default:
-                throw new RuntimeException("UnknownEventType");
-        }
     }
 
 }
