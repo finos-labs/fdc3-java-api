@@ -219,7 +219,7 @@ public class DefaultChannel implements Channel {
         if (contextTypes == null) {
             return addContextListener((String) null, handler);
         }
-        if (handler == null || contextTypes.isEmpty()) {
+        if (handler == null || contextTypes.isEmpty() || contextTypes.stream().anyMatch(t -> t == null)) {
             return CompletableFuture.failedFuture(
                     new RuntimeException(ChannelError.InvalidArguments.toString()));
         }

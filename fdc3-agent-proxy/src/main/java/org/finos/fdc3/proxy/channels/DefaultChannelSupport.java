@@ -404,6 +404,11 @@ public class DefaultChannelSupport implements ChannelSupport, Connectable {
             return CompletableFuture.failedFuture(
                     new RuntimeException("Empty array passed to addContextListener"));
         }
+        if (contextTypes != null && contextTypes.stream().anyMatch(t -> t == null)) {
+            return CompletableFuture.failedFuture(
+                    new RuntimeException(
+                            "Invalid arguments passed to addContextListener: array must contain only strings"));
+        }
         DefaultUserChannelContextListener listener = new DefaultUserChannelContextListener(
                 this, messaging, messageExchangeTimeout, contextTypes, handler);
         userChannelListeners.add(listener);

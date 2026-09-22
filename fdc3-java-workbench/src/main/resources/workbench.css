@@ -1,0 +1,70 @@
+.root {
+    -fx-font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: #f5f6f8;
+}
+
+.header-bar {
+    -fx-background-color: #ffffff;
+    -fx-padding: 12 16 12 16;
+    -fx-border-color: #acb2c0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.title-label {
+    -fx-font-size: 20px;
+    -fx-font-family: "Source Code Pro", "Menlo", monospace;
+    -fx-text-fill: #0086bf;
+}
+
+.subtitle-label {
+    -fx-text-fill: #5b606f;
+    -fx-font-size: 12px;
+}
+
+.connection-bar {
+    -fx-padding: 8 16 8 16;
+    -fx-spacing: 8;
+    -fx-background-color: #eef6fa;
+    -fx-border-color: #acb2c0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.status-connected {
+    -fx-text-fill: #008000;
+    -fx-font-weight: bold;
+}
+
+.status-disconnected {
+    -fx-text-fill: #666666;
+}
+
+.status-error {
+    -fx-text-fill: #c62828;
+    -fx-font-weight: bold;
+}
+
+.panel-card {
+    -fx-background-color: #ffffff;
+    -fx-padding: 12;
+    -fx-border-color: #d0d4dc;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.section-title {
+    -fx-font-size: 16px;
+    -fx-text-fill: #0086bf;
+    -fx-padding: 0 0 8 0;
+}
+
+.log-view {
+    -fx-font-family: "Menlo", "Consolas", monospace;
+    -fx-font-size: 11px;
+}
+
+.listener-item {
+    -fx-padding: 6 8 6 8;
+    -fx-border-color: #e0e3ea;
+    -fx-border-width: 0 0 1 0;
+}

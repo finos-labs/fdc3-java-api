@@ -768,7 +768,7 @@ public class ExampleApp extends JFrame {
         if (agent == null || contextListener != null) return;
         
         log("Adding context listener (all types)...");
-        agent.addContextListener(null, this::onContextReceived)
+        agent.addContextListener((String) null, this::onContextReceived)
                 .thenAccept(listener -> {
                     this.contextListener = listener;
                     SwingUtilities.invokeLater(() -> {
