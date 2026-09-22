@@ -32,7 +32,7 @@ import static io.cucumber.junit.platform.engine.Constants.PLUGIN_PROPERTY_NAME;
  */
 @Suite
 @IncludeEngines("cucumber")
-@ConfigurationParameter(key = FEATURES_PROPERTY_NAME, value = "classpath:temporary-features")
+@ConfigurationParameter(key = FEATURES_PROPERTY_NAME, value = "classpath:features")
 @ConfigurationParameter(
         key = GLUE_PROPERTY_NAME,
         value = "org.finos.fdc3.proxy,org.finos.fdc3.proxy.steps,org.finos.fdc3.proxy.world,org.finos.cucumbertestingsteps.steps")

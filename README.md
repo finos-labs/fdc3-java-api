@@ -71,27 +71,6 @@ of your own. See below.
 mvn clean install
 ```
 
-Two modules generate their Java types from the FDC3 JSON Schemas rather than carrying them by
-hand, so the build fetches those schemas as it runs and **cannot be run offline from a clean
-checkout**:
-
-- A pinned Node and npm are downloaded into `target/node-installation` by
-  `frontend-maven-plugin`. The build never uses a Node that happens to be on your `PATH`, so
-  the generated sources do not depend on what is installed locally.
-- `@finos/fdc3-schema` and `@finos/fdc3-context` are installed with `npm ci` from the committed
-  `package.json` and `package-lock.json` under each module's `src/main/npm`. The version is
-  pinned by `fdc3.npm.version` in the root POM, and `quicktype`, which does the code
-  generation, is pinned by `quicktype.version`.
-
-Once these have been downloaded, the npm cache and `target/node-installation` make repeat
-builds work without the network.
-
-A small number of API schemas have not yet reached a published release, and are needed by code
-in this project. Those are held in `fdc3-schema/src/main/schemas-overlay/api` and are copied
-over the downloaded set during the build; that directory's README lists exactly what it carries
-and when each file can be deleted. Everything else, including all context schemas, comes from
-npm unmodified.
-
 ### Maven Dependency
 
 Once published, add to your `pom.xml`:

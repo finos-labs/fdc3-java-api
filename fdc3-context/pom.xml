@@ -18,9 +18,9 @@
         <!-- Published schemas from npm -->
         <fdc3.context.npm.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-context/dist/schemas/context</fdc3.context.npm.dir>
         <fdc3.api.npm.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-schema/dist/schemas/api</fdc3.api.npm.dir>
-        <!-- API schemas not yet in a published release; copied over the npm ones. See the
-             README in that overlay directory for what they carry and when to delete them.
-             Context schemas are taken from npm unmodified. -->
+        <!-- WSCP schemas not yet in a published release; copied over the npm ones. See the
+             README in fdc3-schema/src/main/schemas-overlay/api. DACP/API and context
+             schemas are taken from npm unmodified. -->
         <fdc3.api.overlay.dir>${project.basedir}/../fdc3-schema/src/main/schemas-overlay/api</fdc3.api.overlay.dir>
         <!-- quicktype and the round-trip tests read the merged result, never npm directly -->
         <fdc3.context.source.dir>${fdc3.context.schemas.work.dir}/context</fdc3.context.source.dir>
@@ -203,7 +203,7 @@
             </plugin>
 
             <!-- Populate target/schemas-work for quicktype and the round-trip tests:
-                 npm-downloaded schemas first, then the unreleased overlay on top.
+                 npm-downloaded schemas first, then the WSCP overlay on top.
                  Declared after frontend-maven-plugin so the npm install has already run;
                  within a plugin, executions run in declaration order, so the overlay wins. -->
             <plugin>

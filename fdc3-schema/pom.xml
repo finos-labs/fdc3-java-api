@@ -17,8 +17,8 @@
         <fdc3.schema.work.dir>${project.build.directory}/schema-work</fdc3.schema.work.dir>
         <fdc3.schema.source.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-schema/dist/schemas</fdc3.schema.source.dir>
         <fdc3.context.source.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-context/dist/schemas/context</fdc3.context.source.dir>
-        <!-- API schemas not yet in a published release; copied over the npm ones. See the
-             README in that overlay directory for what they carry and when to delete them.
+        <!-- WSCP schemas not yet in a published release; copied over the npm ones. See the
+             README in that overlay directory. DACP/API schemas come from npm unmodified.
              Context schemas are taken from npm unmodified. -->
         <fdc3.schema.overlay.dir>${project.basedir}/src/main/schemas-overlay/api</fdc3.schema.overlay.dir>
         <fdc3.api.schema.path>${fdc3.schema.work.dir}/api/api.schema.json</fdc3.api.schema.path>
@@ -83,7 +83,7 @@
             </plugin>
 
             <!-- Populate target/schema-work: npm-downloaded schemas first, then the
-                 unreleased overlay on top. Both run in process-sources, and executions
+                 WSCP overlay on top. Both run in process-sources, and executions
                  within a plugin run in declaration order, so the overlay always wins. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

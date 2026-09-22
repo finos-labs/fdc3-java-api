@@ -13,6 +13,10 @@
     <artifactId>fdc3-agent-proxy</artifactId>
     <name>FDC3 Desktop Agent Proxy</name>
     <description>Desktop Agent Proxy implementation for FDC3</description>
+
+    <properties>
+        <fdc3.features.npm.dir>${project.build.directory}/npm-work/node_modules/@finos/fdc3-agent-proxy/test/features</fdc3.features.npm.dir>
+    </properties>
  
     <dependencies>
         <!-- FDC3 API -->
@@ -89,6 +93,88 @@
 
     <build>
         <plugins>
+            <!-- Fetch published Cucumber feature files from @finos/fdc3-agent-proxy -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-npm-manifest</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <mkdir dir="${project.build.directory}/npm-work"/>
+                                <copy todir="${project.build.directory}/npm-work">
+                                    <fileset dir="${project.basedir}/src/main/npm">
+                                        <include name="package.json"/>
+                                        <include name="package-lock.json"/>
+                                    </fileset>
+                                </copy>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.15.0</version>
+                <configuration>
+                    <nodeVersion>${node.version}</nodeVersion>
+                    <npmVersion>${npm.version}</npmVersion>
+                    <workingDirectory>${project.build.directory}/npm-work</workingDirectory>
+                    <installDirectory>${project.build.directory}/node-installation</installDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>npm-ci</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>ci --no-audit --no-fund</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-published-features</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.testOutputDirectory}/features</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <resources>
+                                <resource>
+                                    <directory>${fdc3.features.npm.dir}</directory>
+                                    <includes>
+                                        <include>*.feature</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -104,4 +190,3 @@
         </plugins>
     </build>
 </project>
-
