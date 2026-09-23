@@ -1,0 +1,595 @@
+[
+  {
+    "id": "Action example",
+    "template": {
+      "type": "fdc3.action",
+      "action": "broadcast",
+      "channelId": "Channel 1",
+      "title": "Click to view Chart",
+      "context": {
+        "type": "fdc3.chart",
+        "instruments": [
+          {
+            "type": "fdc3.instrument",
+            "id": {
+              "ticker": "EURUSD"
+            }
+          }
+        ],
+        "range": {
+          "type": "fdc3.timeRange",
+          "startTime": "2020-09-01T08:00:00.000Z",
+          "endTime": "2020-10-31T08:00:00.000Z"
+        },
+        "style": "candle"
+      }
+    }
+  },
+  {
+    "id": "Chart example",
+    "template": {
+      "type": "fdc3.chart",
+      "instruments": [
+        {
+          "type": "fdc3.instrument",
+          "id": {
+            "ticker": "AAPL"
+          }
+        },
+        {
+          "type": "fdc3.instrument",
+          "id": {
+            "ticker": "GOOG"
+          }
+        }
+      ],
+      "range": {
+        "type": "fdc3.timeRange",
+        "startTime": "2020-09-01T08:00:00.000Z",
+        "endTime": "2020-10-31T08:00:00.000Z"
+      },
+      "style": "line"
+    }
+  },
+  {
+    "id": "Chat Initialization example",
+    "template": {
+      "type": "fdc3.chat.initSettings",
+      "chatName": "Chat ABCD",
+      "members": {
+        "type": "fdc3.contactList",
+        "contacts": [
+          {
+            "type": "fdc3.contact",
+            "name": "Jane Doe",
+            "id": {
+              "email": "jane@mail.com"
+            }
+          },
+          {
+            "type": "fdc3.contact",
+            "name": "John Doe",
+            "id": {
+              "email": "john@mail.com"
+            }
+          }
+        ]
+      },
+      "options": {
+        "groupRecipients": true,
+        "isPublic": false,
+        "allowHistoryBrowsing": true,
+        "allowMessageCopy": true
+      },
+      "message": {
+        "type": "fdc3.message",
+        "text": {
+          "text/plain": "Hey all, can we discuss the issue together? I attached a screenshot"
+        },
+        "entities": {
+          "0": {
+            "type": "fdc3.fileAttachment",
+            "data": {
+              "name": "myImage.png",
+              "dataUri": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "Chat Message example",
+    "template": {
+      "type": "fdc3.chat.message",
+      "chatRoom": {
+        "type": "fdc3.chat.room",
+        "providerName": "Symphony",
+        "id": {
+          "streamId": "j75xqXy25NBOdacUI3FNBH"
+        }
+      },
+      "message": {
+        "type": "fdc3.message",
+        "text": {
+          "text/plain": "Hey all, can we discuss the issue together? I attached a screenshot"
+        },
+        "entities": {
+          "0": {
+            "type": "fdc3.fileAttachment",
+            "data": {
+              "name": "myImage.png",
+              "dataUri": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "Chat room example",
+    "template": {
+      "type": "fdc3.chat.room",
+      "providerName": "Symphony",
+      "id": {
+        "streamId": "j75xqXy25NBOdacUI3FNBH"
+      },
+      "url": "http://symphony.com/ref/room/j75xqXy25NBOdacUI3FNBH___pqSsuJRdA",
+      "name": "My new room"
+    }
+  },
+  {
+    "id": "Chat search example",
+    "template": {
+      "type": "fdc3.chat.searchCriteria",
+      "criteria": [
+        {
+          "type": "fdc3.instrument",
+          "id": {
+            "ticker": "AAPL"
+          }
+        },
+        {
+          "type": "fdc3.contact",
+          "name": "Jane Doe",
+          "id": {
+            "email": "jane.doe@mail.com"
+          }
+        },
+        {
+          "type": "fdc3.organization",
+          "name": "Symphony",
+          "id": {
+            "FDS_ID": "SYMPHONY"
+          }
+        },
+        "#OrderID45788422"
+      ]
+    }
+  },
+  {
+    "id": "Contact example",
+    "template": {
+      "type": "fdc3.contact",
+      "name": "Jane Doe",
+      "id": {
+        "email": "jane.doe@mail.com"
+      }
+    }
+  },
+  {
+    "id": "ContactList example",
+    "template": {
+      "type": "fdc3.contactList",
+      "contacts": [
+        {
+          "type": "fdc3.contact",
+          "name": "Jane Doe",
+          "id": {
+            "email": "jane.doe@mail.com"
+          }
+        },
+        {
+          "type": "fdc3.contact",
+          "name": "John Doe",
+          "id": {
+            "email": "john.doe@mail.com"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "Country example",
+    "template": {
+      "type": "fdc3.country",
+      "name": "Sweden",
+      "id": {
+        "ISOALPHA3": "SWE"
+      }
+    }
+  },
+  {
+    "id": "Currency example",
+    "template": {
+      "type": "fdc3.currency",
+      "name": "US Dollar",
+      "id": {
+        "CURRENCY_ISOCODE": "USD"
+      }
+    }
+  },
+  {
+    "id": "Email example",
+    "template": {
+      "type": "fdc3.email",
+      "recipients": {
+        "type": "fdc3.contact",
+        "name": "Jane Doe",
+        "id": {
+          "email": "jane.doe@example.com"
+        }
+      },
+      "subject": "The information you requested",
+      "textBody": "Blah, blah, blah ..."
+    }
+  },
+  {
+    "id": "File attachment example",
+    "template": {
+      "type": "fdc3.fileAttachment",
+      "data": {
+        "name": "myImage.png",
+        "dataUri": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII"
+      }
+    }
+  },
+  {
+    "id": "Instrument example - MSFT",
+    "template": {
+      "type": "fdc3.instrument",
+      "name": "Microsoft",
+      "id": {
+        "ticker": "MSFT",
+        "RIC": "MSFT.OQ",
+        "ISIN": "US5949181045"
+      }
+    }
+  },
+  {
+    "id": "Instrument example - AAPL",
+    "template": {
+      "type": "fdc3.instrument",
+      "name": "Apple",
+      "id": {
+        "ticker": "AAPL"
+      }
+    }
+  },
+  {
+    "id": "InstrumentList example",
+    "template": {
+      "type": "fdc3.instrumentList",
+      "instruments": [
+        {
+          "type": "fdc3.instrument",
+          "id": {
+            "ticker": "AAPL"
+          }
+        },
+        {
+          "type": "fdc3.instrument",
+          "id": {
+            "ticker": "MSFT"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "Interaction example",
+    "template": {
+      "type": "fdc3.interaction",
+      "participants": {
+        "type": "fdc3.contactList",
+        "contacts": [
+          {
+            "type": "fdc3.contact",
+            "name": "Jane Doe",
+            "id": {
+              "email": "jane.doe@mail.com"
+            }
+          },
+          {
+            "type": "fdc3.contact",
+            "name": "John Doe",
+            "id": {
+              "email": "john.doe@mail.com"
+            }
+          }
+        ]
+      },
+      "interactionType": "Instant Message",
+      "timeRange": {
+        "type": "fdc3.timeRange",
+        "startTime": "2022-02-10T15:12:00Z"
+      },
+      "description": "Laboris libero dapibus fames elit adipisicing eu, fermentum, dignissimos laboriosam, erat, risus qui deserunt. Praesentium! Reiciendis. Hic harum nostrud, harum potenti amet? Mauris. Pretium aliquid animi, eget eiusmod integer proident. Architecto ipsum blandit ducimus, possimus illum sunt illum necessitatibus ab litora sed, nonummy integer minus corrupti ducimus iste senectus accumsan, fugiat nostrud? Pede vero dictumst excepturi, iure earum consequuntur voluptatum",
+      "initiator": {
+        "type": "fdc3.contact",
+        "name": "Jane Doe",
+        "id": {
+          "email": "jane.doe@mail.com"
+        }
+      },
+      "origin": "Outlook"
+    }
+  },
+  {
+    "id": "Message example",
+    "template": {
+      "type": "fdc3.message",
+      "text": {
+        "text/plain": "Hey all, can we discuss the issue together? I attached a screenshot and a chart link."
+      },
+      "entities": {
+        "picture1": {
+          "type": "fdc3.fileAttachment",
+          "data": {
+            "name": "myImage.png",
+            "dataUri": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII"
+          }
+        },
+        "viewChart": {
+          "type": "fdc3.action",
+          "title": "Click to view Chart",
+          "intent": "ViewChart",
+          "context": {
+            "type": "fdc3.chart",
+            "instruments": [
+              {
+                "type": "fdc3.instrument",
+                "id": {
+                  "ticker": "EURUSD"
+                }
+              }
+            ],
+            "range": {
+              "type": "fdc3.timeRange",
+              "startTime": "2020-09-01T08:00:00.000Z",
+              "endTime": "2020-10-31T08:00:00.000Z"
+            },
+            "style": "candle"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "Nothing example",
+    "template": {
+      "type": "fdc3.nothing"
+    }
+  },
+  {
+    "id": "Order example",
+    "template": {
+      "type": "fdc3.order",
+      "name": "...",
+      "id": {
+        "myOMS": "12345"
+      },
+      "details": {
+        "product": {
+          "type": "fdc3.product",
+          "id": {
+            "productId": "ABC123"
+          },
+          "instrument": {
+            "type": "fdc3.instrument",
+            "id": {
+              "ticker": "MSFT"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "OrderList example",
+    "template": {
+      "type": "fdc3.orderList",
+      "orders": [
+        {
+          "type": "fdc3.order",
+          "id": {
+            "myOMS": "ABC123"
+          }
+        },
+        {
+          "type": "fdc3.order",
+          "id": {
+            "myOMS": "DEF456"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "Organization example",
+    "template": {
+      "type": "fdc3.organization",
+      "name": "Cargill, Incorporated",
+      "id": {
+        "LEI": "QXZYQNMR4JZ5RIRN4T31",
+        "FDS_ID": "00161G-E"
+      }
+    }
+  },
+  {
+    "id": "Position example",
+    "template": {
+      "type": "fdc3.position",
+      "instrument": {
+        "type": "fdc3.instrument",
+        "id": {
+          "ticker": "AAPL"
+        }
+      },
+      "holding": 2000000
+    }
+  },
+  {
+    "id": "Portfolio example",
+    "template": {
+      "type": "fdc3.portfolio",
+      "positions": [
+        {
+          "type": "fdc3.position",
+          "instrument": {
+            "type": "fdc3.instrument",
+            "id": {
+              "ticker": "AAPL"
+            }
+          },
+          "holding": 2000000
+        },
+        {
+          "type": "fdc3.position",
+          "instrument": {
+            "type": "fdc3.instrument",
+            "id": {
+              "ticker": "MSFT"
+            }
+          },
+          "holding": 1500000
+        },
+        {
+          "type": "fdc3.position",
+          "instrument": {
+            "type": "fdc3.instrument",
+            "id": {
+              "ticker": "IBM"
+            }
+          },
+          "holding": 3000000
+        }
+      ]
+    }
+  },
+  {
+    "id": "Product example",
+    "template": {
+      "type": "fdc3.product",
+      "id": {
+        "productId": "ABC123"
+      },
+      "instrument": {
+        "type": "fdc3.instrument",
+        "id": {
+          "ticker": "MSFT"
+        }
+      }
+    }
+  },
+  {
+    "id": "TimeRange example",
+    "template": {
+      "type": "fdc3.timeRange",
+      "startTime": "2022-03-30T15:44:44Z",
+      "endTime": "2022-04-30T23:59:59Z"
+    }
+  },
+  {
+    "id": "Trade example",
+    "template": {
+      "type": "fdc3.trade",
+      "name": "...",
+      "id": {
+        "myEMS": "12345"
+      },
+      "product": {
+        "type": "fdc3.product",
+        "id": {
+          "productId": "ABC123"
+        },
+        "instrument": {
+          "type": "fdc3.instrument",
+          "id": {
+            "ticker": "MSFT"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "TradeList example",
+    "template": {
+      "type": "fdc3.tradeList",
+      "trades": [
+        {
+          "type": "fdc3.trade",
+          "name": "...",
+          "id": {
+            "myEMS": "12345"
+          },
+          "product": {
+            "type": "fdc3.product",
+            "id": {
+              "productId": "ABC123"
+            },
+            "instrument": {
+              "type": "fdc3.instrument",
+              "id": {
+                "ticker": "MSFT"
+              }
+            }
+          }
+        },
+        {
+          "type": "fdc3.trade",
+          "id": {
+            "myEMS": "67890"
+          },
+          "product": {
+            "type": "fdc3.product",
+            "id": {
+              "productId": "DEF456"
+            },
+            "instrument": {
+              "type": "fdc3.instrument",
+              "id": {
+                "ticker": "TSLA"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "Transaction result example",
+    "template": {
+      "type": "fdc3.transactionResult",
+      "status": "Updated",
+      "context": {
+        "type": "fdc3.contact",
+        "name": "Jane Doe",
+        "id": {
+          "email": "jane.doe@mail.com"
+        }
+      },
+      "message": "record with id 'jane.doe@mail.com' was updated"
+    }
+  },
+  {
+    "id": "Valuation example",
+    "template": {
+      "type": "fdc3.valuation",
+      "value": 500,
+      "price": 5,
+      "CURRENCY_ISOCODE": "USD",
+      "expiryTime": "2022-05-13T16:16:24+01:00"
+    }
+  }
+]

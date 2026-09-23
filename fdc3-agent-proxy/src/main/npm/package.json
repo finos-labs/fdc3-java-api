@@ -1,0 +1,10 @@
+{
+  "name": "fdc3-agent-proxy-test-features",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pins @finos/fdc3-agent-proxy so the Java Cucumber suite can load the published test/features. Copied into target/npm-work by the Maven build, which then runs 'npm ci' against the committed lockfile.",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@finos/fdc3-agent-proxy": "3.0.0-alpha.5"
+  }
+}

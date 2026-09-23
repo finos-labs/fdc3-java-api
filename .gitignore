@@ -13,3 +13,18 @@ docs/contributing.md
 
 # We use YARN
 website/package-lock.json
+
+# Maven target
+target/
+
+# The codegen manifests and their lockfiles under src/main/npm are committed deliberately, so
+# that 'npm ci' installs a fixed toolchain. Only an accidental local install is ignored.
+src/main/npm/node_modules/
+*/src/main/npm/node_modules/
+
+# Eclipse Ignore
+.classpath
+.project
+.settings/*
+*/.settings
+fdc3-java-api.code-workspace

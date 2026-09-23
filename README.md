@@ -1,121 +1,189 @@
-![badge-labs](https://user-images.githubusercontent.com/327285/230928932-7c75f8ed-e57b-41db-9fb7-a292a13a1e58.svg)
+[![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://community.finos.org/docs/governance/lifecycle-stages/incubating)
 
 # FDC3 Java API
 
-Standardized Java API to enable integration of FDC3 for Java Desktop Applications.
+A Java implementation of the [FDC3 Standard](https://fdc3.finos.org/) enabling Java desktop applications to interoperate with other FDC3-enabled applications via the [Desktop Agent Communication Protocol (DACP)](https://fdc3.finos.org/docs/api/specs/desktopAgentCommunicationProtocol).
 
-## Installation & Development Setup
+```mermaid
+sequenceDiagram
+    participant DA as Desktop Agent
+    participant App as Java App
 
-Prerequisite: Java 11
+    Note over DA: Advertise WebSocket URL and a pairing secret in the UI
+    DA-->>App: webSocketUrl + sharedSecret (copied by user, or passed as launch params)
+    Note over App: Build GetAgentParams
 
-#### FDC3 Java API
+    App->>DA: WebSocket connect
+    DA->>App: Connection accepted
+    App->>DA: WSCPApplicationConnect (sharedSecret)
 
-In a new terminal, navigate to the `fdc3api` directory
+    alt secret recognised
+        DA->>App: WSCPDesktopAgentConnect (appMetadata: appId, instanceId)
+    else secret invalid/unknown
+        DA->>App: WSCPConnectFailed
+    end
 
-Build Project
+    loop DACP message exchange
+        App->>DA: broadcastRequest, addContextListenerRequest, etc.
+        DA->>App: broadcastEvent, intentEvent, heartbeatEvent, etc.
+    end
 
-```sh
-mvn clean compile
+    App->>DA: WSCPGoodbye
 ```
 
-#### FDC3 Container
+**App identity flow:** this project implements the [WebSocket Connection Protocol (WSCP)](https://fdc3.finos.org/docs/api/specs/webSocketConnectionProtocol), which is how an application outside the browser connects to a Desktop Agent. It is a different protocol from the browser-resident Web Connection Protocol (WCP), and none of the WCP concepts — iframes, `identityUrl` origin matching, `instanceUuid` — apply here.
 
-In a new terminal, navigate to the `fdc3container` directory
+Identity rests on a **pairing secret**. The Desktop Agent generates a secret and makes it available to the user together with its WebSocket URL, typically by displaying both in its UI; how it does this is up to the agent. The application supplies the two values in `GetAgentParams` and sends the secret in `WSCPApplicationConnect`. The Desktop Agent checks the secret and replies with `WSCPDesktopAgentConnect` carrying the `appId` and `instanceId` it has assigned, or rejects the connection with `WSCPConnectFailed`. The assigned identity is then available through `getInfo()`. After the handshake, all FDC3 API calls travel as DACP messages over the same WebSocket.
 
-Install Dependencies
+## Overview
+
+This project provides:
+
+- **FDC3 Standard API interfaces** — Java equivalents of the FDC3 TypeScript API
+- **Desktop Agent Proxy** — Client-side implementation that communicates with a Desktop Agent over WebSocket
+- **GetAgent factory** — Simple entry point for connecting to a Desktop Agent
+- **Cucumber testing framework** — Shared step definitions for conformance testing against the official FDC3 feature files
+
+## Modules
+
+| Module             | Description                                                                     |
+| ------------------ | ------------------------------------------------------------------------------- |
+| `fdc3-standard`    | Core FDC3 API interfaces (`DesktopAgent`, `Channel`, `Context`, `Intent`, etc.) |
+| `fdc3-schema`      | Generated schema types and JSON conversion utilities                            |
+| `fdc3-context`     | Context type conversion utilities                                               |
+| `fdc3-agent-proxy` | `DesktopAgentProxy` implementation using DACP messaging                         |
+| `fdc3-get-agent`   | `GetAgent` factory for obtaining a `DesktopAgent` connection via WebSocket      |
+
+## Requirements
+
+- Java 17 or later
+- Maven 3.6+
+- A running FDC3 Desktop Agent that supports the [Desktop Agent Communication Protocol](https://fdc3.finos.org/docs/api/specs/desktopAgentCommunicationProtocol) (e.g., [FDC3 Sail](https://github.com/finos/FDC3-Sail))
+
+Building additionally requires **network access to the npm registry**, and no Node installation
+of your own. See below.
+
+## Installation
+
+### Building from Source
 
 ```sh
-npm i
+mvn clean install
 ```
 
-Run Application
+### Maven Dependency
 
-```sh
-npm start
+Once published, add to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.finos.fdc3</groupId>
+    <artifactId>fdc3-get-agent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+</dependency>
 ```
 
-Runs on <localhost:8080>
+## Usage
 
-#### Client
+### Connecting to a Desktop Agent
 
-In a new terminal, navigate to the `client` directory
+```java
+import org.finos.fdc3.api.DesktopAgent;
+import org.finos.fdc3.getagent.GetAgent;
+import org.finos.fdc3.getagent.GetAgentParams;
 
-Build Project:
+// Both values come from the Desktop Agent, which normally shows them in its UI.
+GetAgentParams params = GetAgentParams.builder()
+    .webSocketUrl("wss://desktop-agent.example.com/fdc3/ws") // required
+    .sharedSecret(pairingSecret)                             // required
+    .channelSelector(myChannelSelector)                      // optional
+    .intentResolver(myIntentResolver)                        // optional
+    .build();
 
-```sh
-mvn clean compile package
+DesktopAgent agent = GetAgent.getAgent(params).toCompletableFuture().get();
 ```
 
-Run the executable from Target directory
+The connection is a WebSocket, so `webSocketUrl` must use the `wss` scheme. Plain `ws` is
+rejected unless the host is a loopback address, because the pairing secret and every
+subsequent message would otherwise cross the network in the clear. To use `ws` against a
+non-loopback host during development, opt in explicitly with
+`.allowInsecureTransport(true)`.
 
-```sh
-java -jar <Project.baseDirectory>\client\target\client-1.0.0-SNAPSHOT.jar
-  ```
+#### Handling the pairing secret
 
-#### Stock Search React Receiver Application
+The pairing secret is a bearer credential: anything holding it can connect to the Desktop
+Agent as your application. Treat it accordingly.
 
-In a new terminal, navigate to the `fdcreceiver-react-trade-app` directory
+- Do not commit it, and do not write it to a log or an error message. This library redacts it
+  from its own logging, but it cannot redact what your application does with it.
+- Prefer passing it through a launch parameter, a prompt, or a secret store over a command-line
+  argument, since arguments are visible to other processes on the machine.
+- It is scoped to one app instance in one FDC3 session, so the same secret can be
+  reused to reconnect after an interruption. Persist it for the life of the instance;
+  this API cannot rotate it.
 
-Install Dependencies
+### Configuration via System Properties
 
-```sh
-npm i
+These system properties supply defaults for `GetAgentParams`. Anything set on the builder wins.
+
+| System Property           | Description                                        |
+| ------------------------- | -------------------------------------------------- |
+| `FDC3_WEBSOCKET_URL`      | WebSocket endpoint of the Desktop Agent            |
+| `FDC3_CONNECTION_SECRET`  | Pairing secret issued by the Desktop Agent         |
+
+With both set, only the optional overrides need to be given:
+
+```java
+GetAgentParams params = GetAgentParams.builder()
+    .channelSelector(myChannelSelector)
+    .build();
 ```
 
-Run Application
+### Broadcasting Context
 
-```sh
-npm start
+```java
+Context contact = new Context("fdc3.contact", "Jane Smith",
+    Map.of("email", "jane@example.com"));
+
+agent.broadcast(contact);
 ```
 
-Runs on <localhost:3000>
+### Listening for Context
 
-## Usage with the Current State of this Repo
+```java
+agent.addContextListener("fdc3.contact", (context, metadata) -> {
+    System.out.println("Received contact: " + context.get("name"));
+});
+```
 
-With the goal of our use case being to enable integration of FDC3 for Java Desktop Applications, we developed the Java API in addition to several simple applications that demonstrate its functionality and potential. The components we developed are as follows:
+### Raising Intents
 
-* Java API - Our implementation of the Java API. Located in `fdc3api`
-* Java Swing Sender - Client application to place orders. Located in `client`
-* Adapter - the OpenFin Adapter. Located in `openfin-fdc3-adapter`
-* Trade App - React based application enabled for receiving trade context from the sender. Located in `fdcreceiver-react-trade-app`
-* FDC3 Container - OpenFin based container hosting the receiver environment. Located in `fdc3container`
-
-As you interact with these applications, you will see our API in action. For example, say the user were to send the instruments from the Java Swing blotter, this action would then be reflected across the receiving web applications. In addition, we implemented a feature to allow the user to select what channel they are listening on to demonstrate the potential of our API.
-
-![Demo Screenshot](readme-images/demo_screenshot.png)
-
-## Usage in a Business Environment
-
-Some firms have existing Java desktop applications, and they want to use FDC3 to integrate with other apps that use JavaScript or other technologies.
-
-For example, a buy-side trader using an internal Java order management system selects an order on their blotter and wants to view related analytics in an external JavaScript app provided by a broker.
-
-This API will provide a standardized API for Java app developers to use, making it easier to switch the underlying technology that provides the FDC3 communication if required. By leveraging our FDC3 Java API in existing apps, developers will be able to create a user friendly workflow that favors shared context between applications as opposed to manual repetition by the user.
-
-## Roadmap
-
-1. Robust testing
-2. Acceptance as a FINOS standard
-3. The FDC3 Java API is leveraged in a production environment
-4. Review with OpenFin the FDC3 features not currently supported by their Java API. Discuss if they would be willing to implement this FDC3 Java API directly instead of using an adapter.
-5. If possible, write a fully open-source implementation of the API without any dependency on a specific desktop agent vendor. This may be possible using websocket with the new desktop agent bridging spec.
+```java
+// A null target app lets the Desktop Agent's resolver choose.
+IntentResolution resolution =
+    agent.raiseIntent("ViewChart", instrument, null).toCompletableFuture().get();
+```
 
 ## Contributing
 
-1. Fork it (<https://github.com/finos-labs/fdc3-java-api/fork>)
+For any questions, bugs or feature requests please open an [issue](https://github.com/finos-labs/fdc3-java-api/issues).
+
+To submit a contribution:
+
+1. Fork the repository (<https://github.com/finos-labs/fdc3-java-api/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
-3. Read our [contribution guidelines](.github/CONTRIBUTING.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
+3. Read our [contribution guidelines](CONTRIBUTING.md) and [Community Code of Conduct](CODE_OF_CONDUCT.md)
 4. Commit your changes (`git commit -am 'Add some fooBar'`)
 5. Push to the branch (`git push origin feature/fooBar`)
 6. Create a new Pull Request
 
-_NOTE:_ Commits and pull requests to FINOS repositories will only be accepted from those contributors with an active, executed Individual Contributor License Agreement (ICLA) with FINOS OR who are covered under an existing and active Corporate Contribution License Agreement (CCLA) executed with FINOS. Commits from individuals not covered under an ICLA or CCLA will be flagged and blocked by the FINOS Clabot tool. Please note that some CCLAs require individuals/employees to be explicitly named on the CCLA.
+_NOTE:_ Pull requests must follow this repository's contribution policy. FINOS projects use **CLA** via [EasyCLA](https://community.finos.org/docs/governance/Software-Projects/easycla). Read [FINOS Contribution Requirements](https://community.finos.org/docs/governance/Software-Projects/contribution-compliance-requirements) and [CONTRIBUTING.md](CONTRIBUTING.md) before contributing.
 
-*Need an ICLA? Unsure if you are covered under an existing CCLA? Email [help@finos.org](mailto:help@finos.org)*
+_Need an ICLA? Unsure if you are covered under an existing CCLA? Email [help@finos.org](mailto:help@finos.org)_
 
 ## License
 
-Copyright 2023 Wellington Management Company LLP
+Copyright 2026 Fintech Open Source Foundation (FINOS)
 
 Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 

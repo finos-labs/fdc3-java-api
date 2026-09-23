@@ -1,0 +1,92 @@
+/**
+ * Copyright FINOS and its Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.finos.fdc3.proxy.support;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+
+import org.finos.fdc3.api.context.Context;
+import org.finos.fdc3.api.metadata.AppIntent;
+import org.finos.fdc3.api.metadata.AppMetadata;
+import org.finos.fdc3.api.metadata.IntentMetadata;
+import org.finos.fdc3.api.types.AppIdentifier;
+import org.finos.fdc3.api.ui.IntentResolutionChoice;
+import org.finos.fdc3.api.ui.IntentResolver;
+import org.finos.cucumbertestingsteps.world.PropsWorld;
+
+/**
+ * A simple intent resolver for testing purposes.
+ * <p>
+ * This resolver automatically selects the first intent/app in the list,
+ * unless the context type is "fdc3.cancel-me", in which case it returns null (cancelled).
+ * <p>
+ * This is equivalent to the TypeScript SimpleIntentResolver class.
+ */
+public class SimpleIntentResolver implements IntentResolver {
+
+    private final PropsWorld world;
+
+    public SimpleIntentResolver(PropsWorld world) {
+        this.world = world;
+    }
+
+    @Override
+    public CompletionStage<IntentResolutionChoice> chooseIntent(List<AppIntent> appIntents, Context context) {
+        // Cancel if the context type is "fdc3.cancel-me"
+        if ("fdc3.cancel-me".equals(context.getType())) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        // Select the first intent and first app
+        AppIntent firstIntent = appIntents.get(0);
+        IntentMetadata intent = firstIntent.getIntent();
+        // getApps() returns AppMetadata[] so convert to list
+        List<AppMetadata> apps = Arrays.asList(firstIntent.getApps());
+        AppMetadata firstApp = apps.get(0);
+
+        // Create an AppIdentifier from the AppMetadata
+        AppIdentifier appIdentifier = new AppIdentifier(
+                firstApp.getAppId(),
+                firstApp.getInstanceId(),
+                firstApp.getDesktopAgent()
+        );
+
+        // Create the resolution choice
+        IntentResolutionChoice resolution = new IntentResolutionChoice(
+                intent.getName(),
+                appIdentifier
+        );
+
+        // Store for testing verification
+        world.set("intent-resolution", resolution);
+
+        return CompletableFuture.completedFuture(resolution);
+    }
+
+    @Override
+    public CompletionStage<Void> connect() {
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletionStage<Void> disconnect() {
+        return CompletableFuture.completedFuture(null);
+    }
+}
+

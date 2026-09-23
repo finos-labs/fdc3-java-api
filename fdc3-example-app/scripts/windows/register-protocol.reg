@@ -1,0 +1,21 @@
+Windows Registry Editor Version 5.00
+
+; Register the fdc3-java-app:// protocol handler for the FDC3 Java Example.
+; Before importing:
+;   1. Replace C:\\path\\to\\java.exe with your java.exe path
+;   2. Replace C:\\path\\to\\fdc3-example-app.jar with your JAR path
+;   3. Double-click this file or run: reg import register-protocol.reg
+
+[HKEY_CLASSES_ROOT\fdc3-java-app]
+@="URL:FDC3 Java App Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\fdc3-java-app\DefaultIcon]
+@="C:\\path\\to\\java.exe,0"
+
+[HKEY_CLASSES_ROOT\fdc3-java-app\shell]
+
+[HKEY_CLASSES_ROOT\fdc3-java-app\shell\open]
+
+[HKEY_CLASSES_ROOT\fdc3-java-app\shell\open\command]
+@="\"C:\\path\\to\\java.exe\" -jar \"C:\\path\\to\\fdc3-example-app.jar\" \"%1\""

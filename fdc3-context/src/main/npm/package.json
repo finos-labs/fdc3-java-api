@@ -1,0 +1,12 @@
+{
+  "name": "fdc3-context-codegen",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pinned toolchain for generating Java types from the FDC3 context JSON schemas. Copied into target/npm-work by the Maven build, which then runs 'npm ci' against the committed lockfile.",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@finos/fdc3-context": "3.0.0-alpha.5",
+    "@finos/fdc3-schema": "3.0.0-alpha.5",
+    "quicktype": "26.0.0"
+  }
+}

@@ -1,0 +1,21 @@
+[
+  "CreateInteraction",
+  "CreateOrUpdateProfile",
+  "SendChatMessage",
+  "StartCall",
+  "StartChat",
+  "StartEmail",
+  "ViewAnalysis",
+  "ViewChart",
+  "ViewChat",
+  "ViewContact",
+  "ViewHoldings",
+  "ViewInstrument",
+  "ViewInteractions",
+  "ViewMessages",
+  "ViewNews",
+  "ViewOrders",
+  "ViewProfile",
+  "ViewQuote",
+  "ViewResearch"
+]
