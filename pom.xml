@@ -104,7 +104,7 @@
 
         <!-- The published FDC3 npm packages the generated types are derived from. Both packages
              are released together, so they share one version. -->
-        <fdc3.npm.version>3.0.0-alpha.4</fdc3.npm.version>
+        <fdc3.npm.version>3.0.0-alpha.5</fdc3.npm.version>
     </properties>
 
     <dependencyManagement>

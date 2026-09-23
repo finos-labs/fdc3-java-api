@@ -114,7 +114,8 @@ public class ContextTemplateStore {
                 array.add(node);
             }
             prefs.put(PREF_KEY, mapper.writeValueAsString(array));
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
+            // macOS Java Preferences reject values over ~8KB ("Value too long")
             log.error("contexts", "Failed to persist templates - " + e.getMessage());
         }
     }
